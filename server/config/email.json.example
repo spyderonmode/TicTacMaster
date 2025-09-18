@@ -1,0 +1,12 @@
+{
+  "smtp": {
+    "host": "smtp.your-domain.com",
+    "port": 465,
+    "secure": true,
+    "auth": {
+      "user": "your-email@your-domain.com",
+      "pass": "your_smtp_password_here"
+    }
+  },
+  "fromEmail": "your-email@your-domain.com"
+}

@@ -1,0 +1,51 @@
+📨 Found 2 connections for target user b7f287c6-bde2-48ae-b226-55c76c1572a8
+📨 Sending to most recent connection - readyState: 1, userId: b7f287c6-bde2-48ae-b226-55c76c1572a8
+📨 Sending WebSocket message to b7f287c6-bde2-48ae-b226-55c76c1572a8: {"type":"chat_message_received","message":{"senderId":"c9122c48-3c24-4891-a6b5-f02aa8362af2","senderName":"Ethan","message":"welcome bro","timestamp":"2025-07-22T05:33:04.905Z"}}
+📨 Message sent successfully to most recent connection
+📨 Chat message sent from c9122c48-3c24-4891-a6b5-f02aa8362af2 to b7f287c6-bde2-48ae-b226-55c76c1572a8: welcome bro
+5:33:05 AM [express] POST /api/chat/send 200 in 958ms :: {"success":true,"message":"Message sent suc…
+📨 Found 2 connections for target user b7f287c6-bde2-48ae-b226-55c76c1572a8
+📨 Sending to most recent connection - readyState: 1, userId: b7f287c6-bde2-48ae-b226-55c76c1572a8
+📨 Sending WebSocket message to b7f287c6-bde2-48ae-b226-55c76c1572a8: {"type":"chat_message_received","message":{"senderId":"c9122c48-3c24-4891-a6b5-f02aa8362af2","senderName":"Ethan","message":"code dena visitor ka","timestamp":"2025-07-22T05:33:12.080Z"}}
+📨 Message sent successfully to most recent connection
+📨 Chat message sent from c9122c48-3c24-4891-a6b5-f02aa8362af2 to b7f287c6-bde2-48ae-b226-55c76c1572a8: code dena visitor ka
+5:33:12 AM [express] POST /api/chat/send 200 in 958ms :: {"success":true,"message":"Message sent suc…
+5:33:40 AM [express] GET /api/players/player_16 200 in 2375ms :: {"id":"player_16","username":"nicol…
+5:33:41 AM [express] GET /api/head-to-head/b7f287c6-bde2-48ae-b226-55c76c1572a8/player_16 200 in 355…
+📨 Found 4 connections for target user c9122c48-3c24-4891-a6b5-f02aa8362af2
+📨 Sending to most recent connection - readyState: 1, userId: c9122c48-3c24-4891-a6b5-f02aa8362af2
+📨 Sending WebSocket message to c9122c48-3c24-4891-a6b5-f02aa8362af2: {"type":"chat_message_received","message":{"senderId":"b7f287c6-bde2-48ae-b226-55c76c1572a8","senderName":"Awais","message":"JU4XI29L","timestamp":"2025-07-22T05:33:47.440Z"}}
+📨 Message sent successfully to most recent connection
+📨 Chat message sent from b7f287c6-bde2-48ae-b226-55c76c1572a8 to c9122c48-3c24-4891-a6b5-f02aa8362af2: JU4XI29L
+5:33:47 AM [express] POST /api/chat/send 200 in 966ms :: {"success":true,"message":"Message sent suc…
+📨 Found 2 connections for target user 8060e97e-829a-4c70-941a-546e87d4190a
+📨 Sending to most recent connection - readyState: 1, userId: 8060e97e-829a-4c70-941a-546e87d4190a
+📨 Sending WebSocket message to 8060e97e-829a-4c70-941a-546e87d4190a: {"type":"chat_message_received","message":{"senderId":"b7f287c6-bde2-48ae-b226-55c76c1572a8","senderName":"Awais","message":"JU4XI29L","timestamp":"2025-07-22T05:33:52.543Z"}}
+📨 Message sent successfully to most recent connection
+📨 Chat message sent from b7f287c6-bde2-48ae-b226-55c76c1572a8 to 8060e97e-829a-4c70-941a-546e87d4190a: JU4XI29L
+5:33:52 AM [express] POST /api/chat/send 200 in 949ms :: {"success":true,"message":"Message sent suc…
+🎮 Sending active game state to joining user c9122c48-3c24-4891-a6b5-f02aa8362af2 (not a reconnection)
+📨 Found 2 connections for target user 8060e97e-829a-4c70-941a-546e87d4190a
+📨 Sending to most recent connection - readyState: 1, userId: 8060e97e-829a-4c70-941a-546e87d4190a
+📨 Sending WebSocket message to 8060e97e-829a-4c70-941a-546e87d4190a: {"type":"chat_message_received","message":{"senderId":"b7f287c6-bde2-48ae-b226-55c76c1572a8","senderName":"Awais","message":"JU4XI29L","timestamp":"2025-07-22T05:34:16.463Z"}}
+📨 Message sent successfully to most recent connection
+📨 Chat message sent from b7f287c6-bde2-48ae-b226-55c76c1572a8 to 8060e97e-829a-4c70-941a-546e87d4190a: JU4XI29L
+5:34:16 AM [express] POST /api/chat/send 200 in 945ms :: {"success":true,"message":"Message sent suc…
+🎮 Sending active game state to joining user 8060e97e-829a-4c70-941a-546e87d4190a (not a reconnection)
+🎮 Broadcasting game_started to 2 users in room 44125b77-5693-4d43-811c-673c97ddb93d
+🎮 Sending game_started to user: b7f287c6-bde2-48ae-b226-55c76c1572a8
+🎮 Sending game_started to user: 8060e97e-829a-4c70-941a-546e87d4190a
+🎮 All game_started broadcasts completed for room 44125b77-5693-4d43-811c-673c97ddb93d
+🎮 Sending active game state to joining user c9122c48-3c24-4891-a6b5-f02aa8362af2 (not a reconnection)
+5:38:40 AM [express] POST /api/auth/logout 200 in 469ms :: {"message":"Logged out successfully"}
+🎮 Sending active game state to joining user 8060e97e-829a-4c70-941a-546e87d4190a (not a reconnection)
+🎮 Sending active game state to joining user b7f287c6-bde2-48ae-b226-55c76c1572a8 (not a reconnection)
+5:40:07 AM [express] POST /api/auth/logout 200 in 487ms :: {"message":"Logged out successfully"}
+🏠 Cleaning up stale room state for user 8060e97e-829a-4c70-941a-546e87d4190a - game no longer active
+Guest user created in database: 4a320857-d3bd-497e-9b21-877b46248365
+✅ Guest user created via explicit /api/auth/guest request: Guest_9585
+5:40:24 AM [express] POST /api/auth/guest 200 in 975ms :: {"id":"4a320857-d3bd-497e-9b21-877b4624836…
+User profile synced to database: 4a320857-d3bd-497e-9b21-877b46248365
+5:41:07 AM [express] PUT /api/auth/profile 200 in 3717ms :: {"userId":"4a320857-d3bd-497e-9b21-877b4…
+User profile synced to database: 4a320857-d3bd-497e-9b21-877b46248365
+5:43:28 AM [express] PUT /api/auth/profile 200 in 5440ms :: {"userId":"4a320857-d3bd-497e-9b21-877b4…
