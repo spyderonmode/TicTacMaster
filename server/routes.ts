@@ -31,12 +31,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     //console.log('ℹ️ Room invitations table already exists or error:', error.message);
   }
 
-  // Create monthly reset status table if it doesn't exist
+  // Create weekly reset status table if it doesn't exist
   try {
-    await storage.createMonthlyResetTable();
-    //console.log('✅ Monthly reset status table ready');
+    await storage.createWeeklyResetTable();
+    //console.log('✅ Weekly reset status table ready');
   } catch (error) {
-    //console.log('ℹ️ Monthly reset status table already exists or error:', error.message);
+    //console.log('ℹ️ Weekly reset status table already exists or error:', error.message);
   }
 
   // Clean up friendship data inconsistencies
@@ -415,49 +415,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }, 10000); // Check every 10 seconds
 
-  // Robust monthly leaderboard reset and reward distribution system
-  let monthlySchedulerRunning = false; // Process-level mutex
-  let nextMonthStartTimeout: NodeJS.Timeout | null = null;
+  // Robust weekly leaderboard reset and reward distribution system
+  let weeklySchedulerRunning = false; // Process-level mutex
+  let nextWeekStartTimeout: NodeJS.Timeout | null = null;
 
-  // Function to calculate milliseconds until next month starts
-  function getMillisecondsUntilNextMonth(): number {
+  // Function to calculate milliseconds until next week starts (ISO week starts Monday)
+  function getMillisecondsUntilNextWeek(): number {
     const now = new Date();
-    const currentYear = now.getUTCFullYear();
-    const currentMonth = now.getUTCMonth(); // 0-11
     
-    // First day of next month at midnight UTC
-    const nextMonthStart = new Date(Date.UTC(currentYear, currentMonth + 1, 1, 0, 0, 0, 0));
-    return nextMonthStart.getTime() - now.getTime();
+    // Get the start of next ISO week (Monday at 00:00:00 UTC)
+    const currentDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, ...
+    const daysUntilNextMonday = currentDay === 0 ? 1 : 8 - currentDay; // Days until next Monday
+    
+    const nextWeekStart = new Date(now);
+    nextWeekStart.setUTCDate(now.getUTCDate() + daysUntilNextMonday);
+    nextWeekStart.setUTCHours(0, 0, 0, 0);
+    
+    return nextWeekStart.getTime() - now.getTime();
   }
 
-  // Function to perform monthly reset with full error handling and idempotency
-  async function performMonthlyReset(month: number, year: number): Promise<boolean> {
-    if (monthlySchedulerRunning) {
-      console.log(`🔒 Monthly scheduler already running, skipping reset for ${year}-${month.toString().padStart(2, '0')}`);
+  // Function to perform weekly reset with full error handling and idempotency
+  async function performWeeklyReset(weekNumber: number, year: number): Promise<boolean> {
+    if (weeklySchedulerRunning) {
+      console.log(`🔒 Weekly scheduler already running, skipping reset for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
       return false;
     }
 
-    monthlySchedulerRunning = true;
+    weeklySchedulerRunning = true;
     let resetStatus;
 
     try {
-      console.log(`🏆 Starting monthly reset process for ${year}-${month.toString().padStart(2, '0')}`);
+      console.log(`🏆 Starting weekly reset process for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
       
       // Get or create reset status record
-      resetStatus = await storage.getResetStatus(month, year);
+      resetStatus = await storage.getResetStatus(weekNumber, year);
       if (!resetStatus) {
-        resetStatus = await storage.createResetStatus(month, year);
+        resetStatus = await storage.createResetStatus(weekNumber, year);
       }
 
       // Check if already completed
       if (resetStatus.status === 'completed') {
-        console.log(`✅ Monthly reset for ${year}-${month.toString().padStart(2, '0')} already completed`);
+        console.log(`✅ Weekly reset for ${year}-W${weekNumber.toString().padStart(2, '0')} already completed`);
         return true;
       }
 
       // Check if too many retries
       if (resetStatus.retryCount >= 5) {
-        console.error(`❌ Monthly reset for ${year}-${month.toString().padStart(2, '0')} exceeded maximum retries (${resetStatus.retryCount})`);
+        console.error(`❌ Weekly reset for ${year}-W${weekNumber.toString().padStart(2, '0')} exceeded maximum retries (${resetStatus.retryCount})`);
         return false;
       }
 
@@ -465,16 +469,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateResetStatus(resetStatus.id, 'in_progress');
 
       // Perform the actual reset (this already has internal transaction safety)
-      await storage.resetMonthlyStats(month, year);
+      await storage.resetWeeklyStats(weekNumber, year);
 
       // Mark as completed
       await storage.updateResetStatus(resetStatus.id, 'completed');
-      console.log(`✅ Monthly reset completed successfully for ${year}-${month.toString().padStart(2, '0')}`);
+      console.log(`✅ Weekly reset completed successfully for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
       
       return true;
 
     } catch (error) {
-      console.error(`❌ Error during monthly reset for ${year}-${month.toString().padStart(2, '0')}:`, error);
+      console.error(`❌ Error during weekly reset for ${year}-W${weekNumber.toString().padStart(2, '0')}:`, error);
       
       if (resetStatus) {
         // Mark as failed and schedule retry
@@ -484,12 +488,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateResetStatus(resetStatus.id, 'failed', error.message);
         await storage.incrementRetryCount(resetStatus.id, nextRetryAt);
         
-        console.log(`⏰ Scheduled retry for ${year}-${month.toString().padStart(2, '0')} in ${Math.round(nextRetryDelay / 60000)} minutes`);
+        console.log(`⏰ Scheduled retry for ${year}-W${weekNumber.toString().padStart(2, '0')} in ${Math.round(nextRetryDelay / 60000)} minutes`);
       }
       
       return false;
     } finally {
-      monthlySchedulerRunning = false;
+      weeklySchedulerRunning = false;
     }
   }
 
@@ -499,109 +503,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingResets = await storage.getPendingResets();
       
       for (const reset of pendingResets) {
-        console.log(`🔄 Processing pending reset for ${reset.year}-${reset.month.toString().padStart(2, '0')}`);
-        await performMonthlyReset(reset.month, reset.year);
+        console.log(`🔄 Processing pending reset for ${reset.year}-W${reset.weekNumber.toString().padStart(2, '0')}`);
+        await performWeeklyReset(reset.weekNumber, reset.year);
       }
     } catch (error) {
       console.error('📅 Error processing pending resets:', error);
     }
   }
 
-  // Function to schedule the next month boundary check
-  function scheduleNextMonthCheck(): void {
+  // Function to schedule the next week boundary check
+  function scheduleNextWeekCheck(): void {
     // Clear any existing timeout
-    if (nextMonthStartTimeout) {
-      clearTimeout(nextMonthStartTimeout);
+    if (nextWeekStartTimeout) {
+      clearTimeout(nextWeekStartTimeout);
     }
 
-    const msUntilNextMonth = getMillisecondsUntilNextMonth();
+    const msUntilNextWeek = getMillisecondsUntilNextWeek();
     const maxDelay = 24 * 60 * 60 * 1000; // 24 hours max for setTimeout stability
-    const delay = Math.min(msUntilNextMonth, maxDelay);
+    const delay = Math.min(msUntilNextWeek, maxDelay);
 
-    console.log(`📅 Next month check scheduled in ${Math.round(delay / 60000)} minutes`);
+    console.log(`📅 Next week check scheduled in ${Math.round(delay / 60000)} minutes`);
 
-    nextMonthStartTimeout = setTimeout(async () => {
+    nextWeekStartTimeout = setTimeout(async () => {
       try {
         const now = new Date();
-        const currentMonth = now.getUTCMonth() + 1; // 1-12
-        const currentYear = now.getUTCFullYear();
         
-        // Calculate previous month for reset
-        let prevMonth = currentMonth - 1;
-        let prevYear = currentYear;
-        if (prevMonth === 0) {
-          prevMonth = 12;
-          prevYear = currentYear - 1;
-        }
+        // Calculate previous week for reset
+        const prevWeekDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+        
+        // Get ISO week info for previous week
+        const target = new Date(prevWeekDate.getTime());
+        target.setUTCHours(0, 0, 0, 0);
+        const thursday = new Date(target.getTime());
+        thursday.setUTCDate(target.getUTCDate() - ((target.getUTCDay() + 6) % 7) + 3);
+        const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
+        firstThursday.setUTCDate(firstThursday.getUTCDate() - ((firstThursday.getUTCDay() + 6) % 7) + 3);
+        const prevWeekNumber = Math.floor((thursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+        const prevYear = thursday.getUTCFullYear();
 
-        console.log(`🗓️ New month detected: ${currentYear}-${currentMonth.toString().padStart(2, '0')}`);
-        console.log(`🏆 Triggering reset for previous month: ${prevYear}-${prevMonth.toString().padStart(2, '0')}`);
+        console.log(`🗓️ New week detected`);
+        console.log(`🏆 Triggering reset for previous week: ${prevYear}-W${prevWeekNumber.toString().padStart(2, '0')}`);
 
-        // Trigger reset for the previous month
-        await performMonthlyReset(prevMonth, prevYear);
+        // Trigger reset for the previous week
+        await performWeeklyReset(prevWeekNumber, prevYear);
 
         // Check for any other pending resets
         await processPendingResets();
 
         // Schedule next check
-        scheduleNextMonthCheck();
+        scheduleNextWeekCheck();
         
       } catch (error) {
-        console.error('📅 Error in month boundary handler:', error);
+        console.error('📅 Error in week boundary handler:', error);
         // Reschedule anyway to prevent scheduler from stopping
-        scheduleNextMonthCheck();
+        scheduleNextWeekCheck();
       }
     }, delay);
   }
 
   // Startup logic to handle missed resets and initialize scheduler
-  async function initializeMonthlyScheduler(): Promise<void> {
+  async function initializeWeeklyScheduler(): Promise<void> {
     try {
-      console.log('🚀 Initializing robust monthly scheduler...');
+      console.log('🚀 Initializing robust weekly scheduler...');
       
       // Check for any pending or failed resets on startup
       await processPendingResets();
 
-      // Check if we need to create a reset record for any recent months that might have been missed
+      // Check if we need to create a reset record for any recent weeks that might have been missed
       const now = new Date();
-      const currentMonth = now.getUTCMonth() + 1;
-      const currentYear = now.getUTCFullYear();
       
-      // Check last 3 months for missed resets
-      for (let i = 1; i <= 3; i++) {
-        let checkMonth = currentMonth - i;
-        let checkYear = currentYear;
+      // Check last 4 weeks for missed resets
+      for (let i = 1; i <= 4; i++) {
+        const checkDate = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000); // i weeks ago
         
-        if (checkMonth <= 0) {
-          checkMonth += 12;
-          checkYear -= 1;
-        }
+        // Get ISO week info for check date
+        const target = new Date(checkDate.getTime());
+        target.setUTCHours(0, 0, 0, 0);
+        const thursday = new Date(target.getTime());
+        thursday.setUTCDate(target.getUTCDate() - ((target.getUTCDay() + 6) % 7) + 3);
+        const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
+        firstThursday.setUTCDate(firstThursday.getUTCDate() - ((firstThursday.getUTCDay() + 6) % 7) + 3);
+        const checkWeekNumber = Math.floor((thursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+        const checkYear = thursday.getUTCFullYear();
         
-        const resetStatus = await storage.getResetStatus(checkMonth, checkYear);
+        const resetStatus = await storage.getResetStatus(checkWeekNumber, checkYear);
         if (!resetStatus) {
-          // Create pending reset record for missed month
-          await storage.createResetStatus(checkMonth, checkYear);
-          console.log(`📝 Created pending reset record for missed month: ${checkYear}-${checkMonth.toString().padStart(2, '0')}`);
+          // Create pending reset record for missed week
+          await storage.createResetStatus(checkWeekNumber, checkYear);
+          console.log(`📝 Created pending reset record for missed week: ${checkYear}-W${checkWeekNumber.toString().padStart(2, '0')}`);
         }
       }
 
       // Process any newly identified pending resets
       await processPendingResets();
 
-      // Schedule precise month boundary timing
-      scheduleNextMonthCheck();
+      // Schedule precise week boundary timing
+      scheduleNextWeekCheck();
       
-      console.log('✅ Monthly scheduler initialized successfully');
+      console.log('✅ Weekly scheduler initialized successfully');
       
     } catch (error) {
-      console.error('❌ Failed to initialize monthly scheduler:', error);
+      console.error('❌ Failed to initialize weekly scheduler:', error);
       // Fallback: still schedule next check to prevent total failure
-      scheduleNextMonthCheck();
+      scheduleNextWeekCheck();
     }
   }
 
   // Initialize the scheduler
-  initializeMonthlyScheduler();
+  initializeWeeklyScheduler();
 
   // Backup polling system - runs every 6 hours as failsafe
   setInterval(async () => {
@@ -611,17 +620,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      console.log('🔍 Running backup monthly scheduler check...');
+      console.log('🔍 Running backup weekly scheduler check...');
       await processPendingResets();
       
-      // Verify next month check is still scheduled
-      if (!nextMonthStartTimeout) {
-        console.log('⚠️ Next month check was lost, rescheduling...');
-        scheduleNextMonthCheck();
+      // Verify next week check is still scheduled
+      if (!nextWeekStartTimeout) {
+        console.log('⚠️ Next week check was lost, rescheduling...');
+        scheduleNextWeekCheck();
       }
       
     } catch (error) {
-      console.error('📅 Error in backup monthly scheduler:', error);
+      console.error('📅 Error in backup weekly scheduler:', error);
     }
   }, 6 * 60 * 60 * 1000); // Every 6 hours
 
@@ -977,8 +986,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Cannot award coins to other users" });
       }
       
-      // Validate amount (reasonable limits for AI game rewards)
-      if (!amount || amount < 1 || amount > 100) {
+      // Validate amount (reasonable limits for game rewards)
+      if (!amount || amount < 1 || amount > 1000) {
         return res.status(400).json({ message: "Invalid coin amount" });
       }
       
@@ -1021,47 +1030,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Monthly Leaderboard endpoints
-  app.get('/api/leaderboard/monthly', async (req, res) => {
+  app.get('/api/leaderboard/weekly', async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
-      const month = parseInt(req.query.month as string);
+      const weekNumber = parseInt(req.query.weekNumber as string);
       const year = parseInt(req.query.year as string);
       
-      if (month && year) {
-        // Get specific month leaderboard
-        const leaderboard = await storage.getMonthlyLeaderboard(month, year, Math.min(limit, 50));
+      if (weekNumber && year) {
+        // Get specific week leaderboard
+        const leaderboard = await storage.getWeeklyLeaderboard(weekNumber, year, Math.min(limit, 50));
         res.json(leaderboard);
       } else {
-        // Get current month leaderboard
-        const leaderboard = await storage.getCurrentMonthLeaderboard(Math.min(limit, 50));
+        // Get current week leaderboard
+        const leaderboard = await storage.getCurrentWeekLeaderboard(Math.min(limit, 50));
         res.json(leaderboard);
       }
     } catch (error) {
-      console.error("Error fetching monthly leaderboard:", error);
-      res.status(500).json({ message: "Failed to fetch monthly leaderboard" });
+      console.error("Error fetching weekly leaderboard:", error);
+      res.status(500).json({ message: "Failed to fetch weekly leaderboard" });
     }
   });
 
-  // Get time until month end for countdown timer
+  // Get time until week end for countdown timer
   app.get('/api/leaderboard/time-left', async (req, res) => {
     try {
-      const timeLeft = await storage.getTimeUntilMonthEnd();
+      const timeLeft = await storage.getTimeUntilWeekEnd();
       res.json(timeLeft);
     } catch (error) {
-      console.error("Error fetching time until month end:", error);
-      res.status(500).json({ message: "Failed to fetch time until month end" });
+      console.error("Error fetching time until week end:", error);
+      res.status(500).json({ message: "Failed to fetch time until week end" });
     }
   });
 
   // Get user's monthly rewards history
-  app.get('/api/rewards/monthly', requireAuth, async (req: any, res) => {
+  app.get('/api/rewards/weekly', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.user.userId;
-      const rewards = await storage.getMonthlyRewards(userId);
+      const rewards = await storage.getWeeklyRewards(userId);
       res.json(rewards);
     } catch (error) {
-      console.error("Error fetching monthly rewards:", error);
-      res.status(500).json({ message: "Failed to fetch monthly rewards" });
+      console.error("Error fetching weekly rewards:", error);
+      res.status(500).json({ message: "Failed to fetch weekly rewards" });
     }
   });
 
@@ -3415,38 +3424,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           };
           
-          // Broadcasting game_started for refreshed game
+          // INSTANT WebSocket broadcast for refreshed game
           if (roomConnections.has(gameData.roomId)) {
             const roomUsers = roomConnections.get(gameData.roomId)!;
-            // Broadcasting to users in room
-            const broadcastPromises: Promise<void>[] = [];
+            // Fire and forget instant broadcast
             roomUsers.forEach(connectionId => {
               const connection = connections.get(connectionId);
               if (connection && connection.ws.readyState === WebSocket.OPEN) {
-                // Sending game_started to user
-                const sendPromise = new Promise<void>((resolve) => {
-                  try {
-                    connection.ws.send(JSON.stringify({
-                      type: 'game_started',
-                      game: refreshedGameWithPlayers,
-                      gameId: refreshedGame.id,
-                      roomId: gameData.roomId,
-                    }));
-                    setTimeout(resolve, 10);
-                  } catch (error) {
-                    //console.error(`🎮 Error sending to user ${connection.userId}:`, error);
-                    resolve();
-                  }
-                });
-                broadcastPromises.push(sendPromise);
+                try {
+                  connection.ws.send(JSON.stringify({
+                    type: 'game_started',
+                    game: refreshedGameWithPlayers,
+                    gameId: refreshedGame.id,
+                    roomId: gameData.roomId,
+                  }));
+                } catch (error) {
+                  console.error(`🎮 Error sending instant refreshed game_started to user ${connection.userId}:`, error);
+                }
               }
             });
-            await Promise.all(broadcastPromises);
           }
           
-          setTimeout(() => {
-            return res.json(refreshedGameWithPlayers);
-          }, 50);
+          return res.json(refreshedGameWithPlayers);
         }
         
         // Get room participants and assign as players
@@ -3513,43 +3512,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
       
-      // Update room status
+      // IMMEDIATE WebSocket broadcast for instant game start (before room status update)
+      if (gameData.roomId && roomConnections.has(gameData.roomId)) {
+        const roomUsers = roomConnections.get(gameData.roomId)!;
+        // Instant broadcast to all room users - no waiting, fire and forget for speed
+        roomUsers.forEach(connectionId => {
+          const connection = connections.get(connectionId);
+          if (connection && connection.ws.readyState === WebSocket.OPEN) {
+            try {
+              connection.ws.send(JSON.stringify({
+                type: 'game_started',
+                game: gameWithPlayers,
+                roomId: gameData.roomId,
+              }));
+            } catch (error) {
+              console.error(`🎮 Error sending instant game_started to user ${connection.userId}:`, error);
+            }
+          }
+        });
+      }
+      
+      // Update room status after WebSocket broadcast for better performance
       if (gameData.roomId) {
         await storage.updateRoomStatus(gameData.roomId, 'playing');
-        
-        // Broadcast game start to all room participants with proper synchronization
-        // Broadcasting game_started for new game
-        if (roomConnections.has(gameData.roomId)) {
-          const roomUsers = roomConnections.get(gameData.roomId)!;
-          // Broadcasting to users in room
-          const broadcastPromises: Promise<void>[] = [];
-          roomUsers.forEach(connectionId => {
-            const connection = connections.get(connectionId);
-            if (connection && connection.ws.readyState === WebSocket.OPEN) {
-              // Sending game_started to user
-              const sendPromise = new Promise<void>((resolve) => {
-                try {
-                  connection.ws.send(JSON.stringify({
-                    type: 'game_started',
-                    game: gameWithPlayers,
-                    roomId: gameData.roomId,
-                  }));
-                  setTimeout(resolve, 10);
-                } catch (error) {
-                  console.error(`🎮 Error sending to user ${connection.userId}:`, error);
-                  resolve();
-                }
-              });
-              broadcastPromises.push(sendPromise);
-            }
-          });
-          await Promise.all(broadcastPromises);
-        }
       }
 
-      setTimeout(() => {
-        res.json(gameWithPlayers);
-      }, 50);
+      res.json(gameWithPlayers);
     } catch (error) {
       console.error("Error creating game:", error);
       console.error("Error stack:", error.stack);
@@ -5002,6 +4990,467 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // console.log(`💬 Successfully broadcast chat to ${broadcastCount} users`);
             } else {
               // No room users found or room is empty
+            }
+            break;
+
+          case 'create_room':
+            // Handle room creation via WebSocket for better performance on slow connections
+            const createConnection = connections.get(connectionId);
+            if (createConnection) {
+              try {
+                const userId = createConnection.userId;
+                const roomData = data.roomData;
+
+                // Validate room data using the same schema as REST API
+                const validatedRoomData = insertRoomSchema.parse(roomData);
+
+                // Check if user has enough coins for online play (1000 coins required)
+                const userCoins = await storage.getUserCoins(userId);
+                if (userCoins < 1000) {
+                  if (createConnection.ws.readyState === WebSocket.OPEN) {
+                    createConnection.ws.send(JSON.stringify({
+                      type: 'create_room_error',
+                      requestId: data.requestId,
+                      error: 'Insufficient coins',
+                      message: `You need 1000 coins to create a room. You have ${userCoins} coins. Win AI games to earn coins!`,
+                      requiredCoins: 1000,
+                      currentCoins: userCoins
+                    }));
+                  }
+                  break;
+                }
+
+                // Create the room
+                const room = await storage.createRoom({
+                  ...validatedRoomData,
+                  ownerId: userId,
+                });
+
+                // Add owner as participant
+                await storage.addRoomParticipant({
+                  roomId: room.id,
+                  userId,
+                  role: 'player',
+                });
+
+                // Send success response
+                if (createConnection.ws.readyState === WebSocket.OPEN) {
+                  createConnection.ws.send(JSON.stringify({
+                    type: 'create_room_success',
+                    requestId: data.requestId,
+                    room
+                  }));
+                }
+
+                console.log(`🏠 Room created via WebSocket: ${room.code} by user ${userId}`);
+              } catch (error) {
+                console.error('Error creating room via WebSocket:', error);
+                if (createConnection.ws.readyState === WebSocket.OPEN) {
+                  createConnection.ws.send(JSON.stringify({
+                    type: 'create_room_error',
+                    requestId: data.requestId,
+                    error: 'Failed to create room',
+                    message: 'Failed to create room. Please try again.'
+                  }));
+                }
+              }
+            }
+            break;
+
+          case 'join_room_request':
+            // Handle room joining via WebSocket for better performance on slow connections
+            const joinConnection = connections.get(connectionId);
+            if (joinConnection) {
+              try {
+                const userId = joinConnection.userId;
+                const { code, role = 'player', requestId } = data;
+
+                // Validate room code format
+                if (!code || typeof code !== 'string' || !/^[A-Za-z0-9]{6,10}$/.test(code)) {
+                  if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                    joinConnection.ws.send(JSON.stringify({
+                      type: 'join_room_error',
+                      requestId,
+                      error: 'Invalid room code format',
+                      message: 'Invalid room code format'
+                    }));
+                  }
+                  break;
+                }
+
+                // Validate role
+                if (!['player', 'spectator'].includes(role)) {
+                  if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                    joinConnection.ws.send(JSON.stringify({
+                      type: 'join_room_error',
+                      requestId,
+                      error: 'Invalid role',
+                      message: "Invalid role. Must be 'player' or 'spectator'"
+                    }));
+                  }
+                  break;
+                }
+
+                // Check if user has enough coins for online play as a player (100 coins required)
+                if (role === 'player') {
+                  const userCoins = await storage.getUserCoins(userId);
+                  if (userCoins < 100) {
+                    if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                      joinConnection.ws.send(JSON.stringify({
+                        type: 'join_room_error',
+                        requestId,
+                        error: 'Insufficient coins',
+                        message: `You need 100 coins to join as a player. You have ${userCoins} coins. Win AI games to earn coins! You can still join as a spectator.`,
+                        requiredCoins: 100,
+                        currentCoins: userCoins
+                      }));
+                    }
+                    break;
+                  }
+                }
+
+                const room = await storage.getRoomByCode(code);
+                if (!room) {
+                  if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                    joinConnection.ws.send(JSON.stringify({
+                      type: 'join_room_error',
+                      requestId,
+                      error: 'Room not found',
+                      message: 'Room not found'
+                    }));
+                  }
+                  break;
+                }
+
+                // Check room status (must be waiting or playing)
+                if (room.status === 'finished') {
+                  if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                    joinConnection.ws.send(JSON.stringify({
+                      type: 'join_room_error',
+                      requestId,
+                      error: 'Room finished',
+                      message: 'This room has finished. Please join a different room.'
+                    }));
+                  }
+                  break;
+                }
+
+                // Check if user is already a participant
+                const allParticipants = await storage.getRoomParticipants(room.id);
+                const existingParticipant = allParticipants.find(p => p.userId === userId);
+                if (existingParticipant) {
+                  // Use already fetched participants for response
+                  const roomWithParticipants = { ...room, participants: allParticipants };
+                  
+                  if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                    joinConnection.ws.send(JSON.stringify({
+                      type: 'join_room_success',
+                      requestId,
+                      room: roomWithParticipants,
+                      message: 'You are already in this room'
+                    }));
+                  }
+                  
+                  // Join WebSocket room for real-time updates
+                  if (!roomConnections.has(room.id)) {
+                    roomConnections.set(room.id, new Set());
+                  }
+                  roomConnections.get(room.id)!.add(connectionId);
+                  joinConnection.roomId = room.id;
+                  break;
+                }
+
+                // Check room capacity
+                const participants = await storage.getRoomParticipants(room.id);
+                const currentPlayers = participants.filter(p => p.role === 'player').length;
+                const currentSpectators = participants.filter(p => p.role === 'spectator').length;
+
+                if (role === 'player' && currentPlayers >= (room.maxPlayers || 2)) {
+                  if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                    joinConnection.ws.send(JSON.stringify({
+                      type: 'join_room_error',
+                      requestId,
+                      error: 'Room is full',
+                      message: 'Room is full. You can join as a spectator instead.'
+                    }));
+                  }
+                  break;
+                }
+
+                if (role === 'spectator' && currentSpectators >= 50) {
+                  if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                    joinConnection.ws.send(JSON.stringify({
+                      type: 'join_room_error',
+                      requestId,
+                      error: 'Too many spectators',
+                      message: 'Maximum spectators reached'
+                    }));
+                  }
+                  break;
+                }
+
+                // Add user as participant
+                await storage.addRoomParticipant({
+                  roomId: room.id,
+                  userId,
+                  role,
+                });
+
+                // Get updated participants list
+                const updatedParticipants = await storage.getRoomParticipants(room.id);
+                const roomWithParticipants = { ...room, participants: updatedParticipants };
+
+                // Send success response
+                if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                  joinConnection.ws.send(JSON.stringify({
+                    type: 'join_room_success',
+                    requestId,
+                    room: roomWithParticipants
+                  }));
+                }
+
+                // Join WebSocket room for real-time updates
+                if (!roomConnections.has(room.id)) {
+                  roomConnections.set(room.id, new Set());
+                }
+                roomConnections.get(room.id)!.add(connectionId);
+                joinConnection.roomId = room.id;
+
+                // Update user's room state
+                userRoomStates.set(userId, {
+                  roomId: room.id,
+                  isInGame: false
+                });
+
+                // Notify other room participants about the new joiner
+                const roomUsers = roomConnections.get(room.id)!;
+                const joinNotification = JSON.stringify({
+                  type: 'room_participant_joined',
+                  roomId: room.id,
+                  participant: { userId, role },
+                  participants: updatedParticipants
+                });
+
+                roomUsers.forEach(connId => {
+                  if (connId !== connectionId) { // Don't send to the joiner themselves
+                    const conn = connections.get(connId);
+                    if (conn && conn.ws.readyState === WebSocket.OPEN) {
+                      conn.ws.send(joinNotification);
+                    }
+                  }
+                });
+
+                console.log(`🏠 User ${userId} joined room ${room.code} as ${role} via WebSocket`);
+              } catch (error) {
+                console.error('Error joining room via WebSocket:', error);
+                if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                  joinConnection.ws.send(JSON.stringify({
+                    type: 'join_room_error',
+                    requestId: data.requestId,
+                    error: 'Failed to join room',
+                    message: 'Failed to join room. Please try again.'
+                  }));
+                }
+              }
+            }
+            break;
+
+          case 'start_game_request':
+            // Handle game starting via WebSocket for better performance on slow connections
+            const startConnection = connections.get(connectionId);
+            if (startConnection) {
+              try {
+                const userId = startConnection.userId;
+                const { roomId, requestId } = data;
+
+                const room = await storage.getRoomById(roomId);
+                if (!room) {
+                  if (startConnection.ws.readyState === WebSocket.OPEN) {
+                    startConnection.ws.send(JSON.stringify({
+                      type: 'start_game_error',
+                      requestId,
+                      error: 'Room not found',
+                      message: 'Room not found'
+                    }));
+                  }
+                  break;
+                }
+
+                // Check if user is the room creator (only room creator can start games)
+                if (room.ownerId !== userId) {
+                  if (startConnection.ws.readyState === WebSocket.OPEN) {
+                    startConnection.ws.send(JSON.stringify({
+                      type: 'start_game_error',
+                      requestId,
+                      error: 'Not authorized',
+                      message: 'Only the room creator can start games'
+                    }));
+                  }
+                  break;
+                }
+
+                // Check room status (must be waiting)
+                if (room.status !== 'waiting') {
+                  if (startConnection.ws.readyState === WebSocket.OPEN) {
+                    startConnection.ws.send(JSON.stringify({
+                      type: 'start_game_error',
+                      requestId,
+                      error: 'Invalid room status',
+                      message: `Cannot start game. Room status is '${room.status}'. Only rooms in 'waiting' status can start games.`
+                    }));
+                  }
+                  break;
+                }
+
+                // Check if there's already an active game in this room
+                const existingActiveGame = await storage.getActiveGameByRoomId(roomId);
+                if (existingActiveGame && existingActiveGame.status === 'active') {
+                  // Get player information for the existing game
+                  const [playerXInfo, playerOInfo] = await Promise.all([
+                    storage.getUser(existingActiveGame.playerXId),
+                    storage.getUser(existingActiveGame.playerOId)
+                  ]);
+
+                  // Get achievements for both players
+                  const [playerXAchievements, playerOAchievements] = await Promise.all([
+                    playerXInfo ? storage.getUserAchievements(existingActiveGame.playerXId) : [],
+                    playerOInfo ? storage.getUserAchievements(existingActiveGame.playerOId) : []
+                  ]);
+
+                  const gameWithPlayers = {
+                    ...existingActiveGame,
+                    playerXInfo: playerXInfo ? {
+                      ...playerXInfo,
+                      achievements: playerXAchievements.slice(0, 3)
+                    } : null,
+                    playerOInfo: playerOInfo ? {
+                      ...playerOInfo,
+                      achievements: playerOAchievements.slice(0, 3)
+                    } : null
+                  };
+
+                  if (startConnection.ws.readyState === WebSocket.OPEN) {
+                    startConnection.ws.send(JSON.stringify({
+                      type: 'start_game_success',
+                      requestId,
+                      game: gameWithPlayers,
+                      message: 'Game already in progress'
+                    }));
+                  }
+                  break;
+                }
+
+                // Get room participants
+                const participants = await storage.getRoomParticipants(roomId);
+                const players = participants.filter(p => p.role === 'player');
+
+                if (players.length < 2) {
+                  if (startConnection.ws.readyState === WebSocket.OPEN) {
+                    startConnection.ws.send(JSON.stringify({
+                      type: 'start_game_error',
+                      requestId,
+                      error: 'Not enough players',
+                      message: 'Need 2 players to start game'
+                    }));
+                  }
+                  break;
+                }
+
+                // Create new game with consistent player assignments
+                const sortedPlayers = players.sort((a, b) => a.userId.localeCompare(b.userId));
+                const playerX = sortedPlayers[0];
+                const playerO = sortedPlayers[1];
+
+                if (!playerX || !playerO || !playerX.userId || !playerO.userId) {
+                  if (startConnection.ws.readyState === WebSocket.OPEN) {
+                    startConnection.ws.send(JSON.stringify({
+                      type: 'start_game_error',
+                      requestId,
+                      error: 'Invalid players',
+                      message: 'Could not find both players'
+                    }));
+                  }
+                  break;
+                }
+
+                const gameData = {
+                  roomId,
+                  playerXId: playerX.userId,
+                  playerOId: playerO.userId,
+                  gameMode: 'online' as const,
+                  status: 'active' as const,
+                  currentPlayer: 'X' as const,
+                  board: {},
+                };
+
+                const game = await storage.createGame(gameData);
+
+                // Update room status to "playing"
+                await storage.updateRoomStatus(roomId, 'playing');
+
+                // Get player information with achievements
+                const [playerXInfo, playerOInfo] = await Promise.all([
+                  storage.getUser(game.playerXId),
+                  storage.getUser(game.playerOId)
+                ]);
+
+                // Get achievements for both players
+                const [playerXAchievements, playerOAchievements] = await Promise.all([
+                  playerXInfo ? storage.getUserAchievements(game.playerXId) : Promise.resolve([]),
+                  playerOInfo ? storage.getUserAchievements(game.playerOId) : Promise.resolve([])
+                ]);
+
+                const gameWithPlayers = {
+                  ...game,
+                  playerXInfo: playerXInfo ? {
+                    ...playerXInfo,
+                    achievements: playerXAchievements.slice(0, 3)
+                  } : playerXInfo,
+                  playerOInfo: playerOInfo ? {
+                    ...playerOInfo,
+                    achievements: playerOAchievements.slice(0, 3)
+                  } : playerOInfo,
+                };
+
+                // Send success response to the requestor
+                if (startConnection.ws.readyState === WebSocket.OPEN) {
+                  startConnection.ws.send(JSON.stringify({
+                    type: 'start_game_success',
+                    requestId,
+                    game: gameWithPlayers
+                  }));
+                }
+
+                // Broadcast to all room participants
+                if (roomConnections.has(roomId)) {
+                  const roomUsers = roomConnections.get(roomId)!;
+                  const gameStartMessage = JSON.stringify({
+                    type: 'game_started',
+                    game: gameWithPlayers,
+                    gameId: game.id,
+                    roomId: roomId,
+                  });
+
+                  roomUsers.forEach(connectionId => {
+                    const connection = connections.get(connectionId);
+                    if (connection && connection.ws.readyState === WebSocket.OPEN) {
+                      connection.ws.send(gameStartMessage);
+                    }
+                  });
+                }
+
+                console.log(`🎮 Game started via WebSocket: ${game.id} in room ${roomId}`);
+              } catch (error) {
+                console.error('Error starting game via WebSocket:', error);
+                if (startConnection.ws.readyState === WebSocket.OPEN) {
+                  startConnection.ws.send(JSON.stringify({
+                    type: 'start_game_error',
+                    requestId: data.requestId,
+                    error: 'Failed to start game',
+                    message: 'Failed to start game. Please try again.'
+                  }));
+                }
+              }
             }
             break;
         }

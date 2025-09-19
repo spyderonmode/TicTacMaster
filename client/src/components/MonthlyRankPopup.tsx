@@ -7,34 +7,34 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
-interface MonthlyRankData {
+interface WeeklyRankData {
   id: string;
-  month: number;
+  weekNumber: number;
   year: number;
   finalRank: number;
   rewardReceived: boolean;
   rewardAmount: number;
-  monthlyWins: number;
-  monthlyLosses: number;
-  monthlyGames: number;
+  weeklyWins: number;
+  weeklyLosses: number;
+  weeklyGames: number;
   coinsEarned: number;
 }
 
-interface MonthlyRankPopupProps {
+interface WeeklyRankPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  rankData: MonthlyRankData;
+  rankData: WeeklyRankData;
   userDisplayName: string;
   userProfileImage?: string;
 }
 
-const MonthlyRankPopup = ({ 
+const WeeklyRankPopup = ({ 
   isOpen, 
   onClose, 
   rankData, 
   userDisplayName, 
   userProfileImage 
-}: MonthlyRankPopupProps) => {
+}: WeeklyRankPopupProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isClosing, setIsClosing] = useState(false);
@@ -43,7 +43,7 @@ const MonthlyRankPopup = ({
     mutationFn: async () => {
       const response = await apiRequest('/api/user/mark-rank-popup-seen', {
         method: 'POST',
-        body: { month: rankData.month, year: rankData.year }
+        body: { weekNumber: rankData.weekNumber, year: rankData.year }
       });
       return response.json();
     },
@@ -85,32 +85,32 @@ const MonthlyRankPopup = ({
     if (rankData.finalRank === 1) {
       return {
         title: "🎉 CHAMPION! 🎉",
-        message: "Incredible! You dominated the monthly leaderboard and claimed the #1 spot!",
-        subMessage: "You are the ultimate Tic Tac Toe master this month!"
+        message: "Incredible! You dominated the weekly leaderboard and claimed the #1 spot!",
+        subMessage: "You are the ultimate Tic Tac Toe master this week!"
       };
     } else if (rankData.finalRank === 2) {
       return {
         title: "🥈 RUNNER-UP! 🥈",
-        message: "Amazing performance! You secured 2nd place in this month's competition!",
-        subMessage: "You're one of the elite players this month!"
+        message: "Amazing performance! You secured 2nd place in this week's competition!",
+        subMessage: "You're one of the elite players this week!"
       };
     } else if (rankData.finalRank === 3) {
       return {
         title: "🥉 BRONZE MEDALIST! 🥉", 
-        message: "Excellent work! You earned 3rd place in the monthly rankings!",
-        subMessage: "You're among the top performers this month!"
+        message: "Excellent work! You earned 3rd place in the weekly rankings!",
+        subMessage: "You're among the top performers this week!"
       };
     } else if (isTop10) {
       return {
         title: "⭐ TOP 10 FINISHER! ⭐",
         message: `Outstanding! You finished in ${rankData.finalRank}${getOrdinalSuffix(rankData.finalRank)} place!`,
-        subMessage: "You've earned your spot among the month's best players!"
+        subMessage: "You've earned your spot among the week's best players!"
       };
     } else {
       return {
         title: "🚀 Keep Climbing! 🚀",
-        message: `You finished in ${rankData.finalRank}${getOrdinalSuffix(rankData.finalRank)} place this month.`,
-        subMessage: "Great effort! Keep playing to climb higher next month!"
+        message: `You finished in ${rankData.finalRank}${getOrdinalSuffix(rankData.finalRank)} place this week.`,
+        subMessage: "Great effort! Keep playing to climb higher next week!"
       };
     }
   };
@@ -124,12 +124,8 @@ const MonthlyRankPopup = ({
     return "th";
   };
 
-  const getMonthName = (month: number) => {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[month - 1];
+  const getWeekDisplay = (weekNumber: number, year: number) => {
+    return `Week ${weekNumber}, ${year}`;
   };
 
   const rankMessage = getRankMessage();
@@ -140,7 +136,7 @@ const MonthlyRankPopup = ({
         <Dialog open={true} onOpenChange={() => {}}>
           <DialogContent 
             className="max-w-md mx-auto bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-2 border-purple-200 dark:border-purple-700"
-            data-testid="monthly-rank-popup"
+            data-testid="weekly-rank-popup"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -148,12 +144,12 @@ const MonthlyRankPopup = ({
               transition={{ duration: 0.3 }}
               className="text-center space-y-4"
             >
-              <DialogTitle className="sr-only">Monthly Ranking Results</DialogTitle>
+              <DialogTitle className="sr-only">Weekly Ranking Results</DialogTitle>
               
               {/* Header */}
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200">
-                  {getMonthName(rankData.month)} {rankData.year} Results
+                  {getWeekDisplay(rankData.weekNumber, rankData.year)} Results
                 </h2>
               </div>
 
@@ -233,18 +229,18 @@ const MonthlyRankPopup = ({
               {/* Stats Summary */}
               <div className="bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg">
                 <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
-                  Your Monthly Performance
+                  Your Weekly Performance
                 </h4>
                 <div className="grid grid-cols-3 gap-2 text-sm">
                   <div className="text-center">
-                    <div className="font-bold text-green-600 dark:text-green-400" data-testid="monthly-wins">
-                      {rankData.monthlyWins}
+                    <div className="font-bold text-green-600 dark:text-green-400" data-testid="weekly-wins">
+                      {rankData.weeklyWins}
                     </div>
                     <div className="text-gray-500">Wins</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-bold text-blue-600 dark:text-blue-400" data-testid="monthly-games">
-                      {rankData.monthlyGames}
+                    <div className="font-bold text-blue-600 dark:text-blue-400" data-testid="weekly-games">
+                      {rankData.weeklyGames}
                     </div>
                     <div className="text-gray-500">Games</div>
                   </div>
@@ -289,4 +285,4 @@ const MonthlyRankPopup = ({
   );
 };
 
-export default MonthlyRankPopup;
+export default WeeklyRankPopup;

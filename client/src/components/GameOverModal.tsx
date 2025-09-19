@@ -334,7 +334,7 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                     👑 {winnerName}
                   </p>
                   <p style={{ fontSize: '12px', color: '#10b981', margin: 0 }}>
-                    Winner
+                    Winner {isOnlineGame ? '+1k 💰' : ''}
                   </p>
                 </div>
 
@@ -380,7 +380,7 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                     {loserName}
                   </p>
                   <p style={{ fontSize: '12px', color: '#ef4444', margin: 0 }}>
-                    Loser
+                    Loser {isOnlineGame ? '-1k 💰' : ''}
                   </p>
                 </div>
               </div>

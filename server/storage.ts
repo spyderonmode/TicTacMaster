@@ -13,9 +13,9 @@ import {
   coinTransactions,
   playAgainRequests,
   levelUps,
-  monthlyLeaderboard,
-  monthlyRewards,
-  monthlyResetStatus,
+  weeklyLeaderboard,
+  weeklyRewards,
+  weeklyResetStatus,
   type User,
   type UpsertUser,
   type Room,
@@ -31,9 +31,9 @@ import {
   type CoinTransaction,
   type PlayAgainRequest,
   type LevelUp,
-  type MonthlyLeaderboard,
-  type MonthlyReward,
-  type MonthlyResetStatus,
+  type WeeklyLeaderboard,
+  type WeeklyReward,
+  type WeeklyResetStatus,
   type InsertRoom,
   type InsertGame,
   type InsertMove,
@@ -47,9 +47,9 @@ import {
   type InsertCoinTransaction,
   type InsertPlayAgainRequest,
   type InsertLevelUp,
-  type InsertMonthlyLeaderboard,
-  type InsertMonthlyReward,
-  type InsertMonthlyResetStatus,
+  type InsertWeeklyLeaderboard,
+  type InsertWeeklyReward,
+  type InsertWeeklyResetStatus,
   type BasicFriendInfo,
 } from "@shared/schema";
 import { db } from "./db";
@@ -160,28 +160,50 @@ export interface IStorage {
   expireOldPlayAgainRequests(): Promise<void>;
   getActivePlayAgainRequest(gameId: string, requesterId: string): Promise<PlayAgainRequest | undefined>;
 
-  // Monthly Leaderboard operations
-  getOrCreateMonthlyStats(userId: string, month: number, year: number): Promise<MonthlyLeaderboard>;
-  updateMonthlyStats(userId: string, result: 'win' | 'loss' | 'draw', coinsEarned: number): Promise<void>;
-  getMonthlyLeaderboard(month: number, year: number, limit?: number): Promise<Array<MonthlyLeaderboard & { user: User; rank: number }>>;
-  getCurrentMonthLeaderboard(limit?: number): Promise<Array<MonthlyLeaderboard & { user: User; rank: number }>>;
-  getTimeUntilMonthEnd(): Promise<{ days: number; hours: number; minutes: number; seconds: number }>;
-  distributeMonthlyRewards(month: number, year: number): Promise<MonthlyReward[]>;
-  resetMonthlyStats(month: number, year: number): Promise<void>;
-  getMonthlyRewards(userId: string): Promise<MonthlyReward[]>;
-  hasReceivedMonthlyReward(userId: string, month: number, year: number): Promise<boolean>;
+  // Weekly Leaderboard operations
+  getOrCreateWeeklyStats(userId: string, weekNumber: number, year: number): Promise<WeeklyLeaderboard>;
+  updateWeeklyStats(userId: string, result: 'win' | 'loss' | 'draw', coinsEarned: number): Promise<void>;
+  getWeeklyLeaderboard(weekNumber: number, year: number, limit?: number): Promise<Array<WeeklyLeaderboard & { user: User; rank: number }>>;
+  getCurrentWeekLeaderboard(limit?: number): Promise<Array<WeeklyLeaderboard & { user: User; rank: number }>>;
+  getTimeUntilWeekEnd(): Promise<{ days: number; hours: number; minutes: number; seconds: number }>;
+  distributeWeeklyRewards(weekNumber: number, year: number): Promise<WeeklyReward[]>;
+  resetWeeklyStats(weekNumber: number, year: number): Promise<void>;
+  getWeeklyRewards(userId: string): Promise<WeeklyReward[]>;
+  hasReceivedWeeklyReward(userId: string, weekNumber: number, year: number): Promise<boolean>;
 
-  // Monthly Reset Status operations
-  getResetStatus(month: number, year: number): Promise<MonthlyResetStatus | undefined>;
-  createResetStatus(month: number, year: number): Promise<MonthlyResetStatus>;
+  // Weekly Reset Status operations
+  getResetStatus(weekNumber: number, year: number): Promise<WeeklyResetStatus | undefined>;
+  createResetStatus(weekNumber: number, year: number): Promise<WeeklyResetStatus>;
   updateResetStatus(id: string, status: 'pending' | 'in_progress' | 'completed' | 'failed', errorMessage?: string): Promise<void>;
   incrementRetryCount(id: string, nextRetryAt?: Date): Promise<void>;
-  getPendingResets(): Promise<MonthlyResetStatus[]>;
-  getFailedResets(): Promise<MonthlyResetStatus[]>;
-  createMonthlyResetTable(): Promise<void>;
+  getPendingResets(): Promise<WeeklyResetStatus[]>;
+  getFailedResets(): Promise<WeeklyResetStatus[]>;
+  createWeeklyResetTable(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
+  // Helper function for ISO week calculation
+  private getISOWeekInfo(date: Date = new Date()): { weekNumber: number; year: number } {
+    const target = new Date(date.getTime());
+    // Use UTC to avoid timezone issues
+    target.setUTCHours(0, 0, 0, 0);
+    
+    // Thursday in current week decides the year
+    const thursday = new Date(target.getTime());
+    thursday.setUTCDate(target.getUTCDate() - ((target.getUTCDay() + 6) % 7) + 3);
+    
+    // January 4th is always in week 1 - use UTC constructor consistently
+    const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - ((firstThursday.getUTCDay() + 6) % 7) + 3);
+    
+    const weekNumber = Math.floor((thursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+    
+    return {
+      weekNumber,
+      year: thursday.getUTCFullYear()
+    };
+  }
+
   // Database initialization
   async createRoomInvitationsTable(): Promise<void> {
     // First create the table without foreign key constraints
@@ -524,12 +546,12 @@ export class DatabaseStorage implements IStorage {
                 //console.log(`💰 Loser ${loserId} doesn't have enough coins (${loserCoins}), skipping deduction`);
               }
 
-              // Track monthly stats for online games only
+              // Track weekly stats for online games only
               try {
-                await this.updateMonthlyStats(winnerId, 'win', 1000);
-                await this.updateMonthlyStats(loserId, 'loss', loserCoinsLost);
+                await this.updateWeeklyStats(winnerId, 'win', 1000);
+                await this.updateWeeklyStats(loserId, 'loss', loserCoinsLost);
               } catch (error) {
-                //console.error('📊 Error updating monthly stats:', error);
+                //console.error('📊 Error updating weekly stats:', error);
               }
             } else {
               //console.log(`💰 No coin transactions for game mode: ${game.gameMode}`);
@@ -547,12 +569,12 @@ export class DatabaseStorage implements IStorage {
             await this.updateUserStats(game.playerXId, 'draw');
             await this.updateUserStats(game.playerOId, 'draw');
 
-            // Track monthly stats for online draws (no coins earned/lost)
+            // Track weekly stats for online draws (no coins earned/lost)
             try {
-              await this.updateMonthlyStats(game.playerXId, 'draw', 0);
-              await this.updateMonthlyStats(game.playerOId, 'draw', 0);
+              await this.updateWeeklyStats(game.playerXId, 'draw', 0);
+              await this.updateWeeklyStats(game.playerOId, 'draw', 0);
             } catch (error) {
-              //console.error('📊 Error updating monthly stats for draw:', error);
+              //console.error('📊 Error updating weekly stats for draw:', error);
             }
           }
 
@@ -674,14 +696,14 @@ export class DatabaseStorage implements IStorage {
           //console.log(`💰 Processing coin transactions for game ${gameId} (mode: ${game.gameMode}):`);
 
           if (game.gameMode === 'ai') {
-            // AI games: Winner gets 10 coins (smaller reward for AI practice)
-            await this.processCoinTransaction(winnerId, 10, 'ai_game_win', gameId);
+            // AI games: Winner gets 100 coins (smaller reward for AI practice)
+            await this.processCoinTransaction(winnerId, 100, 'ai_game_win', gameId);
           } else if (game.gameMode === 'online') {
-            // Online games: Winner gets 100 coins, loser loses 100 coins (if sufficient balance)
-            //console.log(`💰 Online game - Winner: ${winnerId} (+100 coins), Loser: ${loserId} (-100 coins)`);
+            // Online games: Winner gets 1000 coins, loser loses 1000 coins (if sufficient balance)
+            //console.log(`💰 Online game - Winner: ${winnerId} (+1000 coins), Loser: ${loserId} (-1000 coins)`);
 
             // Winner always gets coins
-            await this.processCoinTransaction(winnerId, 100, 'online_game_win', gameId);
+            await this.processCoinTransaction(winnerId, 1000, 'online_game_win', gameId);
             //console.log(`💰 Awarded 100 coins to winner: ${winnerId}`);
 
             // Loser loses coins only if they have enough balance
@@ -689,20 +711,20 @@ export class DatabaseStorage implements IStorage {
             //console.log(`💰 Loser ${loserId} current balance: ${loserCoins} coins`);
 
             let loserCoinsLost = 0;
-            if (loserCoins >= 100) {
-              await this.processCoinTransaction(loserId, -100, 'online_game_loss', gameId);
-              //console.log(`💰 Deducted 100 coins from loser: ${loserId}`);
-              loserCoinsLost = -100;
+            if (loserCoins >= 1000) {
+              await this.processCoinTransaction(loserId, -1000, 'online_game_loss', gameId);
+              //console.log(`💰 Deducted 1000 coins from loser: ${loserId}`);
+              loserCoinsLost = -1000;
             } else {
               //console.log(`💰 Loser ${loserId} doesn't have enough coins (${loserCoins}), skipping deduction`);
             }
 
-            // Track monthly stats for online games only
+            // Track weekly stats for online games only
             try {
-              await this.updateMonthlyStats(winnerId, 'win', 100);
-              await this.updateMonthlyStats(loserId, 'loss', loserCoinsLost);
+              await this.updateWeeklyStats(winnerId, 'win', 1000);
+              await this.updateWeeklyStats(loserId, 'loss', loserCoinsLost);
             } catch (error) {
-              //console.error('📊 Error updating monthly stats:', error);
+              //console.error('📊 Error updating weekly stats:', error);
             }
           }
         } catch (error) {
@@ -719,12 +741,12 @@ export class DatabaseStorage implements IStorage {
           await this.updateUserStats(game.playerXId, 'draw');
           await this.updateUserStats(game.playerOId, 'draw');
 
-          // Track monthly stats for online draws (no coins earned/lost)
+          // Track weekly stats for online draws (no coins earned/lost)
           try {
-            await this.updateMonthlyStats(game.playerXId, 'draw', 0);
-            await this.updateMonthlyStats(game.playerOId, 'draw', 0);
+            await this.updateWeeklyStats(game.playerXId, 'draw', 0);
+            await this.updateWeeklyStats(game.playerOId, 'draw', 0);
           } catch (error) {
-            //console.error('📊 Error updating monthly stats for draw:', error);
+            //console.error('📊 Error updating weekly stats for draw:', error);
           }
         }
 
@@ -1049,7 +1071,7 @@ export class DatabaseStorage implements IStorage {
     // This represents their online game performance since we only update stats for online games
     const user = await this.getUser(userId);
     if (!user) {
-      return { wins: 0, losses: 0, draws: 0, totalGames: 0, currentWinStreak: 0, bestWinStreak: 0, level: 0, winsToNextLevel: 10, coins: 100 };
+      return { wins: 0, losses: 0, draws: 0, totalGames: 0, currentWinStreak: 0, bestWinStreak: 0, level: 0, winsToNextLevel: 10, coins: 2000 };
     }
 
     const wins = user.wins || 0;
@@ -1071,7 +1093,7 @@ export class DatabaseStorage implements IStorage {
       bestWinStreak,
       level,
       winsToNextLevel,
-      coins: user.coins ?? 100
+      coins: user.coins ?? 2000
     };
   }
 
@@ -2380,7 +2402,7 @@ export class DatabaseStorage implements IStorage {
 
   async getUserCoins(userId: string): Promise<number> {
     const [user] = await db.select({ coins: users.coins }).from(users).where(eq(users.id, userId));
-    return user?.coins || 0;
+    return user?.coins ?? 2000;
   }
 
   async updateUserCoins(userId: string, newBalance: number): Promise<void> {
@@ -2469,7 +2491,7 @@ export class DatabaseStorage implements IStorage {
         losses: userData.losses || 0,
         draws: userData.draws || 0,
         totalGames,
-        coins: userData.coins ?? 100,
+        coins: userData.coins ?? 2000,
         level: level,
         winsToNextLevel: winsToNextLevel,
         createdAt: userData.createdAt?.toISOString() || new Date().toISOString(),
@@ -2702,16 +2724,16 @@ export class DatabaseStorage implements IStorage {
     return request;
   }
 
-  // Monthly Leaderboard methods
-  async getOrCreateMonthlyStats(userId: string, month: number, year: number): Promise<MonthlyLeaderboard> {
+  // Weekly Leaderboard methods
+  async getOrCreateWeeklyStats(userId: string, weekNumber: number, year: number): Promise<WeeklyLeaderboard> {
     // Use atomic upsert to prevent race conditions
     // First try to insert, then select if it already exists
     try {
       const [newStats] = await db
-        .insert(monthlyLeaderboard)
+        .insert(weeklyLeaderboard)
         .values({
           userId,
-          month,
+          weekNumber,
           year,
         })
         .onConflictDoNothing()
@@ -2727,61 +2749,60 @@ export class DatabaseStorage implements IStorage {
     // Record already exists, fetch it
     const [existing] = await db
       .select()
-      .from(monthlyLeaderboard)
+      .from(weeklyLeaderboard)
       .where(
         and(
-          eq(monthlyLeaderboard.userId, userId),
-          eq(monthlyLeaderboard.month, month),
-          eq(monthlyLeaderboard.year, year)
+          eq(weeklyLeaderboard.userId, userId),
+          eq(weeklyLeaderboard.weekNumber, weekNumber),
+          eq(weeklyLeaderboard.year, year)
         )
       );
 
     if (!existing) {
-      throw new Error(`Failed to create or retrieve monthly stats for user ${userId}, month ${month}, year ${year}`);
+      throw new Error(`Failed to create or retrieve weekly stats for user ${userId}, week ${weekNumber}, year ${year}`);
     }
 
     return existing;
   }
 
-  async updateMonthlyStats(userId: string, result: 'win' | 'loss' | 'draw', coinsEarned: number): Promise<void> {
+  async updateWeeklyStats(userId: string, result: 'win' | 'loss' | 'draw', coinsEarned: number): Promise<void> {
     const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
+    const { weekNumber, year } = this.getISOWeekInfo(now);
 
     // Ensure stats record exists
-    const stats = await this.getOrCreateMonthlyStats(userId, month, year);
+    const stats = await this.getOrCreateWeeklyStats(userId, weekNumber, year);
 
     // Use atomic SQL-level increments to prevent race conditions
     if (result === 'win') {
       await db.execute(sql`
-        UPDATE monthly_leaderboard 
+        UPDATE weekly_leaderboard 
         SET 
-          monthly_games = COALESCE(monthly_games, 0) + 1,
-          monthly_wins = COALESCE(monthly_wins, 0) + 1,
-          monthly_win_streak = COALESCE(monthly_win_streak, 0) + 1,
-          best_monthly_win_streak = GREATEST(COALESCE(best_monthly_win_streak, 0), COALESCE(monthly_win_streak, 0) + 1),
+          weekly_games = COALESCE(weekly_games, 0) + 1,
+          weekly_wins = COALESCE(weekly_wins, 0) + 1,
+          weekly_win_streak = COALESCE(weekly_win_streak, 0) + 1,
+          best_weekly_win_streak = GREATEST(COALESCE(best_weekly_win_streak, 0), COALESCE(weekly_win_streak, 0) + 1),
           coins_earned = COALESCE(coins_earned, 0) + ${coinsEarned},
           updated_at = ${now}
         WHERE id = ${stats.id}
       `);
     } else if (result === 'loss') {
       await db.execute(sql`
-        UPDATE monthly_leaderboard 
+        UPDATE weekly_leaderboard 
         SET 
-          monthly_games = COALESCE(monthly_games, 0) + 1,
-          monthly_losses = COALESCE(monthly_losses, 0) + 1,
-          monthly_win_streak = 0,
+          weekly_games = COALESCE(weekly_games, 0) + 1,
+          weekly_losses = COALESCE(weekly_losses, 0) + 1,
+          weekly_win_streak = 0,
           coins_earned = COALESCE(coins_earned, 0) + ${coinsEarned},
           updated_at = ${now}
         WHERE id = ${stats.id}
       `);
     } else if (result === 'draw') {
       await db.execute(sql`
-        UPDATE monthly_leaderboard 
+        UPDATE weekly_leaderboard 
         SET 
-          monthly_games = COALESCE(monthly_games, 0) + 1,
-          monthly_draws = COALESCE(monthly_draws, 0) + 1,
-          monthly_win_streak = 0,
+          weekly_games = COALESCE(weekly_games, 0) + 1,
+          weekly_draws = COALESCE(weekly_draws, 0) + 1,
+          weekly_win_streak = 0,
           coins_earned = COALESCE(coins_earned, 0) + ${coinsEarned},
           updated_at = ${now}
         WHERE id = ${stats.id}
@@ -2789,25 +2810,25 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getMonthlyLeaderboard(month: number, year: number, limit: number = 50): Promise<Array<MonthlyLeaderboard & { user: User; rank: number }>> {
+  async getWeeklyLeaderboard(weekNumber: number, year: number, limit: number = 50): Promise<Array<WeeklyLeaderboard & { user: User; rank: number }>> {
     const leaderboard = await db
       .select({
-        id: monthlyLeaderboard.id,
-        userId: monthlyLeaderboard.userId,
-        month: monthlyLeaderboard.month,
-        year: monthlyLeaderboard.year,
-        monthlyWins: monthlyLeaderboard.monthlyWins,
-        monthlyLosses: monthlyLeaderboard.monthlyLosses,
-        monthlyDraws: monthlyLeaderboard.monthlyDraws,
-        monthlyGames: monthlyLeaderboard.monthlyGames,
-        monthlyWinStreak: monthlyLeaderboard.monthlyWinStreak,
-        bestMonthlyWinStreak: monthlyLeaderboard.bestMonthlyWinStreak,
-        coinsEarned: monthlyLeaderboard.coinsEarned,
-        rewardReceived: monthlyLeaderboard.rewardReceived,
-        finalRank: monthlyLeaderboard.finalRank,
-        rewardAmount: monthlyLeaderboard.rewardAmount,
-        createdAt: monthlyLeaderboard.createdAt,
-        updatedAt: monthlyLeaderboard.updatedAt,
+        id: weeklyLeaderboard.id,
+        userId: weeklyLeaderboard.userId,
+        weekNumber: weeklyLeaderboard.weekNumber,
+        year: weeklyLeaderboard.year,
+        weeklyWins: weeklyLeaderboard.weeklyWins,
+        weeklyLosses: weeklyLeaderboard.weeklyLosses,
+        weeklyDraws: weeklyLeaderboard.weeklyDraws,
+        weeklyGames: weeklyLeaderboard.weeklyGames,
+        weeklyWinStreak: weeklyLeaderboard.weeklyWinStreak,
+        bestWeeklyWinStreak: weeklyLeaderboard.bestWeeklyWinStreak,
+        coinsEarned: weeklyLeaderboard.coinsEarned,
+        rewardReceived: weeklyLeaderboard.rewardReceived,
+        finalRank: weeklyLeaderboard.finalRank,
+        rewardAmount: weeklyLeaderboard.rewardAmount,
+        createdAt: weeklyLeaderboard.createdAt,
+        updatedAt: weeklyLeaderboard.updatedAt,
         user: {
           id: users.id,
           email: users.email,
@@ -2829,46 +2850,52 @@ export class DatabaseStorage implements IStorage {
           updatedAt: users.updatedAt,
         },
       })
-      .from(monthlyLeaderboard)
-      .leftJoin(users, eq(monthlyLeaderboard.userId, users.id))
+      .from(weeklyLeaderboard)
+      .leftJoin(users, eq(weeklyLeaderboard.userId, users.id))
       .where(
         and(
-          eq(monthlyLeaderboard.month, month),
-          eq(monthlyLeaderboard.year, year),
-          gt(monthlyLeaderboard.monthlyGames, 0)
+          eq(weeklyLeaderboard.weekNumber, weekNumber),
+          eq(weeklyLeaderboard.year, year),
+          gt(weeklyLeaderboard.weeklyGames, 0)
         )
       )
       .orderBy(
-        desc(monthlyLeaderboard.monthlyWins),
-        desc(monthlyLeaderboard.monthlyGames),
-        desc(monthlyLeaderboard.bestMonthlyWinStreak),
-        desc(monthlyLeaderboard.coinsEarned),
-        monthlyLeaderboard.userId // Final deterministic tie-breaker
+        desc(weeklyLeaderboard.weeklyWins),
+        desc(weeklyLeaderboard.weeklyGames),
+        desc(weeklyLeaderboard.bestWeeklyWinStreak),
+        desc(weeklyLeaderboard.coinsEarned),
+        weeklyLeaderboard.userId // Final deterministic tie-breaker
       )
       .limit(limit);
 
     return leaderboard.map((entry, index) => ({
       ...entry,
       rank: index + 1,
-    })) as Array<MonthlyLeaderboard & { user: User; rank: number }>;
+    })) as Array<WeeklyLeaderboard & { user: User; rank: number }>;
   }
 
-  async getCurrentMonthLeaderboard(limit: number = 50): Promise<Array<MonthlyLeaderboard & { user: User; rank: number }>> {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    return this.getMonthlyLeaderboard(month, year, limit);
+  async getCurrentWeekLeaderboard(limit: number = 50): Promise<Array<WeeklyLeaderboard & { user: User; rank: number }>> {
+    const { weekNumber, year } = this.getISOWeekInfo();
+    return this.getWeeklyLeaderboard(weekNumber, year, limit);
   }
 
-  async getTimeUntilMonthEnd(): Promise<{ days: number; hours: number; minutes: number; seconds: number }> {
+  async getTimeUntilWeekEnd(): Promise<{ days: number; hours: number; minutes: number; seconds: number }> {
     const now = new Date();
-    // Use UTC to avoid timezone issues - consistent with server operations
-    const currentYear = now.getUTCFullYear();
-    const currentMonth = now.getUTCMonth();
     
-    // First day of next month in UTC
-    const nextMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 1));
-    const timeLeft = nextMonth.getTime() - now.getTime();
+    // Calculate the next Monday (start of next week) in UTC
+    const nextMonday = new Date(now.getTime());
+    nextMonday.setUTCHours(0, 0, 0, 0);
+    
+    // Days until Monday (0=Sunday, 1=Monday, etc.)
+    const daysUntilMonday = (8 - nextMonday.getUTCDay()) % 7;
+    if (daysUntilMonday === 0 && now.getUTCHours() === 0 && now.getUTCMinutes() === 0 && now.getUTCSeconds() === 0) {
+      // If it's exactly midnight on Monday, add 7 days
+      nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+    } else {
+      nextMonday.setUTCDate(nextMonday.getUTCDate() + daysUntilMonday);
+    }
+    
+    const timeLeft = nextMonday.getTime() - now.getTime();
 
     const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
     const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -2878,21 +2905,21 @@ export class DatabaseStorage implements IStorage {
     return { days, hours, minutes, seconds };
   }
 
-  async distributeMonthlyRewards(month: number, year: number): Promise<MonthlyReward[]> {
+  async distributeWeeklyRewards(weekNumber: number, year: number): Promise<WeeklyReward[]> {
     // Use transaction with proper locking and idempotency to prevent race conditions
     return await db.transaction(async (tx) => {
-      // Use advisory lock to prevent concurrent reward distribution for same month/year
-      const lockKey = month * 10000 + year; // e.g., 202501 for Jan 2025
+      // Use advisory lock to prevent concurrent reward distribution for same week/year
+      const lockKey = weekNumber * 10000 + year; // e.g., 1202025 for week 1 of 2025
       await tx.execute(sql`SELECT pg_advisory_xact_lock(${lockKey})`);
 
-      // Check if rewards have already been distributed for this month/year
+      // Check if rewards have already been distributed for this week/year
       const existingRewards = await tx
         .select()
-        .from(monthlyRewards)
+        .from(weeklyRewards)
         .where(
           and(
-            eq(monthlyRewards.month, month),
-            eq(monthlyRewards.year, year)
+            eq(weeklyRewards.weekNumber, weekNumber),
+            eq(weeklyRewards.year, year)
           )
         )
         .limit(1);
@@ -2901,18 +2928,18 @@ export class DatabaseStorage implements IStorage {
         // Rewards already distributed, return existing rewards
         return await tx
           .select()
-          .from(monthlyRewards)
+          .from(weeklyRewards)
           .where(
             and(
-              eq(monthlyRewards.month, month),
-              eq(monthlyRewards.year, year)
+              eq(weeklyRewards.weekNumber, weekNumber),
+              eq(weeklyRewards.year, year)
             )
           )
-          .orderBy(monthlyRewards.rank);
+          .orderBy(weeklyRewards.rank);
       }
 
-      // Get final leaderboard snapshot for this month/year
-      const topPlayers = await this.getMonthlyLeaderboard(month, year, 10);
+      // Get final leaderboard snapshot for this week/year
+      const topPlayers = await this.getWeeklyLeaderboard(weekNumber, year, 10);
       // 1st=10M, 2nd=5M, 3rd=3M, 4th-10th=1M each
       const getRewardAmount = (rank: number): number => {
         switch (rank) {
@@ -2922,7 +2949,7 @@ export class DatabaseStorage implements IStorage {
           default: return 1000000; // 1M for ranks 4-10
         }
       };
-      const rewards: MonthlyReward[] = [];
+      const rewards: WeeklyReward[] = [];
 
       for (let i = 0; i < Math.min(topPlayers.length, 10); i++) {
         const player = topPlayers[i];
@@ -2931,10 +2958,10 @@ export class DatabaseStorage implements IStorage {
 
         // Create reward record (idempotent via unique constraint)
         const [reward] = await tx
-          .insert(monthlyRewards)
+          .insert(weeklyRewards)
           .values({
             userId: player.userId,
-            month,
+            weekNumber,
             year,
             rank,
             rewardAmount,
@@ -2950,15 +2977,15 @@ export class DatabaseStorage implements IStorage {
             WHERE id = ${player.userId}
           `);
 
-          // Update monthly leaderboard record
+          // Update weekly leaderboard record
           await tx
-            .update(monthlyLeaderboard)
+            .update(weeklyLeaderboard)
             .set({
               rewardReceived: true,
               finalRank: rank,
               rewardAmount: rewardAmount,
             })
-            .where(eq(monthlyLeaderboard.id, player.id));
+            .where(eq(weeklyLeaderboard.id, player.id));
 
           // Create coin transaction record
           await tx
@@ -2966,8 +2993,8 @@ export class DatabaseStorage implements IStorage {
             .values({
               userId: player.userId,
               amount: rewardAmount,
-              type: 'monthly_reward',
-              description: `Monthly leaderboard reward for rank ${rank}`,
+              type: 'weekly_reward',
+              description: `Weekly leaderboard reward for rank ${rank}`,
             })
             .onConflictDoNothing();
 
@@ -2979,12 +3006,12 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  // Monthly Reset Status operations
-  async createMonthlyResetTable(): Promise<void> {
+  // Weekly Reset Status operations
+  async createWeeklyResetTable(): Promise<void> {
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS monthly_reset_status (
+      CREATE TABLE IF NOT EXISTS weekly_reset_status (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        month INTEGER NOT NULL,
+        week_number INTEGER NOT NULL,
         year INTEGER NOT NULL,
         status VARCHAR NOT NULL CHECK (status IN ('pending', 'in_progress', 'completed', 'failed')),
         started_at TIMESTAMP,
@@ -3000,32 +3027,32 @@ export class DatabaseStorage implements IStorage {
     // Add unique constraint
     try {
       await db.execute(sql`
-        CREATE UNIQUE INDEX IF NOT EXISTS unique_monthly_reset 
-        ON monthly_reset_status(month, year)
+        CREATE UNIQUE INDEX IF NOT EXISTS unique_weekly_reset 
+        ON weekly_reset_status(week_number, year)
       `);
     } catch (e) {
       // Index may already exist
     }
   }
 
-  async getResetStatus(month: number, year: number): Promise<MonthlyResetStatus | undefined> {
+  async getResetStatus(weekNumber: number, year: number): Promise<WeeklyResetStatus | undefined> {
     const [status] = await db
       .select()
-      .from(monthlyResetStatus)
+      .from(weeklyResetStatus)
       .where(
         and(
-          eq(monthlyResetStatus.month, month),
-          eq(monthlyResetStatus.year, year)
+          eq(weeklyResetStatus.weekNumber, weekNumber),
+          eq(weeklyResetStatus.year, year)
         )
       );
     return status;
   }
 
-  async createResetStatus(month: number, year: number): Promise<MonthlyResetStatus> {
+  async createResetStatus(weekNumber: number, year: number): Promise<WeeklyResetStatus> {
     const [status] = await db
-      .insert(monthlyResetStatus)
+      .insert(weeklyResetStatus)
       .values({
-        month,
+        weekNumber,
         year,
         status: 'pending',
       })
@@ -3034,7 +3061,7 @@ export class DatabaseStorage implements IStorage {
     
     if (!status) {
       // Record already exists, return it
-      return (await this.getResetStatus(month, year))!;
+      return (await this.getResetStatus(weekNumber, year))!;
     }
     
     return status;
@@ -3056,135 +3083,135 @@ export class DatabaseStorage implements IStorage {
     }
 
     await db
-      .update(monthlyResetStatus)
+      .update(weeklyResetStatus)
       .set(updateData)
-      .where(eq(monthlyResetStatus.id, id));
+      .where(eq(weeklyResetStatus.id, id));
   }
 
   async incrementRetryCount(id: string, nextRetryAt?: Date): Promise<void> {
     await db
-      .update(monthlyResetStatus)
+      .update(weeklyResetStatus)
       .set({
-        retryCount: sql`${monthlyResetStatus.retryCount} + 1`,
+        retryCount: sql`${weeklyResetStatus.retryCount} + 1`,
         nextRetryAt,
         updatedAt: new Date(),
       })
-      .where(eq(monthlyResetStatus.id, id));
+      .where(eq(weeklyResetStatus.id, id));
   }
 
-  async getPendingResets(): Promise<MonthlyResetStatus[]> {
+  async getPendingResets(): Promise<WeeklyResetStatus[]> {
     return await db
       .select()
-      .from(monthlyResetStatus)
+      .from(weeklyResetStatus)
       .where(
         or(
-          eq(monthlyResetStatus.status, 'pending'),
+          eq(weeklyResetStatus.status, 'pending'),
           and(
-            eq(monthlyResetStatus.status, 'failed'),
+            eq(weeklyResetStatus.status, 'failed'),
             or(
-              isNull(monthlyResetStatus.nextRetryAt),
-              lt(monthlyResetStatus.nextRetryAt, new Date())
+              isNull(weeklyResetStatus.nextRetryAt),
+              lt(weeklyResetStatus.nextRetryAt, new Date())
             )
           )
         )
       )
-      .orderBy(monthlyResetStatus.year, monthlyResetStatus.month);
+      .orderBy(weeklyResetStatus.year, weeklyResetStatus.weekNumber);
   }
 
-  async getFailedResets(): Promise<MonthlyResetStatus[]> {
+  async getFailedResets(): Promise<WeeklyResetStatus[]> {
     return await db
       .select()
-      .from(monthlyResetStatus)
-      .where(eq(monthlyResetStatus.status, 'failed'))
-      .orderBy(desc(monthlyResetStatus.updatedAt));
+      .from(weeklyResetStatus)
+      .where(eq(weeklyResetStatus.status, 'failed'))
+      .orderBy(desc(weeklyResetStatus.updatedAt));
   }
 
-  async resetMonthlyStats(month: number, year: number): Promise<void> {
-    // First distribute rewards for the finishing month
-    await this.distributeMonthlyRewards(month, year);
+  async resetWeeklyStats(weekNumber: number, year: number): Promise<void> {
+    // First distribute rewards for the finishing week
+    await this.distributeWeeklyRewards(weekNumber, year);
 
-    // Archive the monthly stats by updating finalRank for all participants
+    // Archive the weekly stats by updating finalRank for all participants
     // Also mark them to see their rank popup
-    const allParticipants = await this.getMonthlyLeaderboard(month, year, 1000);
+    const allParticipants = await this.getWeeklyLeaderboard(weekNumber, year, 1000);
     
     for (const participant of allParticipants) {
       await db
-        .update(monthlyLeaderboard)
+        .update(weeklyLeaderboard)
         .set({
           finalRank: participant.rank,
           rankPopupSeen: false, // Mark for popup display
         })
-        .where(eq(monthlyLeaderboard.id, participant.id));
+        .where(eq(weeklyLeaderboard.id, participant.id));
     }
 
-    // The monthly stats are preserved for historical purposes
-    // New month stats will be created automatically when games are played
+    // The weekly stats are preserved for historical purposes
+    // New week stats will be created automatically when games are played
   }
 
-  async getMonthlyRewards(userId: string): Promise<MonthlyReward[]> {
+  async getWeeklyRewards(userId: string): Promise<WeeklyReward[]> {
     return await db
       .select()
-      .from(monthlyRewards)
-      .where(eq(monthlyRewards.userId, userId))
-      .orderBy(desc(monthlyRewards.distributedAt));
+      .from(weeklyRewards)
+      .where(eq(weeklyRewards.userId, userId))
+      .orderBy(desc(weeklyRewards.distributedAt));
   }
 
-  async hasReceivedMonthlyReward(userId: string, month: number, year: number): Promise<boolean> {
+  async hasReceivedWeeklyReward(userId: string, weekNumber: number, year: number): Promise<boolean> {
     const [reward] = await db
       .select()
-      .from(monthlyRewards)
+      .from(weeklyRewards)
       .where(
         and(
-          eq(monthlyRewards.userId, userId),
-          eq(monthlyRewards.month, month),
-          eq(monthlyRewards.year, year)
+          eq(weeklyRewards.userId, userId),
+          eq(weeklyRewards.weekNumber, weekNumber),
+          eq(weeklyRewards.year, year)
         )
       );
 
     return !!reward;
   }
 
-  // Monthly rank popup functions
+  // Weekly rank popup functions
   async getPendingRankPopup(userId: string): Promise<any | null> {
     const [rankData] = await db
       .select({
-        id: monthlyLeaderboard.id,
-        month: monthlyLeaderboard.month,
-        year: monthlyLeaderboard.year,
-        finalRank: monthlyLeaderboard.finalRank,
-        rewardReceived: monthlyLeaderboard.rewardReceived,
-        rewardAmount: monthlyLeaderboard.rewardAmount,
-        monthlyWins: monthlyLeaderboard.monthlyWins,
-        monthlyLosses: monthlyLeaderboard.monthlyLosses,
-        monthlyGames: monthlyLeaderboard.monthlyGames,
-        coinsEarned: monthlyLeaderboard.coinsEarned,
-        rankPopupSeen: monthlyLeaderboard.rankPopupSeen,
+        id: weeklyLeaderboard.id,
+        weekNumber: weeklyLeaderboard.weekNumber,
+        year: weeklyLeaderboard.year,
+        finalRank: weeklyLeaderboard.finalRank,
+        rewardReceived: weeklyLeaderboard.rewardReceived,
+        rewardAmount: weeklyLeaderboard.rewardAmount,
+        weeklyWins: weeklyLeaderboard.weeklyWins,
+        weeklyLosses: weeklyLeaderboard.weeklyLosses,
+        weeklyGames: weeklyLeaderboard.weeklyGames,
+        coinsEarned: weeklyLeaderboard.coinsEarned,
+        rankPopupSeen: weeklyLeaderboard.rankPopupSeen,
       })
-      .from(monthlyLeaderboard)
+      .from(weeklyLeaderboard)
       .where(
         and(
-          eq(monthlyLeaderboard.userId, userId),
-          eq(monthlyLeaderboard.rankPopupSeen, false),
-          isNotNull(monthlyLeaderboard.finalRank)
+          eq(weeklyLeaderboard.userId, userId),
+          eq(weeklyLeaderboard.rankPopupSeen, false),
+          isNotNull(weeklyLeaderboard.finalRank)
         )
       )
-      .orderBy(desc(monthlyLeaderboard.year), desc(monthlyLeaderboard.month))
+      .orderBy(desc(weeklyLeaderboard.year), desc(weeklyLeaderboard.weekNumber))
       .limit(1);
 
     return rankData || null;
   }
 
-  async markRankPopupSeen(userId: string, month: number, year: number): Promise<void> {
+  async markRankPopupSeen(userId: string, weekNumber: number, year: number): Promise<void> {
     await db
-      .update(monthlyLeaderboard)
+      .update(weeklyLeaderboard)
       .set({
         rankPopupSeen: true,
       })
       .where(
         and(
-          eq(monthlyLeaderboard.userId, userId),
-          eq(monthlyLeaderboard.month, month),
-          eq(monthlyLeaderboard.year, year)
+          eq(weeklyLeaderboard.userId, userId),
+          eq(weeklyLeaderboard.weekNumber, weekNumber),
+          eq(weeklyLeaderboard.year, year)
         )
       );
   }

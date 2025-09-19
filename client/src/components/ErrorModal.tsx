@@ -35,7 +35,7 @@ export function ErrorModal({ open, onClose, title, message, type = 'error' }: Er
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+      <DialogContent className="sm:max-w-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
         <DialogHeader className="text-center space-y-4">
           <button
             onClick={onClose}

@@ -41,7 +41,7 @@ export const users = pgTable("users", {
   wins: integer("wins").default(0),
   losses: integer("losses").default(0),
   draws: integer("draws").default(0),
-  coins: bigint("coins", { mode: 'number' }).default(2000), // Starting coins for new users
+  coins: bigint("coins", { mode: 'number' }).default(2000).notNull(), // Starting coins for new users
   currentWinStreak: integer("current_win_streak").default(0), // Current consecutive wins
   bestWinStreak: integer("best_win_streak").default(0), // Best win streak ever achieved
   selectedAchievementBorder: varchar("selected_achievement_border"), // Store the selected achievement type for border display
@@ -204,48 +204,50 @@ export const levelUps = pgTable("level_ups", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Monthly leaderboard table for tracking monthly statistics
-export const monthlyLeaderboard = pgTable("monthly_leaderboard", {
+// Weekly leaderboard table for tracking weekly statistics
+export const weeklyLeaderboard = pgTable("weekly_leaderboard", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  month: integer("month").notNull(), // 1-12
+  weekNumber: integer("week_number").notNull(), // 1-53
   year: integer("year").notNull(),
-  monthlyWins: integer("monthly_wins").default(0),
-  monthlyLosses: integer("monthly_losses").default(0),
-  monthlyDraws: integer("monthly_draws").default(0),
-  monthlyGames: integer("monthly_games").default(0),
-  monthlyWinStreak: integer("monthly_win_streak").default(0),
-  bestMonthlyWinStreak: integer("best_monthly_win_streak").default(0),
-  coinsEarned: bigint("coins_earned", { mode: 'number' }).default(0), // Coins earned this month
+  weeklyWins: integer("weekly_wins").default(0),
+  weeklyLosses: integer("weekly_losses").default(0),
+  weeklyDraws: integer("weekly_draws").default(0),
+  weeklyGames: integer("weekly_games").default(0),
+  weeklyWinStreak: integer("weekly_win_streak").default(0),
+  bestWeeklyWinStreak: integer("best_weekly_win_streak").default(0),
+  coinsEarned: bigint("coins_earned", { mode: 'number' }).default(0), // Coins earned this week
   rewardReceived: boolean("reward_received").default(false),
-  finalRank: integer("final_rank"), // Final rank at month end
+  finalRank: integer("final_rank"), // Final rank at week end
   rewardAmount: bigint("reward_amount", { mode: 'number' }).default(0),
-  rankPopupSeen: boolean("rank_popup_seen").default(false), // Whether user has seen their monthly rank popup
+  rankPopupSeen: boolean("rank_popup_seen").default(false), // Whether user has seen their weekly rank popup
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
-  // Ensure one record per user per month
-  uniqueIndex("unique_user_month").on(table.userId, table.month, table.year),
+  // Ensure one record per user per week
+  uniqueIndex("unique_user_week").on(table.userId, table.weekNumber, table.year),
+  // Index for optimal weekly queries
+  index("idx_week_scope").on(table.year, table.weekNumber),
 ]);
 
-// Monthly rewards history table
-export const monthlyRewards = pgTable("monthly_rewards", {
+// Weekly rewards history table
+export const weeklyRewards = pgTable("weekly_rewards", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  month: integer("month").notNull(),
+  weekNumber: integer("week_number").notNull(),
   year: integer("year").notNull(),
   rank: integer("rank").notNull(), // 1, 2, or 3
   rewardAmount: bigint("reward_amount", { mode: 'number' }).notNull(),
   distributedAt: timestamp("distributed_at").defaultNow(),
 }, (table) => [
-  // Ensure one reward per rank per month and one reward per user per month
-  uniqueIndex("unique_month_rank").on(table.year, table.month, table.rank),
-  uniqueIndex("unique_user_month_reward").on(table.userId, table.year, table.month),
+  // Ensure one reward per rank per week and one reward per user per week
+  uniqueIndex("unique_week_rank").on(table.year, table.weekNumber, table.rank),
+  uniqueIndex("unique_user_week_reward").on(table.userId, table.year, table.weekNumber),
 ]);
 
-export const monthlyResetStatus = pgTable("monthly_reset_status", {
+export const weeklyResetStatus = pgTable("weekly_reset_status", {
   id: uuid("id").primaryKey().defaultRandom(),
-  month: integer("month").notNull(), // 1-12
+  weekNumber: integer("week_number").notNull(), // 1-53
   year: integer("year").notNull(),
   status: varchar("status").notNull(), // 'pending', 'in_progress', 'completed', 'failed'
   startedAt: timestamp("started_at"),
@@ -256,8 +258,8 @@ export const monthlyResetStatus = pgTable("monthly_reset_status", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
-  // Unique constraint - one reset record per month/year
-  uniqueIndex("unique_monthly_reset").on(table.month, table.year),
+  // Unique constraint - one reset record per week/year
+  uniqueIndex("unique_weekly_reset").on(table.weekNumber, table.year),
 ]);
 
 // Relations
@@ -282,8 +284,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   sentPlayAgainRequests: many(playAgainRequests, { relationName: "requester" }),
   receivedPlayAgainRequests: many(playAgainRequests, { relationName: "requested" }),
   levelUps: many(levelUps),
-  monthlyStats: many(monthlyLeaderboard),
-  monthlyRewards: many(monthlyRewards),
+  weeklyStats: many(weeklyLeaderboard),
+  weeklyRewards: many(weeklyRewards),
 }));
 
 export const roomsRelations = relations(rooms, ({ one, many }) => ({
@@ -352,12 +354,12 @@ export const playAgainRequestsRelations = relations(playAgainRequests, ({ one })
   game: one(games, { fields: [playAgainRequests.gameId], references: [games.id] }),
 }));
 
-export const monthlyLeaderboardRelations = relations(monthlyLeaderboard, ({ one }) => ({
-  user: one(users, { fields: [monthlyLeaderboard.userId], references: [users.id] }),
+export const weeklyLeaderboardRelations = relations(weeklyLeaderboard, ({ one }) => ({
+  user: one(users, { fields: [weeklyLeaderboard.userId], references: [users.id] }),
 }));
 
-export const monthlyRewardsRelations = relations(monthlyRewards, ({ one }) => ({
-  user: one(users, { fields: [monthlyRewards.userId], references: [users.id] }),
+export const weeklyRewardsRelations = relations(weeklyRewards, ({ one }) => ({
+  user: one(users, { fields: [weeklyRewards.userId], references: [users.id] }),
 }));
 
 // Schemas
@@ -456,30 +458,30 @@ export const insertLevelUpSchema = createInsertSchema(levelUps).pick({
   acknowledged: true,
 });
 
-export const insertMonthlyLeaderboardSchema = createInsertSchema(monthlyLeaderboard).pick({
+export const insertWeeklyLeaderboardSchema = createInsertSchema(weeklyLeaderboard).pick({
   userId: true,
-  month: true,
+  weekNumber: true,
   year: true,
 }).extend({
-  month: z.number().min(1).max(12),
+  weekNumber: z.number().min(1).max(53),
   year: z.number().min(2000).max(3000),
 });
 
-export const insertMonthlyRewardSchema = createInsertSchema(monthlyRewards).pick({
+export const insertWeeklyRewardSchema = createInsertSchema(weeklyRewards).pick({
   userId: true,
-  month: true,
+  weekNumber: true,
   year: true,
   rank: true,
   rewardAmount: true,
 }).extend({
-  month: z.number().min(1).max(12),
+  weekNumber: z.number().min(1).max(53),
   year: z.number().min(2000).max(3000),
   rank: z.number().min(1).max(3),
   rewardAmount: z.number().positive(),
 });
 
-export const insertMonthlyResetStatusSchema = createInsertSchema(monthlyResetStatus).pick({
-  month: true,
+export const insertWeeklyResetStatusSchema = createInsertSchema(weeklyResetStatus).pick({
+  weekNumber: true,
   year: true,
   status: true,
   startedAt: true,
@@ -488,7 +490,7 @@ export const insertMonthlyResetStatusSchema = createInsertSchema(monthlyResetSta
   retryCount: true,
   nextRetryAt: true,
 }).extend({
-  month: z.number().min(1).max(12),
+  weekNumber: z.number().min(1).max(53),
   year: z.number().min(2000).max(3000),
   status: z.enum(['pending', 'in_progress', 'completed', 'failed']),
   retryCount: z.number().min(0).default(0),
@@ -535,9 +537,9 @@ export type PlayAgainRequest = typeof playAgainRequests.$inferSelect;
 export type InsertPlayAgainRequest = z.infer<typeof insertPlayAgainRequestSchema>;
 export type LevelUp = typeof levelUps.$inferSelect;
 export type InsertLevelUp = z.infer<typeof insertLevelUpSchema>;
-export type MonthlyLeaderboard = typeof monthlyLeaderboard.$inferSelect;
-export type InsertMonthlyLeaderboard = z.infer<typeof insertMonthlyLeaderboardSchema>;
-export type MonthlyReward = typeof monthlyRewards.$inferSelect;
-export type InsertMonthlyReward = z.infer<typeof insertMonthlyRewardSchema>;
-export type MonthlyResetStatus = typeof monthlyResetStatus.$inferSelect;
-export type InsertMonthlyResetStatus = z.infer<typeof insertMonthlyResetStatusSchema>;
+export type WeeklyLeaderboard = typeof weeklyLeaderboard.$inferSelect;
+export type InsertWeeklyLeaderboard = z.infer<typeof insertWeeklyLeaderboardSchema>;
+export type WeeklyReward = typeof weeklyRewards.$inferSelect;
+export type InsertWeeklyReward = z.infer<typeof insertWeeklyRewardSchema>;
+export type WeeklyResetStatus = typeof weeklyResetStatus.$inferSelect;
+export type InsertWeeklyResetStatus = z.infer<typeof insertWeeklyResetStatusSchema>;

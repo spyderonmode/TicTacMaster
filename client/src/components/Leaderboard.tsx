@@ -10,10 +10,10 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { motion } from "framer-motion";
 import { formatNumber } from "@/lib/utils";
 
-interface MonthlyLeaderboardUser {
+interface WeeklyLeaderboardUser {
   id: string;
   userId: string;
-  monthlyWins: number;
+  weeklyWins: number;
   user: {
     id: string;
     username: string;
@@ -23,9 +23,9 @@ interface MonthlyLeaderboardUser {
   };
 }
 
-interface MonthlyReward {
+interface WeeklyReward {
   id: string;
-  month: number;
+  weekNumber: number;
   year: number;
   position: number;
   coins: number;
@@ -58,11 +58,11 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   const queryClient = useQueryClient();
   const isArabic = language === 'ar';
 
-  // Monthly leaderboard query
-  const { data: monthlyLeaderboard, isLoading: monthlyLoading, error: monthlyError, refetch: refetchMonthly } = useQuery<MonthlyLeaderboardUser[]>({
-    queryKey: ['/api/leaderboard/monthly', language],
+  // Weekly leaderboard query
+  const { data: weeklyLeaderboard, isLoading: weeklyLoading, error: weeklyError, refetch: refetchWeekly } = useQuery<WeeklyLeaderboardUser[]>({
+    queryKey: ['/api/leaderboard/weekly', language],
     queryFn: async () => {
-      const response = await fetch('/api/leaderboard/monthly?limit=50', {
+      const response = await fetch('/api/leaderboard/weekly?limit=50', {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -78,7 +78,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  // Time until month end query
+  // Time until week end query
   const { data: timeUntilEnd } = useQuery<TimeLeft>({
     queryKey: ['/api/leaderboard/time-left'],
     queryFn: async () => {
@@ -93,11 +93,11 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
     staleTime: 0,
   });
 
-  // Monthly rewards query
-  const { data: monthlyRewards } = useQuery<MonthlyReward[]>({
-    queryKey: ['/api/rewards/monthly'],
+  // Weekly rewards query
+  const { data: weeklyRewards } = useQuery<WeeklyReward[]>({
+    queryKey: ['/api/rewards/weekly'],
     queryFn: async () => {
-      const response = await fetch('/api/rewards/monthly', {
+      const response = await fetch('/api/rewards/weekly', {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -113,12 +113,12 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   // Force refresh when modal opens or language changes
   useEffect(() => {
     if (modalOpen) {
-      console.log(`Modal opened (${language}) - forcing monthly leaderboard refresh`);
+      console.log(`Modal opened (${language}) - forcing weekly leaderboard refresh`);
       // Clear cache and force fresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/leaderboard/monthly'] });
-      refetchMonthly();
+      queryClient.invalidateQueries({ queryKey: ['/api/leaderboard/weekly'] });
+      refetchWeekly();
     }
-  }, [modalOpen, language, refetchMonthly, queryClient]);
+  }, [modalOpen, language, refetchWeekly, queryClient]);
 
   // Update local countdown timer state when data changes
   useEffect(() => {
@@ -192,7 +192,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   };
 
   // Get achievement border styling for profile pictures
-  const getAchievementBorderStyle = (entry: MonthlyLeaderboardUser, position: number) => {
+  const getAchievementBorderStyle = (entry: WeeklyLeaderboardUser, position: number) => {
     // Always show golden border for top 3 positions
     if (position <= 3) {
       switch (position) {
@@ -260,7 +260,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
     }
   };
 
-  const renderAchievementBorder = (entry: MonthlyLeaderboardUser, position: number) => {
+  const renderAchievementBorder = (entry: WeeklyLeaderboardUser, position: number) => {
     if (!entry.user.selectedAchievementBorder) {
       return (
         <span className="font-semibold text-sm truncate">
@@ -362,7 +362,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   const defaultTrigger = (
     <Button variant="outline" size="sm" className="flex items-center gap-2" data-testid="button-leaderboard">
       <Trophy className="w-4 h-4" />
-      {t('leaderboard') || 'Leaderboard'}
+      {t('Leaderboard') || 'Leaderboard'}
     </Button>
   );
 
@@ -415,7 +415,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                   <Trophy className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-yellow-500 drop-shadow-2xl filter brightness-110" />
                 </motion.div>
                 <span className={`bg-gradient-to-r from-yellow-600 via-orange-500 to-red-500 bg-clip-text text-transparent drop-shadow-sm ${isArabic ? 'font-arabic' : ''}`}>
-                  {t('monthlyLeaderboard') || 'Monthly Leaderboard'}
+                  {t('Weekly Leaderboard') || 'Weekly Leaderboard'}
                 </span>
               </DialogTitle>
             </motion.div>
@@ -464,20 +464,20 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
             </div>
           </div>
 
-          {monthlyLoading ? (
+          {weeklyLoading ? (
             <div className="flex items-center justify-center py-8 flex-1" data-testid="loading-state">
               <Loader2 className="w-8 h-8 animate-spin" />
-              <span className="ml-2">{t('loadingMonthlyLeaderboard') || 'Loading monthly leaderboard...'}</span>
+              <span className="ml-2">{t('Loading weekly leaderboard...') || 'Loading weekly leaderboard...'}</span>
             </div>
-          ) : monthlyError ? (
+          ) : weeklyError ? (
             <div className="flex flex-col items-center justify-center py-8 flex-1 text-red-500" data-testid="error-state">
-              <span>{t('errorLoadingMonthlyLeaderboard') || 'Error loading monthly leaderboard. Please try again.'}</span>
+              <span>{t('errorLoadingWeeklyLeaderboard') || 'Error loading weekly leaderboard. Please try again.'}</span>
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto px-1 sm:px-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent" style={{ WebkitOverflowScrolling: 'touch' }} data-testid="leaderboard-container">
               <div className="space-y-1 py-1">
-                {monthlyLeaderboard && monthlyLeaderboard.length > 0 ? (
-                  monthlyLeaderboard.map((entry, index) => {
+                {weeklyLeaderboard && weeklyLeaderboard.length > 0 ? (
+                  weeklyLeaderboard.map((entry, index) => {
                     const position = index + 1;
                     const user = entry.user;
                     
@@ -594,13 +594,13 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                                     </div>
                                   </div>
                                   
-                                  {/* Monthly Wins Display */}
+                                  {/* Weekly Wins Display */}
                                   <div className="text-right" data-testid={`wins-${user.id}`}>
                                     <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                                      {entry.monthlyWins}
+                                      {entry.weeklyWins}
                                     </div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      monthly wins
+                                      weekly wins
                                     </div>
                                   </div>
                                 </div>
@@ -613,7 +613,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                   ) : (
                     <div className="text-center py-8 text-gray-500" data-testid="no-data-state">
                       <Calendar className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                      <p>{t('noMonthlyDataYet') || 'No monthly data yet. Start playing to compete!'}</p>
+                      <p>{t('noWeeklyDataYet') || 'No weekly data yet. Start playing to compete!'}</p>
                     </div>
                   )}
                 </div>
@@ -625,8 +625,8 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
           <div className={`flex items-center gap-2 ${isArabic ? 'font-arabic' : ''}`}>
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400" data-testid="player-count">
-              {monthlyLeaderboard?.length ? 
-                `${t('showing') || 'Showing'} ${monthlyLeaderboard.length} ${t('players') || 'players'}` :
+              {weeklyLeaderboard?.length ? 
+                `${t('showing') || 'Showing'} ${weeklyLeaderboard.length} ${t('players') || 'players'}` :
                 ''
               }
             </span>

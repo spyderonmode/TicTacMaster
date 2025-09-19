@@ -1413,7 +1413,7 @@ export default function Home() {
     // Award coins for AI game wins
     if (selectedMode === 'ai' && result?.winner === 'X' && user?.userId) {
       try {
-        console.log('🪙 Player won AI game, awarding 10 coins');
+        console.log('🪙 Player won AI game, awarding 100 coins');
         const response = await fetch('/api/coins/award', {
           method: 'POST',
           headers: {
@@ -1421,7 +1421,7 @@ export default function Home() {
           },
           body: JSON.stringify({
             userId: user.userId,
-            amount: 10,
+            amount: 100,
             reason: 'AI game win'
           })
         });

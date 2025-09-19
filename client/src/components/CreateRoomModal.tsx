@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import { showUserFriendlyError } from "@/lib/errorUtils";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTranslation } from "@/contexts/LanguageContext";
 
 interface CreateRoomModalProps {
@@ -23,48 +20,72 @@ export function CreateRoomModal({ open, onClose, onRoomCreated }: CreateRoomModa
   const [roomName, setRoomName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState("2");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  const { sendMessage, isConnected } = useWebSocket();
 
-  const createRoomMutation = useMutation({
-    mutationFn: async (roomData: any) => {
-      const response = await apiRequest('/api/rooms', { method: 'POST', body: roomData });
-      return response.json();
-    },
-    onSuccess: (room) => {
-      onRoomCreated(room);
-      onClose();
-      resetForm();
-      toast({
-        title: t('roomCreated'),
-        description: t('roomCodeCreated').replace('%s', room.code),
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
+  useEffect(() => {
+    const handleCreateRoomSuccess = (event: any) => {
+      const { room, requestId } = event.detail;
+      // Only handle if this is the response to our current request, or if no requestId correlation
+      if (!requestId || requestId === currentRequestId) {
+        // Clear timeout if it exists
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        setIsCreating(false);
+        setCurrentRequestId(null);
+        onRoomCreated(room);
+        onClose();
+        resetForm();
         toast({
-          title: t('unauthorized'),
-          description: t('loggedOutLoggingIn'),
+          title: t('roomCreated'),
+          description: t('roomCodeCreated').replace('%s', room.code),
+        });
+      }
+    };
+
+    const handleCreateRoomError = (event: any) => {
+      const { error, message, requestId } = event.detail;
+      // Only handle if this is the response to our current request, or if no requestId correlation
+      if (!requestId || requestId === currentRequestId) {
+        // Clear timeout if it exists
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        setIsCreating(false);
+        setCurrentRequestId(null);
+        
+        // Handle insufficient coins error
+        if (message && message.includes('coins')) {
+          toast({
+            title: '💰 Insufficient Coins',
+            description: message,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({
+          title: t('error'),
+          description: message || 'Failed to create room. Please try again.',
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
       }
-      
-      // Handle insufficient coins error
-      if (error.status === 403 && error.message?.includes('coins')) {
-        toast({
-          title: '💰 Insufficient Coins',
-          description: error.message || 'You need 1000 coins to create a room. Win AI games to earn coins!',
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      showUserFriendlyError(error, toast);
-    },
-  });
+    };
+
+    window.addEventListener('create_room_success', handleCreateRoomSuccess);
+    window.addEventListener('create_room_error', handleCreateRoomError);
+
+    return () => {
+      window.removeEventListener('create_room_success', handleCreateRoomSuccess);
+      window.removeEventListener('create_room_error', handleCreateRoomError);
+    };
+  }, [onRoomCreated, onClose, toast, t, currentRequestId]);
 
   const resetForm = () => {
     setRoomName("");
@@ -83,19 +104,65 @@ export function CreateRoomModal({ open, onClose, onRoomCreated }: CreateRoomModa
       return;
     }
 
-    createRoomMutation.mutate({
-      name: roomName.trim(),
-      maxPlayers: parseInt(maxPlayers),
-      isPrivate,
+    // Check WebSocket connection before sending
+    if (!isConnected) {
+      toast({
+        title: t('error'),
+        description: 'Not connected to server. Please wait and try again.',
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    const requestId = Math.random().toString(36).substring(7);
+    setCurrentRequestId(requestId);
+    
+    // Set timeout to handle no response scenarios
+    timeoutRef.current = setTimeout(() => {
+      // Only timeout if we're still waiting for this specific request
+      setIsCreating(false);
+      setCurrentRequestId(null);
+      timeoutRef.current = null;
+      toast({
+        title: t('error'),
+        description: 'Request timeout. Please try again.',
+        variant: "destructive",
+      });
+    }, 15000); // 15 second timeout
+    
+    sendMessage({
+      type: 'create_room',
+      requestId,
+      roomData: {
+        name: roomName.trim(),
+        maxPlayers: parseInt(maxPlayers),
+        isPrivate,
+      }
     });
   };
 
   const handleClose = () => {
-    if (!createRoomMutation.isPending) {
+    if (!isCreating) {
+      // Clear timeout if modal is closed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       onClose();
       resetForm();
     }
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -115,7 +182,7 @@ export function CreateRoomModal({ open, onClose, onRoomCreated }: CreateRoomModa
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               className="bg-slate-700 border-slate-600 text-white mt-1"
-              disabled={createRoomMutation.isPending}
+              disabled={isCreating}
             />
           </div>
           
@@ -126,14 +193,14 @@ export function CreateRoomModal({ open, onClose, onRoomCreated }: CreateRoomModa
             <Select 
               value={maxPlayers} 
               onValueChange={setMaxPlayers}
-              disabled={createRoomMutation.isPending}
+              disabled={isCreating}
             >
               <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-slate-700 border-slate-600">
                 <SelectItem value="2">{t('twoPlayers')}</SelectItem>
-                <SelectItem value="52">{t('twoPlayersSpectators')}</SelectItem>
+                <SelectItem value="2">{t('Spectators')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -144,7 +211,7 @@ export function CreateRoomModal({ open, onClose, onRoomCreated }: CreateRoomModa
               checked={isPrivate}
               onCheckedChange={setIsPrivate}
               className="border-slate-600"
-              disabled={createRoomMutation.isPending}
+              disabled={isCreating}
             />
             <Label htmlFor="private" className="text-sm text-gray-300">
               {t('private')}
@@ -156,17 +223,17 @@ export function CreateRoomModal({ open, onClose, onRoomCreated }: CreateRoomModa
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={createRoomMutation.isPending}
+              disabled={isCreating}
               className="border-slate-600 text-gray-300 hover:bg-slate-700"
             >
               {t('cancel')}
             </Button>
             <Button
               type="submit"
-              disabled={createRoomMutation.isPending}
+              disabled={isCreating}
               className="bg-primary hover:bg-primary/90"
             >
-              {createRoomMutation.isPending ? t('creating') : t('createRoom')}
+              {isCreating ? t('creating') : t('createRoom')}
             </Button>
           </div>
         </form>
