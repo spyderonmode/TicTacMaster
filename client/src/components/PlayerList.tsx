@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { User, Eye } from "lucide-react";
 
 interface PlayerListProps {
@@ -12,15 +14,58 @@ interface PlayerListProps {
 export function PlayerList({ roomId }: PlayerListProps) {
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
+  const { lastMessage } = useWebSocket();
+  const [participants, setParticipants] = useState<any[]>([]);
   
-  const { data: participants = [], isLoading } = useQuery({
+  // Initial fetch of participants via API
+  const { data: initialParticipants = [], isLoading } = useQuery({
     queryKey: ["/api/rooms", roomId, "participants"],
     enabled: !!roomId && isAuthenticated,
-    refetchInterval: isAuthenticated ? 10000 : false, // Reduced frequency to 10 seconds
-    staleTime: 8000, // Consider data fresh for 8 seconds to reduce duplicate calls
-    refetchOnWindowFocus: false, // Prevent refetch on window focus
-    refetchOnMount: false, // Only refetch if data is stale
+    staleTime: 60000, // Consider data fresh for 1 minute since we use WebSocket for updates
+    refetchOnWindowFocus: false,
+    refetchOnMount: true, // Get initial data on mount
+    refetchInterval: false, // No polling - use WebSocket for updates
   });
+
+  // Update participants from initial API fetch
+  useEffect(() => {
+    if (Array.isArray(initialParticipants) && initialParticipants.length >= 0) {
+      setParticipants(initialParticipants as any[]);
+    }
+  }, [initialParticipants]);
+
+  // Listen for WebSocket participant updates
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    const message = lastMessage;
+    
+    // Handle join_room_success events (for the user who just joined)
+    if (message.type === 'join_room_success' && message.room?.id === roomId) {
+      // Update participants with the fresh data from server
+      if (message.room.participants) {
+        setParticipants(message.room.participants);
+      }
+    }
+    
+    // Handle room_participant_joined events (for other users in the room)
+    if (message.type === 'room_participant_joined' && message.roomId === roomId) {
+      if (message.participants) {
+        setParticipants(message.participants);
+      }
+    }
+    
+    // Handle room_participants_updated events (if server sends these)
+    if (message.type === 'room_participants_updated' && message.roomId === roomId) {
+      setParticipants(message.participants);
+    }
+    
+    // Handle user_left_room events
+    if (message.type === 'user_left_room' && message.roomId === roomId) {
+      setParticipants(prev => prev.filter(p => p.userId !== message.userId));
+    }
+    
+  }, [lastMessage, roomId]);
 
   if (isLoading) {
     return (

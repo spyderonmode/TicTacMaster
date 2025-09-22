@@ -41,15 +41,7 @@ export function RoomManager({
   const { sendMessage, isConnected } = useWebSocket();
   const queryClient = useQueryClient();
 
-  // Fetch participants for the current room - reuse the same query key to share cache
-  const { data: participants = [] } = useQuery({
-    queryKey: ["/api/rooms", currentRoom?.id, "participants"], // Use same key as PlayerList
-    enabled: !!currentRoom,
-    staleTime: 8000, // Consider data fresh for 8 seconds
-    refetchOnWindowFocus: false, // Prevent refetch on window focus
-    refetchOnMount: false, // Only refetch if data is stale
-    refetchInterval: false, // Don't poll here, let PlayerList handle it
-  });
+  // Removed unused participants query - PlayerList handles participant data via WebSocket
 
   // WebSocket event listeners for room joining
   useEffect(() => {
@@ -322,17 +314,17 @@ export function RoomManager({
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <Button 
                   onClick={() => handleJoinRoom('player')}
-                  disabled={!joinCode.trim() || isJoining}
-                  className="w-full sm:flex-1 bg-green-600 hover:bg-green-700"
+                  disabled={!joinCode.trim() || !isConnected || isJoining}
+                  className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
                 >
-                  {t('joinAsPlayer')}
+                  {isJoining ? 'Joining...' : t('joinAsPlayer')}
                 </Button>
                 <Button 
                   onClick={() => handleJoinRoom('spectator')}
-                  disabled={!joinCode.trim() || isJoining}
-                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={!joinCode.trim() || !isConnected || isJoining}
+                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {t('joinAsSpectator')}
+                  {isJoining ? 'Joining...' : t('joinAsSpectator')}
                 </Button>
               </div>
             </div>
@@ -362,7 +354,7 @@ export function RoomManager({
                 </Badge>
               </div>
               <div className="text-sm text-gray-400">
-                {t('room')} #{currentRoom.code}
+                Room #{currentRoom.code}
               </div>
               <div className="text-sm text-gray-400">
                 {currentRoom.name}
