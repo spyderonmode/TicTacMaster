@@ -86,7 +86,7 @@ const WeeklyRankPopup = ({
       return {
         title: "🎉 CHAMPION! 🎉",
         message: "Incredible! You dominated the weekly leaderboard and claimed the #1 spot!",
-        subMessage: "You are the ultimate Tic Tac Toe master this week!"
+        subMessage: "You are the ultimate Tic Tac 3x5 master this week!"
       };
     } else if (rankData.finalRank === 2) {
       return {
@@ -133,7 +133,7 @@ const WeeklyRankPopup = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <Dialog open={true} onOpenChange={() => {}}>
+        <Dialog open={isOpen} onOpenChange={onClose}>
           <DialogContent 
             className="max-w-md mx-auto bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-2 border-purple-200 dark:border-purple-700"
             data-testid="weekly-rank-popup"

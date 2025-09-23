@@ -872,7 +872,7 @@ export class DatabaseStorage implements IStorage {
       newLevel,
       acknowledged: false,
     });
-    console.log(`🎉 Level up recorded for user ${userId}: ${previousLevel} → ${newLevel}`);
+    //console.log(`🎉 Level up recorded for user ${userId}: ${previousLevel} → ${newLevel}`);
   }
 
   async getPendingLevelUps(userId: string): Promise<LevelUp[]> {
@@ -1652,7 +1652,7 @@ export class DatabaseStorage implements IStorage {
           });
           if (newAchievement) {
             newAchievements.push(newAchievement);
-            console.log(`🎉 New achievement unlocked for user ${userId}: ${achievement.type}`);
+            //console.log(`🎉 New achievement unlocked for user ${userId}: ${achievement.type}`);
 
             // Unlock special themes for certain achievements
             if (achievement.type === 'win_streak_10') {
@@ -2886,21 +2886,40 @@ export class DatabaseStorage implements IStorage {
     const nextMonday = new Date(now.getTime());
     nextMonday.setUTCHours(0, 0, 0, 0);
     
-    // Days until Monday (0=Sunday, 1=Monday, etc.)
-    const daysUntilMonday = (8 - nextMonday.getUTCDay()) % 7;
-    if (daysUntilMonday === 0 && now.getUTCHours() === 0 && now.getUTCMinutes() === 0 && now.getUTCSeconds() === 0) {
-      // If it's exactly midnight on Monday, add 7 days
-      nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+    // Get current day (0=Sunday, 1=Monday, etc.)
+    const currentDay = now.getUTCDay();
+    
+    // Calculate days until next Monday
+    let daysUntilMonday;
+    if (currentDay === 0) {
+      // Sunday -> next Monday is 1 day away
+      daysUntilMonday = 1;
+    } else if (currentDay === 1) {
+      // Monday -> check if we're already past the current Monday 00:00:00
+      // If so, next Monday is 7 days away
+      const mondayStart = new Date(now.getTime());
+      mondayStart.setUTCHours(0, 0, 0, 0);
+      if (now.getTime() >= mondayStart.getTime()) {
+        daysUntilMonday = 7; // Already past this Monday's start, go to next Monday
+      } else {
+        daysUntilMonday = 0; // Still before this Monday's start (shouldn't happen in normal case)
+      }
     } else {
-      nextMonday.setUTCDate(nextMonday.getUTCDate() + daysUntilMonday);
+      // Tuesday through Saturday -> calculate days until next Monday
+      daysUntilMonday = 8 - currentDay; // 2->6, 3->5, 4->4, 5->3, 6->2
     }
+    
+    nextMonday.setUTCDate(nextMonday.getUTCDate() + daysUntilMonday);
     
     const timeLeft = nextMonday.getTime() - now.getTime();
 
-    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+    // Ensure we never return negative values
+    const positiveTimeLeft = Math.max(0, timeLeft);
+
+    const days = Math.floor(positiveTimeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((positiveTimeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((positiveTimeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((positiveTimeLeft % (1000 * 60)) / 1000);
 
     return { days, hours, minutes, seconds };
   }
@@ -2970,6 +2989,16 @@ export class DatabaseStorage implements IStorage {
           .returning();
 
         if (reward) {
+          // Get user's current balance before updating
+          const [userBefore] = await tx
+            .select({ coins: users.coins })
+            .from(users)
+            .where(eq(users.id, player.userId))
+            .limit(1);
+          
+          const balanceBefore = userBefore?.coins || 0;
+          const balanceAfter = balanceBefore + rewardAmount;
+
           // Update user's coins atomically
           await tx.execute(sql`
             UPDATE users 
@@ -2987,14 +3016,15 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(weeklyLeaderboard.id, player.id));
 
-          // Create coin transaction record
+          // Create coin transaction record with required balance fields
           await tx
             .insert(coinTransactions)
             .values({
               userId: player.userId,
               amount: rewardAmount,
               type: 'weekly_reward',
-              description: `Weekly leaderboard reward for rank ${rank}`,
+              balanceBefore: balanceBefore,
+              balanceAfter: balanceAfter,
             })
             .onConflictDoNothing();
 

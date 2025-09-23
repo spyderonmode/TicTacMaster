@@ -8,7 +8,7 @@ import MemoryStore from 'memorystore';
 import { storage } from './storage';
 import { db } from './db';
 import { sql } from 'drizzle-orm';
-import { createEmailService } from './emailService';
+import { createEmailService } from './emailService';import { Pool } from 'pg';
 
 interface User {
   id: string;
@@ -295,80 +295,58 @@ async function syncAllUsersToDatabase() {
 }
 
 export function setupAuth(app: Express) {
-  // PostgreSQL store for sessions (persistent across server restarts)
   const PostgreSQLStore = connectPgSimple(session);
-  
-  let sessionStore;
+
+  const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_tNTYy7S9AMuP@ep-wandering-wave-aef2douv-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
+  const isHTTPS = process.env.FORCE_HTTPS === 'true' || isProduction;
+
+  console.log('🍪 Auth Session Configuration:', {
+    isProduction,
+    isHTTPS,
+    nodeEnv: process.env.NODE_ENV,
+  });
+
+  let sessionStore: session.Store;
+
   try {
-    // Use connection string directly for session store
-    const DATABASE_URL = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_tNTYy7S9AMuP@ep-wandering-wave-aef2douv-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
-    
     sessionStore = new PostgreSQLStore({
       conString: DATABASE_URL,
       tableName: 'session',
       createTableIfMissing: true,
-      pruneSessionInterval: false, // Disable automatic pruning to avoid issues
-      ttl: 100 * 365 * 24 * 60 * 60, // 100 years - effectively never expires
+      pruneSessionInterval: false,
+      ttl: 100 * 365 * 24 * 60 * 60, // 100 years in seconds
     });
-    
-    // Test the session store connection
-    sessionStore.on('connect', () => {
-      console.log('✅ PostgreSQL session store connected successfully');
-    });
-    
-    sessionStore.on('disconnect', () => {
-      console.log('⚠️ PostgreSQL session store disconnected');
-    });
-    
-    console.log('✅ PostgreSQL session store initialized with connection string');
-  } catch (error) {
-    console.log('⚠️ PostgreSQL session store failed, falling back to memory store:', (error as Error).message);
+
+    console.log('✅ PostgreSQL session store initialized');
+  } catch (err: any) {
+    console.error('❌ Failed to initialize PostgreSQL session store. Falling back to MemoryStore:', err.message);
+
     const MemoryStoreSession = MemoryStore(session);
     sessionStore = new MemoryStoreSession({
-      checkPeriod: 86400000 // prune expired entries every 24h
+      checkPeriod: 86400000, // prune expired every 24h
     });
   }
-  
-  // Sync all existing users to database on startup
-  syncAllUsersToDatabase();
-  
-  // Recalculate all user stats to ensure they're up to date
-  setTimeout(async () => {
-    try {
-      // Add the missing last_move_at column if it doesn't exist
-      try {
-        await db.execute(sql`ALTER TABLE games ADD COLUMN IF NOT EXISTS last_move_at TIMESTAMP DEFAULT NOW()`);
-        console.log('✅ Database column last_move_at ensured');
-      } catch (columnError: any) {
-        // Column might already exist, this is fine
-        if (columnError.code === '42701') {
-          console.log('ℹ️ Database column last_move_at already exists');
-        } else {
-          console.log('⚠️ Database column modification warning:', columnError.message);
-        }
-      }
-      
-      await storage.recalculateAllUserStats();
-      // console.log('✅ User stats recalculation completed!');
-    } catch (error: any) {
-      console.error('Failed to recalculate user stats:', error.message);
-    }
-  }, 5000); // Wait 5 seconds to ensure database sync is complete
-  
-  // Session middleware with PostgreSQL storage
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
-    resave: false,
-    saveUninitialized: false,
-    store: sessionStore,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production', // Only use secure in production
-      httpOnly: true,
-      maxAge: 100 * 365 * 24 * 60 * 60 * 1000, // 100 years - effectively never expires
-      sameSite: 'lax'
-    }
-  }));
 
+  app.set('trust proxy', 1);
+
+  app.use(
+    session({
+      store: sessionStore,
+      secret: process.env.SESSION_SECRET || 'W13KtlyRasvYl3bzL4ZQsxBp40/f2D1rogkzczhNLNU=',
+      resave: false,
+      saveUninitialized: false,
+      proxy: true,
+      name: 'connect.sid',
+      cookie: {
+        secure: isHTTPS,
+        httpOnly: true,
+        sameSite: 'none',
+        maxAge: 100 * 365 * 24 * 60 * 60 * 1000, // 100 years in ms
+        domain: undefined,
+      },
+    })
+  );
   // Register endpoint
   app.post('/api/auth/register', async (req, res) => {
     const { username, password, email } = req.body;
@@ -973,7 +951,21 @@ export function setupAuth(app: Express) {
 }
 
 export function requireAuth(req: any, res: any, next: any) {
-  if (!req.session?.user) {
+  // Production debugging for session issues
+  const hasSession = !!req.session;
+  const hasUser = !!req.session?.user;
+  const sessionId = req.sessionID;
+  const cookies = req.headers.cookie;
+  
+  if (!hasSession || !hasUser) {
+    console.log('🚫 Authentication failed:', {
+      path: req.path,
+      hasSession,
+      hasUser,
+      sessionId,
+      hasCookies: !!cookies,
+      userAgent: req.headers['user-agent']?.substring(0, 50)
+    });
     return res.status(401).json({ error: 'Not authenticated' });
   }
   

@@ -28,28 +28,29 @@ export default function Auth() {
   const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  e.preventDefault();
+  setIsLoading(true);
 
-    try {
-      if (isLogin) {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+  try {
+    if (isLogin) {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // this is correct
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (response.ok) {
+        // Optionally wait for user data before redirecting
+        await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+
+        toast({
+          title: t('loginSuccessful'),
+          description: t('welcomeBack'),
         });
 
-        if (response.ok) {
-          // Invalidate auth query to refresh user state immediately
-          await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-          
-          toast({
-            title: t('loginSuccessful'),
-            description: t('welcomeBack'),
-          });
-          
-          // Redirect immediately after invalidating query
-          setLocation('/');
+        // 🚨 Redirect or change location here
+        setLocation('/');
         } else {
           const errorData = await response.json();
           

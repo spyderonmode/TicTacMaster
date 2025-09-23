@@ -2,10 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 
 export function useAuth() {
-  const { data: user, isLoading: queryLoading } = useQuery({
+  const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/user", {
+        credentials: "include", // <-- This is the crucial part
+      });
+
+      if (!response.ok) {
+        throw new Error("User not authenticated.");
+      }
+      return response.json();
+    },
     retry: false,
   });
+
 
   const [isLoading, setIsLoading] = useState(true);
   const startTimeRef = useRef(Date.now());

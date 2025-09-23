@@ -7,6 +7,7 @@ import { insertRoomSchema, insertGameSchema, insertMoveSchema, users, games, ach
 import { AIPlayer } from "./aiPlayer";
 import { makeMove, checkWin, checkDraw, getOpponentSymbol, validateMove } from "./gameLogic";
 import { db } from "./db";
+import cors from "cors";
 import { eq, and, or, desc, exists } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -19,8 +20,32 @@ interface WSConnection {
   lastSeen?: Date;
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
+export async function registerRoutes(app: Express): Promise<void> {
+  const allowedOrigins = [
+    'https://darklayerstudios.com',
+    'https://www.darklayerstudios.com',
+    'http://localhost:3000',
+    'http://localhost:5000'
+  ];
+
+  // ✅ Apply CORS in all environments (dev + prod)
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like Postman or curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  }));
+
+  // 🛡️ Register authentication and all other routes
   setupAuth(app);
 
   // Create room_invitations table if it doesn't exist
@@ -106,14 +131,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const queueIndex = matchmakingQueue.indexOf(userId);
         if (queueIndex > -1) {
           matchmakingQueue.splice(queueIndex, 1);
-          console.log(`🧹 Removed ${user.displayName} from matchmaking queue (offline)`);
+          //console.log(`🧹 Removed ${user.displayName} from matchmaking queue (offline)`);
         }
         
         // Clean up matchmaking timer
         if (matchmakingTimers.has(userId)) {
           clearTimeout(matchmakingTimers.get(userId)!);
           matchmakingTimers.delete(userId);
-          console.log(`🧹 Cleared matchmaking timer for ${user.displayName} (offline)`);
+          //console.log(`🧹 Cleared matchmaking timer for ${user.displayName} (offline)`);
         }
         
         //console.log(`🚪 Removed offline user: ${user.displayName} (inactive for ${Math.round(timeSinceLastSeen/1000)}s)`);
@@ -253,7 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const minInterval = 5000; // 5 seconds minimum between auto-moves
             
             if (timeSinceLastMove < minInterval) {
-              console.log(`🤖 Auto-play throttled for game ${game.id} (${minInterval - timeSinceLastMove}ms remaining)`);
+              //console.log(`🤖 Auto-play throttled for game ${game.id} (${minInterval - timeSinceLastMove}ms remaining)`);
               continue; // Skip this game for now
             }
             
@@ -437,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Function to perform weekly reset with full error handling and idempotency
   async function performWeeklyReset(weekNumber: number, year: number): Promise<boolean> {
     if (weeklySchedulerRunning) {
-      console.log(`🔒 Weekly scheduler already running, skipping reset for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
+      //console.log(`🔒 Weekly scheduler already running, skipping reset for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
       return false;
     }
 
@@ -445,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let resetStatus;
 
     try {
-      console.log(`🏆 Starting weekly reset process for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
+      //console.log(`🏆 Starting weekly reset process for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
       
       // Get or create reset status record
       resetStatus = await storage.getResetStatus(weekNumber, year);
@@ -455,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if already completed
       if (resetStatus.status === 'completed') {
-        console.log(`✅ Weekly reset for ${year}-W${weekNumber.toString().padStart(2, '0')} already completed`);
+        //console.log(`✅ Weekly reset for ${year}-W${weekNumber.toString().padStart(2, '0')} already completed`);
         return true;
       }
 
@@ -468,12 +493,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mark as in progress
       await storage.updateResetStatus(resetStatus.id, 'in_progress');
 
+      // CRITICAL FIX: Distribute rewards for the previous week BEFORE resetting stats
+      //console.log(`💰 Distributing weekly rewards for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
+      await storage.distributeWeeklyRewards(weekNumber, year);
+
       // Perform the actual reset (this already has internal transaction safety)
       await storage.resetWeeklyStats(weekNumber, year);
 
       // Mark as completed
       await storage.updateResetStatus(resetStatus.id, 'completed');
-      console.log(`✅ Weekly reset completed successfully for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
+      //console.log(`✅ Weekly reset completed successfully for ${year}-W${weekNumber.toString().padStart(2, '0')}`);
       
       return true;
 
@@ -488,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateResetStatus(resetStatus.id, 'failed', error.message);
         await storage.incrementRetryCount(resetStatus.id, nextRetryAt);
         
-        console.log(`⏰ Scheduled retry for ${year}-W${weekNumber.toString().padStart(2, '0')} in ${Math.round(nextRetryDelay / 60000)} minutes`);
+        //console.log(`⏰ Scheduled retry for ${year}-W${weekNumber.toString().padStart(2, '0')} in ${Math.round(nextRetryDelay / 60000)} minutes`);
       }
       
       return false;
@@ -503,7 +532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingResets = await storage.getPendingResets();
       
       for (const reset of pendingResets) {
-        console.log(`🔄 Processing pending reset for ${reset.year}-W${reset.weekNumber.toString().padStart(2, '0')}`);
+        //console.log(`🔄 Processing pending reset for ${reset.year}-W${reset.weekNumber.toString().padStart(2, '0')}`);
         await performWeeklyReset(reset.weekNumber, reset.year);
       }
     } catch (error) {
@@ -522,7 +551,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const maxDelay = 24 * 60 * 60 * 1000; // 24 hours max for setTimeout stability
     const delay = Math.min(msUntilNextWeek, maxDelay);
 
-    console.log(`📅 Next week check scheduled in ${Math.round(delay / 60000)} minutes`);
+    const hours = Math.round(delay / (60 * 60 * 1000));
+    const days = Math.round(delay / (24 * 60 * 60 * 1000));
+    if (days >= 1) {
+      //console.log(`📅 Next week check scheduled in ${days} day(s) and ${hours % 24} hour(s)`);
+    } else {
+      //console.log(`📅 Next week check scheduled in ${hours} hour(s) and ${Math.round((delay % (60 * 60 * 1000)) / 60000)} minute(s)`);
+    }
 
     nextWeekStartTimeout = setTimeout(async () => {
       try {
@@ -541,8 +576,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const prevWeekNumber = Math.floor((thursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
         const prevYear = thursday.getUTCFullYear();
 
-        console.log(`🗓️ New week detected`);
-        console.log(`🏆 Triggering reset for previous week: ${prevYear}-W${prevWeekNumber.toString().padStart(2, '0')}`);
+        //console.log(`🗓️ New week detected`);
+        //console.log(`🏆 Triggering reset for previous week: ${prevYear}-W${prevWeekNumber.toString().padStart(2, '0')}`);
 
         // Trigger reset for the previous week
         await performWeeklyReset(prevWeekNumber, prevYear);
@@ -564,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Startup logic to handle missed resets and initialize scheduler
   async function initializeWeeklyScheduler(): Promise<void> {
     try {
-      console.log('🚀 Initializing robust weekly scheduler...');
+      //console.log('🚀 Initializing robust weekly scheduler...');
       
       // Check for any pending or failed resets on startup
       await processPendingResets();
@@ -590,7 +625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!resetStatus) {
           // Create pending reset record for missed week
           await storage.createResetStatus(checkWeekNumber, checkYear);
-          console.log(`📝 Created pending reset record for missed week: ${checkYear}-W${checkWeekNumber.toString().padStart(2, '0')}`);
+          //console.log(`📝 Created pending reset record for missed week: ${checkYear}-W${checkWeekNumber.toString().padStart(2, '0')}`);
         }
       }
 
@@ -600,7 +635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Schedule precise week boundary timing
       scheduleNextWeekCheck();
       
-      console.log('✅ Weekly scheduler initialized successfully');
+      //console.log('✅ Weekly scheduler initialized successfully');
       
     } catch (error) {
       console.error('❌ Failed to initialize weekly scheduler:', error);
@@ -1531,7 +1566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log(`🎉 Win streak achievement fix completed! Fixed ${fixedUsersCount} users`);
+      //console.log(`🎉 Win streak achievement fix completed! Fixed ${fixedUsersCount} users`);
 
       res.json({
         success: true,
@@ -1555,6 +1590,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.userId;
       // Fetching themes for user
+      
+      // Auto-check and unlock Halloween theme for eligible users
+      try {
+        const user = await storage.getUser(userId);
+        if (user && (user.currentWinStreak >= 10 || user.bestWinStreak >= 10)) {
+          const isUnlocked = await storage.isThemeUnlocked(userId, 'halloween');
+          if (!isUnlocked) {
+            await storage.unlockTheme(userId, 'halloween');
+            //console.log(`🎃 Auto-unlocked Halloween theme for user ${userId} with streak ${user.bestWinStreak}`);
+          }
+        }
+      } catch (autoUnlockError) {
+        console.error('Error auto-unlocking Halloween theme:', autoUnlockError);
+      }
       
       // Add default themes that are always available
       const defaultThemes = [
@@ -1616,6 +1665,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error unlocking theme:", error);
       res.status(500).json({ message: "Failed to unlock theme" });
+    }
+  });
+
+  // Check and unlock Halloween theme based on streak
+  app.post('/api/themes/check-halloween', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      
+      // Get user's current stats
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const currentWinStreak = user.currentWinStreak || 0;
+      const bestWinStreak = user.bestWinStreak || 0;
+
+      // Check if user has 10+ consecutive wins (current or best)
+      if (currentWinStreak >= 10 || bestWinStreak >= 10) {
+        // Check if Halloween theme is already unlocked
+        const isUnlocked = await storage.isThemeUnlocked(userId, 'halloween');
+        
+        if (!isUnlocked) {
+          // Unlock Halloween theme
+          const theme = await storage.unlockTheme(userId, 'halloween');
+          res.json({ 
+            message: "Halloween theme unlocked! You earned it with your win streak!", 
+            theme,
+            currentStreak: currentWinStreak,
+            bestStreak: bestWinStreak
+          });
+        } else {
+          res.json({ 
+            message: "Halloween theme already unlocked", 
+            alreadyUnlocked: true,
+            currentStreak: currentWinStreak,
+            bestStreak: bestWinStreak
+          });
+        }
+      } else {
+        res.json({ 
+          message: "Need 10 consecutive wins to unlock Halloween theme", 
+          eligible: false,
+          currentStreak: currentWinStreak,
+          bestStreak: bestWinStreak,
+          needed: 10 - Math.max(currentWinStreak, bestWinStreak)
+        });
+      }
+    } catch (error) {
+      console.error("Error checking Halloween theme:", error);
+      res.status(500).json({ message: "Failed to check Halloween theme" });
     }
   });
 
@@ -1859,11 +1959,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/achievements/recalculate', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.user.userId;
-      console.log(`🔄 Recalculation request for user: ${userId}`);
+      //console.log(`🔄 Recalculation request for user: ${userId}`);
       
       const result = await storage.recalculateUserAchievements(userId);
       
-      console.log(`✅ Recalculation successful - removed: ${result.removed}, added: ${result.added.length}`);
+      //console.log(`✅ Recalculation successful - removed: ${result.removed}, added: ${result.added.length}`);
       
       res.json({
         success: true,
@@ -1914,14 +2014,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { friendId } = req.params;
       const userId = req.session.user.userId;
       
-      console.log(`📊 Head-to-head stats request: userId=${userId}, friendId=${friendId}`);
+      //console.log(`📊 Head-to-head stats request: userId=${userId}, friendId=${friendId}`);
       
       if (!friendId) {
         return res.status(400).json({ error: 'Friend ID is required' });
       }
       
       const stats = await storage.getHeadToHeadStats(userId, friendId);
-      console.log(`📊 Head-to-head stats result:`, stats);
+      //console.log(`📊 Head-to-head stats result:`, stats);
       res.json(stats);
     } catch (error) {
       console.error("📊 Error getting head-to-head stats:", error);
@@ -2142,7 +2242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const testEmail = req.session.user.email;
-      console.log(`🔬 Sending diagnostic test email to: ${testEmail}`);
+      //console.log(`🔬 Sending diagnostic test email to: ${testEmail}`);
       
       const success = await service.sendTestEmail(testEmail);
       
@@ -2215,15 +2315,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clean up duplicate bots and sync all AI bots with deterministic stats  
   app.post('/api/sync-bots', async (req, res) => {
     try {
-      console.log('🤖 Starting bot cleanup and sync...');
+      //console.log('🤖 Starting bot cleanup and sync...');
       
       // First, remove all existing bot entries to clean up duplicates
-      console.log('🧹 Cleaning up existing bot entries...');
+      //console.log('🧹 Cleaning up existing bot entries...');
       const botIds = AI_BOTS.map(bot => bot.id);
       for (const botId of botIds) {
         try {
           await storage.deleteUser(botId);
-          console.log(`🗑️ Removed existing bot: ${botId}`);
+          //console.log(`🗑️ Removed existing bot: ${botId}`);
         } catch (error) {
           // Bot might not exist, which is fine
           console.log(`ℹ️ Bot ${botId} not found for cleanup (expected)`);
@@ -2231,7 +2331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Now create fresh bots with ZERO stats (authentic data only)
-      console.log('🤖 Creating fresh bot entries with zero stats...');
+      //console.log('🤖 Creating fresh bot entries with zero stats...');
       let syncedCount = 0;
       
       for (let i = 0; i < AI_BOTS.length; i++) {
@@ -2251,10 +2351,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           draws: 0
         });
         syncedCount++;
-        console.log(`🤖 Created bot: ${bot.displayName} with authentic zero stats`);
+        //console.log(`🤖 Created bot: ${bot.displayName} with authentic zero stats`);
       }
       
-      console.log(`🤖 Successfully synced ${syncedCount} clean bot entries to database`);
+      //console.log(`🤖 Successfully synced ${syncedCount} clean bot entries to database`);
       res.json({ 
         success: true, 
         message: `Successfully cleaned and synced ${syncedCount} AI bots to database`,
@@ -5042,7 +5142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }));
                 }
 
-                console.log(`🏠 Room created via WebSocket: ${room.code} by user ${userId}`);
+                //console.log(`🏠 Room created via WebSocket: ${room.code} by user ${userId}`);
               } catch (error) {
                 console.error('Error creating room via WebSocket:', error);
                 if (createConnection.ws.readyState === WebSocket.OPEN) {
@@ -5240,7 +5340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 });
 
-                console.log(`🏠 User ${userId} joined room ${room.code} as ${role} via WebSocket`);
+                //console.log(`🏠 User ${userId} joined room ${room.code} as ${role} via WebSocket`);
               } catch (error) {
                 console.error('Error joining room via WebSocket:', error);
                 if (joinConnection.ws.readyState === WebSocket.OPEN) {
@@ -5439,7 +5539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                 }
 
-                console.log(`🎮 Game started via WebSocket: ${game.id} in room ${roomId}`);
+                //console.log(`🎮 Game started via WebSocket: ${game.id} in room ${roomId}`);
               } catch (error) {
                 console.error('Error starting game via WebSocket:', error);
                 if (startConnection.ws.readyState === WebSocket.OPEN) {
@@ -5853,13 +5953,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/user/mark-rank-popup-seen', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.user.userId;
-      const { month, year } = req.body;
+      const { weekNumber, year } = req.body;
       
-      if (!month || !year) {
-        return res.status(400).json({ error: 'Month and year are required' });
+      if (!weekNumber || !year) {
+        return res.status(400).json({ error: 'Week number and year are required' });
       }
       
-      await storage.markRankPopupSeen(userId, month, year);
+      await storage.markRankPopupSeen(userId, weekNumber, year);
       res.json({ success: true });
     } catch (error) {
       console.error('Error marking rank popup as seen:', error);

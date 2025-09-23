@@ -34,28 +34,49 @@ export function RoomManager({
   const { t } = useTranslation();
   const [joinCode, setJoinCode] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [isJoining, setIsJoining] = useState(false);
+  const [isJoiningAsPlayer, setIsJoiningAsPlayer] = useState(false);
+  const [isJoiningAsSpectator, setIsJoiningAsSpectator] = useState(false);
   const [currentJoinRequestId, setCurrentJoinRequestId] = useState<string | null>(null);
   const joinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const { sendMessage, isConnected } = useWebSocket();
   const queryClient = useQueryClient();
 
-  // Removed unused participants query - PlayerList handles participant data via WebSocket
+  // Fetch participants for the current room - reuse the same query key to share cache
+  const { data: participants = [] } = useQuery({
+    queryKey: ["/api/rooms", currentRoom?.id, "participants"], // Use same key as PlayerList
+    enabled: !!currentRoom,
+    staleTime: 3000, // Shorter stale time for real-time data
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    refetchOnMount: true, // Always fetch on mount for slow connections
+    refetchInterval: false, // Don't poll here, let PlayerList handle it
+  });
 
   // WebSocket event listeners for room joining
   useEffect(() => {
     const handleJoinRoomSuccess = (event: any) => {
-      const { room, requestId } = event.detail;
-      // Only handle if this is the response to our current request, or if no requestId correlation
-      if (!requestId || requestId === currentJoinRequestId) {
+      const { room, requestId, participants: roomParticipants } = event.detail;
+      // Accept late responses idempotently - don't discard based on requestId mismatch
+      const shouldProcess = !requestId || requestId === currentJoinRequestId || isJoiningAsPlayer || isJoiningAsSpectator;
+
+      if (shouldProcess) {
         // Clear timeout if it exists
         if (joinTimeoutRef.current) {
           clearTimeout(joinTimeoutRef.current);
           joinTimeoutRef.current = null;
         }
-        setIsJoining(false);
+        setIsJoiningAsPlayer(false);
+        setIsJoiningAsSpectator(false);
         setCurrentJoinRequestId(null);
+
+        // Hydrate participants cache if provided
+        if (roomParticipants && room?.id) {
+          queryClient.setQueryData(
+            ["/api/rooms", room.id, "participants"],
+            roomParticipants
+          );
+        }
+
         onRoomJoin(room);
         setJoinCode("");
         toast({
@@ -67,16 +88,19 @@ export function RoomManager({
 
     const handleJoinRoomError = (event: any) => {
       const { error, message, requestId } = event.detail;
-      // Only handle if this is the response to our current request, or if no requestId correlation
-      if (!requestId || requestId === currentJoinRequestId) {
+      // Accept late responses if still trying to join
+      const shouldProcess = !requestId || requestId === currentJoinRequestId || isJoiningAsPlayer || isJoiningAsSpectator;
+
+      if (shouldProcess) {
         // Clear timeout if it exists
         if (joinTimeoutRef.current) {
           clearTimeout(joinTimeoutRef.current);
           joinTimeoutRef.current = null;
         }
-        setIsJoining(false);
+        setIsJoiningAsPlayer(false);
+        setIsJoiningAsSpectator(false);
         setCurrentJoinRequestId(null);
-        
+
         // Handle insufficient coins error
         if (message && message.includes('coins')) {
           toast({
@@ -86,7 +110,7 @@ export function RoomManager({
           });
           return;
         }
-        
+
         toast({
           title: t('error'),
           description: message || 'Failed to join room. Please try again.',
@@ -158,7 +182,7 @@ export function RoomManager({
         title: t('error'),
         description: 'Request timed out. Please try again.',
       });
-      
+
       // Cleanup listeners on timeout
       window.removeEventListener('start_game_success', handleSuccess as EventListener);
       window.removeEventListener('start_game_error', handleError as EventListener);
@@ -167,14 +191,14 @@ export function RoomManager({
     const handleSuccess = (event: CustomEvent) => {
       // Allow events without requestId or matching requestId (server compatibility)
       if (event.detail.requestId && event.detail.requestId !== requestId) return;
-      
+
       if (startGameTimeoutRef.current) {
         clearTimeout(startGameTimeoutRef.current);
         startGameTimeoutRef.current = null;
       }
       currentStartGameRequestId.current = null;
       setIsStartingGame(false);
-      
+
       // Game started successfully - handle different payload shapes
       const gameData = event.detail.game || event.detail.data?.game || event.detail;
       onGameStart(gameData);
@@ -182,7 +206,7 @@ export function RoomManager({
         title: t('gameStarted'),
         description: t('letTheBattleBegin'),
       });
-      
+
       // Cleanup listeners
       window.removeEventListener('start_game_success', handleSuccess as EventListener);
       window.removeEventListener('start_game_error', handleError as EventListener);
@@ -191,17 +215,17 @@ export function RoomManager({
     const handleError = (event: CustomEvent) => {
       // Allow events without requestId or matching requestId (server compatibility)
       if (event.detail.requestId && event.detail.requestId !== requestId) return;
-      
+
       if (startGameTimeoutRef.current) {
         clearTimeout(startGameTimeoutRef.current);
         startGameTimeoutRef.current = null;
       }
       currentStartGameRequestId.current = null;
       setIsStartingGame(false);
-      
+
       const error = event.detail;
       console.error('Start game error:', error);
-      
+
       if (error.message && error.message.includes('unauthorized')) {
         toast({
           title: t('unauthorized'),
@@ -213,13 +237,13 @@ export function RoomManager({
         }, 500);
         return;
       }
-      
+
       toast({
         title: t('error'),
         description: error.message || 'Failed to start game. Please try again.',
         variant: "destructive",
       });
-      
+
       // Cleanup listeners
       window.removeEventListener('start_game_success', handleSuccess as EventListener);
       window.removeEventListener('start_game_error', handleError as EventListener);
@@ -261,14 +285,19 @@ export function RoomManager({
       return;
     }
 
-    setIsJoining(true);
+    if (role === 'player') {
+      setIsJoiningAsPlayer(true);
+    } else {
+      setIsJoiningAsSpectator(true);
+    }
     const requestId = Math.random().toString(36).substring(7);
     setCurrentJoinRequestId(requestId);
-    
+
     // Set timeout to handle no response scenarios
     joinTimeoutRef.current = setTimeout(() => {
       // Only timeout if we're still waiting for this specific request
-      setIsJoining(false);
+      setIsJoiningAsPlayer(false);
+      setIsJoiningAsSpectator(false);
       setCurrentJoinRequestId(null);
       joinTimeoutRef.current = null;
       toast({
@@ -276,8 +305,8 @@ export function RoomManager({
         description: 'Request timeout. Please try again.',
         variant: "destructive",
       });
-    }, 15000); // 15 second timeout
-    
+    }, 25000); // 25 second timeout for slow connections
+
     sendMessage({
       type: 'join_room_request',
       requestId,
@@ -314,26 +343,28 @@ export function RoomManager({
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <Button 
                   onClick={() => handleJoinRoom('player')}
-                  disabled={!joinCode.trim() || !isConnected || isJoining}
-                  className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                  disabled={!joinCode.trim() || isJoiningAsPlayer}
+                  className="w-full sm:flex-1 bg-green-600 hover:bg-green-700"
+                  data-testid="button-join-player"
                 >
-                  {isJoining ? 'Joining...' : t('joinAsPlayer')}
+                  {isJoiningAsPlayer ? t('loading') : t('joinAsPlayer')}
                 </Button>
                 <Button 
                   onClick={() => handleJoinRoom('spectator')}
-                  disabled={!joinCode.trim() || !isConnected || isJoining}
-                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  disabled={!joinCode.trim() || isJoiningAsSpectator}
+                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700"
+                  data-testid="button-join-spectator"
                 >
-                  {isJoining ? 'Joining...' : t('joinAsSpectator')}
+                  {isJoiningAsSpectator ? t('loading') : t('joinAsSpectator')}
                 </Button>
               </div>
             </div>
-            
+
             {/* Create Room */}
             <Button 
               onClick={onCreateRoom}
               className="w-full bg-purple-600 hover:bg-purple-700"
-              disabled={isJoining}
+              data-testid="button-create-room"
             >
               <Plus className="w-4 h-4 mr-2" />
               {t('createNewRoom')}
@@ -354,7 +385,7 @@ export function RoomManager({
                 </Badge>
               </div>
               <div className="text-sm text-gray-400">
-                Room #{currentRoom.code}
+                {t('roomLabel')} #{currentRoom.code}
               </div>
               <div className="text-sm text-gray-400">
                 {currentRoom.name}
@@ -394,7 +425,7 @@ export function RoomManager({
                   <LogOut className="w-4 h-4" />
                 </Button>
               </div>
-              
+
               {/* Invite friends button (only for room owner and when not playing) */}
               {currentRoom.ownerId === (user?.userId || user?.id) && currentRoom.status !== 'playing' && (
                 <Button
@@ -410,7 +441,7 @@ export function RoomManager({
           </>
         )}
       </CardContent>
-      
+
       {/* Invite Friends Modal */}
       {currentRoom && (
         <InviteFriendsModal
