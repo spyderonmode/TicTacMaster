@@ -2326,7 +2326,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           //console.log(`🗑️ Removed existing bot: ${botId}`);
         } catch (error) {
           // Bot might not exist, which is fine
-          console.log(`ℹ️ Bot ${botId} not found for cleanup (expected)`);
+          //console.log(`ℹ️ Bot ${botId} not found for cleanup (expected)`);
         }
       }
       
@@ -2369,7 +2369,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Reset all bot statistics to authentic data only
   app.post('/api/reset-bot-stats', async (req, res) => {
     try {
-      console.log('🧹 Starting bot statistics reset...');
+      //console.log('🧹 Starting bot statistics reset...');
       await storage.resetAllBotStats();
       res.json({ 
         success: true, 
@@ -2434,7 +2434,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           roomId: undefined,
           lastSeen: new Date()
         };
-        console.log(`📨 Using database info for in-game sender: ${senderId}`);
+        //console.log(`📨 Using database info for in-game sender: ${senderId}`);
       }
 
       // Find ALL connections for target user (they might have multiple connections)
@@ -2835,12 +2835,12 @@ export async function registerRoutes(app: Express): Promise<void> {
             for (const [roomId, roomUsers] of roomConnections.entries()) {
               if (roomId !== room.id && roomUsers.has(connId)) {
                 roomUsers.delete(connId);
-                console.log(`🧹 Removed player ${playerId} from old room ${roomId} before adding to new match room ${room.id}`);
+                //console.log(`🧹 Removed player ${playerId} from old room ${roomId} before adding to new match room ${room.id}`);
                 
                 // Clean up empty rooms
                 if (roomUsers.size === 0) {
                   roomConnections.delete(roomId);
-                  console.log(`🧹 Deleted empty room ${roomId}`);
+                  //console.log(`🧹 Deleted empty room ${roomId}`);
                 }
               }
             }

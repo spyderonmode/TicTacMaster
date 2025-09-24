@@ -341,7 +341,7 @@ export function setupAuth(app: Express) {
       cookie: {
         secure: isHTTPS,
         httpOnly: true,
-        sameSite: 'none',
+        sameSite: isProduction ? 'lax' : 'lax', // 'lax' works better for production
         maxAge: 100 * 365 * 24 * 60 * 60 * 1000, // 100 years in ms
         domain: undefined,
       },

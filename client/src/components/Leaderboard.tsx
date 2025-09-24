@@ -247,8 +247,8 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   };
 
   const defaultTrigger = (
-    <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-400 hover:text-white" data-testid="button-leaderboard">
-      <Trophy className="w-4 h-4 text-yellow-500" />
+    <Button variant="ghost" size="sm" className="flex items-center gap-1 text-gray-400 hover:text-white px-2 py-1 h-8" data-testid="button-leaderboard">
+      <Trophy className="w-3 h-3 text-yellow-500" />
       {t('Leaderboard') || 'Leaderboard'}
     </Button>
   );
@@ -361,14 +361,14 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
             {/* यह वह सेक्शन है जो टाइम लेफ्ट दिखाता है, जिसे आपको Weekly Leaderboard शीर्षक के ठीक नीचे रखना है। */}
           </DialogHeader>
 
-          <div className="flex justify-center my-2">
+          <div className="flex justify-center my-1">
             <Button
               variant="ghost"
               onClick={() => setShowRewards(true)}
-              className="group flex items-center gap-2 text-yellow-400 hover:bg-gray-800/50 transition-colors"
+              className="group flex items-center gap-1 text-yellow-400 hover:bg-gray-800/50 transition-colors px-2 py-1 h-7"
             >
-              <span className="text-sm font-medium">{t('Time & Reward') || 'Time & Reward'}: {formatNumber(rewardData[0].coins)} <Coins className="w-4 h-4 inline-block" /></span>
-              <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
+              <span className="text-xs font-medium">{t('Time & Reward') || 'Time & Reward'}: {formatNumber(rewardData[0].coins)} <Coins className="w-3 h-3 inline-block" /></span>
+              <ChevronDown className="w-3 h-3 transition-transform group-hover:rotate-180" />
             </Button>
           </div>
 
@@ -446,7 +446,8 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
             <Button
               onClick={handleClose}
               variant="ghost"
-              className={`text-white hover:bg-gray-800 ${isArabic ? 'font-arabic' : ''}`}
+              size="sm"
+              className={`text-white hover:bg-gray-800 px-3 py-1 h-7 text-sm ${isArabic ? 'font-arabic' : ''}`}
               data-testid="button-close"
             >
               {t('close') || 'Close'}
@@ -475,8 +476,8 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
               <Coins className="w-5 h-5 text-yellow-400" />
               {t('Weekly Rewards') || 'Weekly Rewards'}
             </DialogTitle>
-            <Button variant="ghost" size="sm" onClick={() => setShowRewards(false)} className="text-gray-400 hover:text-white">
-              <X className="w-5 h-5" />
+            <Button variant="ghost" size="sm" onClick={() => setShowRewards(false)} className="text-gray-400 hover:text-white p-1 h-6 w-6">
+              <X className="w-3 h-3" />
             </Button>
           </DialogHeader>
           <DialogDescription className="text-gray-400">

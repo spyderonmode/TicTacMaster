@@ -1,5 +1,4 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -9,19 +8,6 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 app.set('trust proxy', 1);
-// 🔐 Setup session before routes
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "W13KtlyRasvYl3bzL4ZQsxBp40/f2D1rogkzczhNLNU=",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // only true in production
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    },
-  })
-);
 
 // 🚀 Universal CORS setup (or you can move this into registerRoutes)
 const allowedOrigins = [
