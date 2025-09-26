@@ -19,9 +19,11 @@ interface MatchmakingModalProps {
   user: any;
   isWebSocketConnected?: boolean;
   refreshWebSocketConnection?: () => void;
+  currentRoom?: any;
+  leaveRoom?: (roomId: string) => void;
 }
 
-export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocketConnected = true, refreshWebSocketConnection }: MatchmakingModalProps) {
+export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocketConnected = true, refreshWebSocketConnection, currentRoom, leaveRoom }: MatchmakingModalProps) {
   const { t } = useTranslation();
   const [isSearching, setIsSearching] = useState(false);
   const [searchTime, setSearchTime] = useState(0);
@@ -283,6 +285,17 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
 
   const handleStartSearch = async () => {
     console.log('🎮 MatchmakingModal: Pre-matchmaking connection validation');
+    
+    // Auto-leave current room before starting matchmaking to prevent connection conflicts
+    if (currentRoom && leaveRoom) {
+      console.log(`🏠 Auto-leaving current room ${currentRoom.id} before starting matchmaking`);
+      leaveRoom(currentRoom.id);
+      toast({
+        title: "Left Room",
+        description: "Left previous room to start matchmaking",
+        duration: 2000,
+      });
+    }
     
     // CRITICAL FIX: Always test WebSocket connectivity with ping before matchmaking
     if (!isWebSocketConnected) {

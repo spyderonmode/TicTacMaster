@@ -1622,6 +1622,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           { id: 'halloween', name: 'Halloween', unlocked: await storage.isThemeUnlocked(userId, 'halloween') },
           { id: 'christmas', name: 'Christmas', unlocked: await storage.isThemeUnlocked(userId, 'christmas') },
           { id: 'summer', name: 'Summer', unlocked: await storage.isThemeUnlocked(userId, 'summer') },
+          { id: 'level_100_frame', name: 'Level 100 Master', unlocked: await storage.isThemeUnlocked(userId, 'level_100_frame') },
         ];
       } catch (themeError) {
         console.error('Error checking theme unlock status:', themeError);
@@ -1630,6 +1631,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           { id: 'halloween', name: 'Halloween', unlocked: false },
           { id: 'christmas', name: 'Christmas', unlocked: false },
           { id: 'summer', name: 'Summer', unlocked: false },
+          { id: 'level_100_frame', name: 'Level 100 Master', unlocked: false },
         ];
       }
       
@@ -3162,38 +3164,27 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ message: "Invalid role. Must be 'player' or 'spectator'" });
       }
 
-      // Check if user has enough coins for online play as a player (100 coins required)
-      if (role === 'player') {
-        try {
-          const userCoins = await storage.getUserCoins(userId);
-          if (userCoins < 100) {
-            return res.status(403).json({ 
-              error: 'Insufficient coins',
-              message: `You need 100 coins to join as a player. You have ${userCoins} coins. Win AI games to earn coins! You can still join as a spectator.`,
-              requiredCoins: 100,
-              currentCoins: userCoins
-            });
-          }
-        } catch (error) {
-          console.error('Error checking user coins for room joining:', error);
-          // Allow room joining even if coin check fails to avoid blocking players
-        }
-      }
-
+      // PERFORMANCE FIX: Get room first, then run remaining queries in parallel
       const room = await storage.getRoomByCode(code);
       if (!room) {
         return res.status(404).json({ message: "Room not found" });
       }
 
-      // Get room status information for better UX
-      const [latestGame] = await db
-        .select()
-        .from(games)
-        .where(eq(games.roomId, room.id))
-        .orderBy(desc(games.createdAt))
-        .limit(1);
-      
-      const participants = await storage.getRoomParticipants(room.id);
+      // Run remaining queries in parallel to reduce latency
+      const [participants, userCoins] = await Promise.all([
+        storage.getRoomParticipants(room.id),
+        role === 'player' ? storage.getUserCoins(userId).catch(() => 999) : Promise.resolve(999) // Default to allow join on error
+      ]);
+
+      // Check coins after getting room info
+      if (role === 'player' && userCoins < 100) {
+        return res.status(403).json({ 
+          error: 'Insufficient coins',
+          message: `You need 1000 coins to join as a player. You have ${userCoins} coins. Win AI games to earn coins! You can still join as a spectator.`,
+          requiredCoins: 1000,
+          currentCoins: userCoins
+        });
+      }
       
       // Check if user is already in the room
       const existingParticipant = participants.find(p => p.userId === userId);
@@ -3201,20 +3192,19 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.json({ message: "Already in room", room });
       }
 
-      // Check if room is full (only for players, spectators can always join)
+      // Check capacity constraints
       const playerCount = participants.filter(p => p.role === 'player').length;
+      const spectatorCount = participants.filter(p => p.role === 'spectator').length;
+      
       if (role === 'player' && playerCount >= 2) {
         return res.status(400).json({ message: "Room is full" });
       }
       
-      // Check spectator limit - allow up to 50 spectators per room
-      const maxSpectators = 50;
-      const spectatorCount = participants.filter(p => p.role === 'spectator').length;
-      
-      if (role === 'spectator' && spectatorCount >= maxSpectators) {
+      if (role === 'spectator' && spectatorCount >= 50) {
         return res.status(400).json({ message: "Spectator limit reached" });
       }
 
+      // Add participant to room
       await storage.addRoomParticipant({
         roomId: room.id,
         userId,

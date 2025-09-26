@@ -139,6 +139,21 @@ export function AchievementBorderSelector({ user }: AchievementBorderSelectorPro
             🌟 Legend
           </motion.div>
         );
+      case 'level_100_master':
+        return (
+          <motion.div
+            animate={{
+              boxShadow: [
+                "0 0 15px #fbbf24", "0 0 25px #f59e0b", "0 0 35px #d97706"
+              ],
+              scale: [1, 1.05, 1],
+            }}
+            transition={{ duration: 2.0, repeat: Infinity, ease: "easeInOut" }}
+            className={`${baseStyle} border-3 border-double border-amber-500 bg-gradient-to-r from-amber-900/40 via-yellow-800/40 to-amber-900/40`}
+          >
+            🏅 Level 100 Master
+          </motion.div>
+        );
       default:
         return (
           <div className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-800">

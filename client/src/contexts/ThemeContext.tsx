@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type GameTheme = 'default' | 'neon' | 'autumn' | 'minimalist' | 'nature' | 'space' | 'halloween' | 'christmas' | 'summer';
+export type GameTheme = 'default' | 'neon' | 'autumn' | 'minimalist' | 'nature' | 'space' | 'halloween' | 'christmas' | 'summer' | 'level_100_frame';
 
 interface ThemeContextType {
   currentTheme: GameTheme;
@@ -137,6 +137,19 @@ const themes = {
     textColor: 'text-yellow-900',
     borderColor: 'border-yellow-400',
     winningCellStyle: 'bg-gradient-to-br from-yellow-400 to-blue-400 shadow-lg shadow-yellow-400/50 border-yellow-300'
+  },
+  level_100_frame: {
+    name: 'Level 100 Master',
+    description: 'Elite golden theme for level 100 masters',
+    boardStyle: 'bg-gradient-to-br from-amber-800 to-yellow-700 border-amber-500 shadow-2xl shadow-amber-500/40',
+    cellStyle: 'bg-gradient-to-br from-amber-700 to-yellow-600 border-amber-400 text-amber-100 hover:from-amber-600 hover:to-yellow-500 transition-all duration-300 shadow-md',
+    cellHoverStyle: 'hover:from-amber-600 hover:to-yellow-500 transition-all duration-300',
+    playerXColor: 'text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.9)] font-bold',
+    playerOColor: 'text-yellow-300 drop-shadow-[0_0_12px_rgba(253,224,71,0.9)] font-bold',
+    backgroundColor: 'bg-gradient-to-br from-amber-900 to-yellow-800',
+    textColor: 'text-amber-100',
+    borderColor: 'border-amber-500',
+    winningCellStyle: 'bg-gradient-to-br from-amber-400 to-yellow-400 shadow-2xl shadow-amber-400/60 border-amber-300 animate-pulse'
   }
 };
 

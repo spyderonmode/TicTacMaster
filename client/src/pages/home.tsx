@@ -2016,6 +2016,8 @@ export default function Home() {
         open={showCreateRoom}
         onClose={() => setShowCreateRoom(false)}
         onRoomCreated={handleRoomJoin}
+        currentRoom={currentRoom}
+        leaveRoom={leaveRoom}
       />
 
       <GameOverModal 
@@ -2056,6 +2058,8 @@ export default function Home() {
         user={user}
         isWebSocketConnected={isConnected}
         refreshWebSocketConnection={refreshConnection}
+        currentRoom={currentRoom}
+        leaveRoom={leaveRoom}
       />
 
       <OnlineUsersModal 

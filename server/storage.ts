@@ -112,6 +112,7 @@ export interface IStorage {
   // Achievement operations
   createAchievement(achievement: InsertAchievement): Promise<Achievement>;
   getUserAchievements(userId: string): Promise<Achievement[]>;
+  getUserAchievementsFast(userId: string): Promise<Achievement[]>
   hasAchievement(userId: string, achievementType: string): Promise<boolean>;
   checkAndGrantAchievements(userId: string, gameResult: 'win' | 'loss' | 'draw', gameData?: any): Promise<Achievement[]>;
 
@@ -503,18 +504,20 @@ export class DatabaseStorage implements IStorage {
 
         // Check achievements for both players
         if (winnerId) {
-          // Winner achievements
-          await this.checkAndGrantAchievements(winnerId, 'win', gameData);
-
-          // Loser achievements
+          // Define loser ID
           const loserId = winnerId === game.playerXId ? game.playerOId : game.playerXId;
-          await this.checkAndGrantAchievements(loserId, 'loss', gameData);
 
-          // Update user stats for winner and loser (only for online games)
+          // Update user stats for winner and loser (only for online games) - BEFORE achievements
           if (game.gameMode === 'online') {
             await this.updateUserStats(winnerId, 'win');
             await this.updateUserStats(loserId, 'loss');
           }
+
+          // Winner achievements (after stats update to ensure level calculation is accurate)
+          await this.checkAndGrantAchievements(winnerId, 'win', gameData);
+
+          // Loser achievements
+          await this.checkAndGrantAchievements(loserId, 'loss', gameData);
 
           // Process coin transactions based on game mode
           try {
@@ -1291,6 +1294,17 @@ export class DatabaseStorage implements IStorage {
 
     return currentAchievements;
   }
+   
+  
+  // PERFORMANCE OPTIMIZATION: Fast achievement fetching without validation for room joins
+  async getUserAchievementsFast(userId: string): Promise<Achievement[]> {
+    return await db
+      .select()
+      .from(achievements)
+      .where(eq(achievements.userId, userId))
+      .orderBy(desc(achievements.unlockedAt))
+      .limit(3); // Only get top 3 achievements for performance
+  }
 
   async hasAchievement(userId: string, achievementType: string): Promise<boolean> {
     const [achievement] = await db
@@ -1322,6 +1336,9 @@ export class DatabaseStorage implements IStorage {
       // Define what achievements should exist
       const shouldHaveAchievements: string[] = [];
 
+       // Calculate current level for level-based achievements
+      const currentLevel = getLevelFromWins(userStats.wins);
+
       if (userStats.wins >= 1) shouldHaveAchievements.push('first_win');
       if (bestWinStreak >= 5) shouldHaveAchievements.push('win_streak_5');
       if (bestWinStreak >= 10) shouldHaveAchievements.push('win_streak_10');
@@ -1331,6 +1348,7 @@ export class DatabaseStorage implements IStorage {
       if (userStats.wins >= 50) shouldHaveAchievements.push('legend');
       if (userStats.wins >= 100) shouldHaveAchievements.push('champion');
       if (userStats.wins >= 200) shouldHaveAchievements.push('grandmaster');
+      if (currentLevel >= 100) shouldHaveAchievements.push('level_100_master');
       if (totalGames >= 100) shouldHaveAchievements.push('veteran_player');
       if (totalGames >= 500) shouldHaveAchievements.push('ultimate_veteran');
 
@@ -1369,6 +1387,7 @@ export class DatabaseStorage implements IStorage {
           'legend': { name: 'legend', description: 'achieveFiftyTotalWins', icon: '🌟' },
           'champion': { name: 'champion', description: 'achieveOneHundredTotalWins', icon: '👑' },
           'grandmaster': { name: 'grandmaster', description: 'achieveTwoHundredTotalWins', icon: '💎' },
+          'level_100_master': { name: 'level100Master', description: 'reachLevelOneHundred', icon: '🏅' },
           'veteran_player': { name: 'veteranPlayer', description: 'playOneHundredTotalGames', icon: '🎖️' },
           'ultimate_veteran': { name: 'ultimateVeteran', description: 'playFiveHundredTotalGames', icon: '🔥' }
         };
@@ -1429,7 +1448,8 @@ export class DatabaseStorage implements IStorage {
       // Get user for win streak data
       const user = await this.getUser(userId);
       const bestWinStreak = user?.bestWinStreak || 0;
-
+// Calculate current level for level-based achievements
+      const currentLevel = getLevelFromWins(userStats.wins);
       // Check special conditions
       const hasDiagonalWins = await this.checkDiagonalWins(userId, 3);
       const hasComeback = await this.checkComebackCondition(userId);
@@ -1490,6 +1510,13 @@ export class DatabaseStorage implements IStorage {
           description: 'achieveOneHundredTotalWins',
           icon: '👑',
           condition: userStats.wins >= 100,
+        },
+        {
+          type: 'level_100_master',
+          name: 'level100Master',
+          description: 'reachLevelOneHundred',
+          icon: '🏅',
+          condition: currentLevel >= 100,
         },
         {
           type: 'veteran_player',
@@ -1623,6 +1650,13 @@ export class DatabaseStorage implements IStorage {
         condition: gameResult === 'win' && userStats.wins === 100,
       },
       {
+        type: 'level_100_master',
+        name: 'level100Master',
+        description: 'reachLevelOneHundred',
+        icon: '🏅',
+        condition: gameResult === 'win' && getLevelFromWins(userStats.wins) >= 100,
+      },
+      {
         type: 'grandmaster',
         name: 'grandmaster',
         description: 'achieveTwoHundredTotalWins',
@@ -1661,6 +1695,8 @@ export class DatabaseStorage implements IStorage {
               await this.unlockTheme(userId, 'christmas');
             } else if (achievement.type === 'veteran_player') {
               await this.unlockTheme(userId, 'summer');
+              } else if (achievement.type === 'level_100_master') {
+              await this.unlockTheme(userId, 'level_100_frame');
             }
           }
         } catch (error) {
@@ -1702,6 +1738,7 @@ export class DatabaseStorage implements IStorage {
         { type: 'speed_demon', condition: userStats.wins >= 20 },
         { type: 'legend', condition: userStats.wins >= 50 },
         { type: 'champion', condition: userStats.wins >= 100 },
+        { type: 'level_100_master', condition: getLevelFromWins(userStats.wins) >= 100 },
         { type: 'grandmaster', condition: userStats.wins >= 200 },
         { type: 'veteran_player', condition: totalGames >= 100 },
         { type: 'ultimate_veteran', condition: totalGames >= 500 },
@@ -1831,6 +1868,9 @@ export class DatabaseStorage implements IStorage {
       }
       if (achievementTypes.includes('veteran_player')) {
         await this.unlockTheme(userId, 'summer');
+      }
+      if (achievementTypes.includes('level_100_master')) {
+        await this.unlockTheme(userId, 'level_100_frame');
       }
     } catch (error) {
       console.error('Error checking theme unlocks:', error);

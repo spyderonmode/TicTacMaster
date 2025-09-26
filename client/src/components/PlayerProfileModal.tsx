@@ -73,6 +73,7 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
 
   const getAchievementLevel = (profile: PlayerProfile | undefined) => {
     if (!profile) return 'none';
+    if (profile.level >= 100) return 'level100Master';
     if (profile.totalGames >= 500) return 'ultimateVeteran';
     if (profile.wins >= 200) return 'grandmaster';
     if (profile.wins >= 100) return 'champion';
@@ -86,6 +87,33 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
     const level = getAchievementLevel(profile);
     
     switch (level) {
+      case 'level100Master':
+        return (
+          <motion.span
+            animate={{
+              textShadow: [
+                "0 0 15px #fbbf24, 0 0 25px #f59e0b, 0 0 35px #d97706",
+                "0 0 20px #d97706, 0 0 30px #b45309, 0 0 40px #92400e",
+                "0 0 18px #92400e, 0 0 28px #fbbf24, 0 0 38px #f59e0b"
+              ],
+              scale: [1, 1.08, 1],
+              filter: [
+                "brightness(1.2) saturate(1.4)",
+                "brightness(1.5) saturate(1.8)",
+                "brightness(1.2) saturate(1.4)"
+              ]
+            }}
+            transition={{
+              duration: 2.5,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="font-bold text-xl truncate text-amber-400"
+            data-testid={`level-master-name-${profile.id}`}
+          >
+            🏅 {profile.displayName}
+          </motion.span>
+        );
       case 'ultimateVeteran':
         return (
           <motion.span

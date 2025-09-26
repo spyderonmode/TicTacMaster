@@ -13,9 +13,11 @@ interface CreateRoomModalProps {
   open: boolean;
   onClose: () => void;
   onRoomCreated: (room: any) => void;
+  currentRoom?: any;
+  leaveRoom?: (roomId: string) => void;
 }
 
-export function CreateRoomModal({ open, onClose, onRoomCreated }: CreateRoomModalProps) {
+export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, leaveRoom }: CreateRoomModalProps) {
   const { t } = useTranslation();
   const [roomName, setRoomName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState("2");
@@ -112,6 +114,17 @@ export function CreateRoomModal({ open, onClose, onRoomCreated }: CreateRoomModa
         variant: "destructive",
       });
       return;
+    }
+
+    // Auto-leave current room before creating a new one to prevent connection conflicts
+    if (currentRoom && leaveRoom) {
+      console.log(`🏠 Auto-leaving current room ${currentRoom.id} before creating new room`);
+      leaveRoom(currentRoom.id);
+      toast({
+        title: "Left Room",
+        description: "Left previous room to create a new one",
+        duration: 2000,
+      });
     }
 
     setIsCreating(true);

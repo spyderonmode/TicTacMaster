@@ -48,6 +48,8 @@ export function AchievementModal({ open, onClose, userId, user }: AchievementMod
         return t('grandmaster');
       case 'ultimate_veteran':
         return t('ultimateVeteran');
+      case 'level_100_master':
+        return t('level100Master');
       default:
         return originalName;
     }
@@ -83,6 +85,8 @@ export function AchievementModal({ open, onClose, userId, user }: AchievementMod
         return t('achieveTwoHundredTotalWins');
       case 'ultimate_veteran':
         return t('playFiveHundredTotalGames');
+      case 'level_100_master':
+        return t('reachLevelOneHundred');
       default:
         return originalDescription;
     }
@@ -146,7 +150,7 @@ export function AchievementModal({ open, onClose, userId, user }: AchievementMod
     {
       title: t('experienceAchievements'),
       icon: <Star className="w-5 h-5" />,
-      types: ['veteran_player', 'ultimate_veteran']
+      types: ['veteran_player', 'ultimate_veteran', 'level_100_master']
     }
   ];
 
@@ -167,6 +171,7 @@ export function AchievementModal({ open, onClose, userId, user }: AchievementMod
     { type: 'champion', name: t('champion'), description: t('achieveOneHundredTotalWins'), icon: '👑' },
     { type: 'grandmaster', name: t('grandmaster'), description: t('achieveTwoHundredTotalWins'), icon: '💎' },
     { type: 'ultimate_veteran', name: t('ultimateVeteran'), description: t('playFiveHundredTotalGames'), icon: '🔥' },
+    { type: 'level_100_master', name: t('level100Master'), description: t('reachLevelOneHundred'), icon: '🏅' },
   ];
 
   return (
