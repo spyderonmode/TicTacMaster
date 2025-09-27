@@ -9,9 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { apiRequest } from "@/lib/queryClient";
-import { User, Clock, Users, UserX, UserCheck, Eye, UserPlus } from "lucide-react";
-import { showUserFriendlyError } from "@/lib/errorUtils";
-import { UserProfileModal } from "./UserProfileModal";
+import { User, Clock, Users, UserPlus } from "lucide-react";
 
 interface OnlineUsersModalProps {
   open: boolean;
@@ -25,12 +23,9 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { isOnline } = useOnlineStatus();
-  const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
-  const [friends, setFriends] = useState<Set<string>>(new Set());
-  const [profileUser, setProfileUser] = useState<any>(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [pendingFriendRequestId, setPendingFriendRequestId] = useState<string | null>(null);
 
-  const { data: onlineUsers, isLoading } = useQuery({
+  const { data: onlineUsers, isLoading } = useQuery<{ total: number; users: any[] }>({
     queryKey: ["/api/users/online"],
     refetchInterval: open ? 60000 : false, // Increased to 15s and only when modal is open
     enabled: open,
@@ -39,124 +34,45 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
     refetchOnMount: false,
   });
 
-  // Fetch blocked users
-  const { data: blockedUsersData } = useQuery({
-    queryKey: ["/api/users/blocked"],
-    enabled: open,
-  });
-
-  // Fetch friends
-  const { data: friendsData } = useQuery({
-    queryKey: ["/api/friends"],
-    enabled: open,
-  });
-
-  // Update blocked users state when data changes
-  useEffect(() => {
-    if (blockedUsersData) {
-      setBlockedUsers(new Set(blockedUsersData.map((blocked: any) => blocked.blockedId)));
+  // Function to send friend requests with per-user pending state
+  const handleSendFriendRequest = async (requestedId: string) => {
+    if (pendingFriendRequestId) return; // Prevent multiple simultaneous requests
+    
+    setPendingFriendRequestId(requestedId);
+    
+    try {
+      await apiRequest('/api/friends/request', {
+        method: 'POST',
+        body: JSON.stringify({ requestedId }),
+      });
+      
+      toast({
+        title: t('success'),
+        description: t('friendRequestSent') || 'Friend request sent!',
+      });
+      
+      // Invalidate friend-related queries to update UI
+      queryClient.invalidateQueries({ queryKey: ['/api/friends'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/friends/requests'] });
+    } catch (error: any) {
+      toast({
+        title: t('error'),
+        description: error.message || 'Failed to send friend request',
+        variant: 'destructive',
+      });
+    } finally {
+      setPendingFriendRequestId(null);
     }
-  }, [blockedUsersData]);
-
-  // Update friends state when data changes
-  useEffect(() => {
-    if (friendsData) {
-      setFriends(new Set(friendsData.map((friend: any) => friend.id)));
-    }
-  }, [friendsData]);
-
-
-
-  const blockUserMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      return await apiRequest('/api/users/block', { method: 'POST', body: { userId } });
-    },
-    onSuccess: (_, userId) => {
-      setBlockedUsers(prev => new Set(prev).add(userId));
-      queryClient.invalidateQueries({ queryKey: ["/api/users/blocked"] });
-      toast({
-        title: t('userBlocked'),
-        description: t('userBlockedSuccessfully'),
-      });
-    },
-    onError: (error: any) => {
-      showUserFriendlyError(error, toast);
-    },
-  });
-
-  const unblockUserMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      return await apiRequest('/api/users/unblock', { method: 'POST', body: { userId } });
-    },
-    onSuccess: (_, userId) => {
-      setBlockedUsers(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(userId);
-        return newSet;
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/users/blocked"] });
-      toast({
-        title: t('userUnblocked'),
-        description: t('userUnblockedSuccessfully'),
-      });
-    },
-    onError: (error: any) => {
-      showUserFriendlyError(error, toast);
-    },
-  });
-
-  const sendFriendRequestMutation = useMutation({
-    mutationFn: async (requestedId: string) => {
-      return await apiRequest('/api/friends/request', { method: 'POST', body: { requestedId } });
-    },
-    onSuccess: (_, requestedId) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/friends/requests"] });
-      toast({
-        title: t('friendRequestSent'),
-        description: t('friendRequestSentSuccessfully'),
-      });
-    },
-    onError: (error: any) => {
-      // Handle specific friend request errors
-      if (error.message?.includes('already exists') || error.message?.includes('already sent')) {
-        toast({
-          title: t('error'),
-          description: t('friendRequestAlreadyExists'),
-          variant: 'destructive',
-        });
-      } else if (error.message?.includes('already friends')) {
-        toast({
-          title: t('error'),
-          description: t('alreadyFriends'),
-          variant: 'destructive',
-        });
-      } else {
-        showUserFriendlyError(error, toast);
-      }
-    },
-  });
-
-
-
-
-
-  const handleBlockUser = (userId: string) => {
-    blockUserMutation.mutate(userId);
   };
 
-  const handleUnblockUser = (userId: string) => {
-    unblockUserMutation.mutate(userId);
-  };
 
-  const handleAddFriend = (userId: string) => {
-    sendFriendRequestMutation.mutate(userId);
-  };
 
-  const handleViewProfile = (user: any) => {
-    setProfileUser(user);
-    setShowProfileModal(true);
-  };
+
+
+
+
+
+
 
 
 
@@ -176,7 +92,7 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -187,7 +103,7 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
         <div className="space-y-4">
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>{t('onlinePlayers')}:</strong> {t('viewPlayerProfilesAndManageInteractions')}
+              <strong>{t('onlinePlayers')}:</strong> {t('players')}
             </p>
           </div>
               
@@ -196,112 +112,51 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : (
-                <ScrollArea className="h-[400px] w-full">
+                <ScrollArea className="h-[500px] w-full">
                   <div className="space-y-2">
-                    {onlineUsers?.users?.length > 0 ? (
-                      onlineUsers.users.map((user: any) => {
-                        const isBlocked = blockedUsers.has(user.userId);
-                        const isFriend = friends.has(user.userId);
+                    {onlineUsers?.users && onlineUsers.users.length > 0 ? (
+                      onlineUsers.users.map((onlineUser: any) => {
                         return (
-                          <Card key={user.userId} className={`p-3 cursor-pointer transition-colors ${isBlocked ? 'opacity-50 border-red-200 dark:border-red-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-                            <div className="space-y-3">
-                              {/* User Info Row */}
-                              <div className="flex items-center gap-3">
-                                {user.profilePicture || user.profileImageUrl ? (
-                                  <img
-                                    src={user.profilePicture || user.profileImageUrl}
-                                    alt={t('profile')}
-                                    className="h-10 w-10 rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
-                                    <User className="h-5 w-5 text-white" />
-                                  </div>
-                                )}
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-medium">
-                                      {user.displayName || user.firstName || user.username}
-                                    </h3>
-                                    {isBlocked && (
-                                      <Badge variant="destructive" className="text-xs">
-                                        {t('blocked')}
-                                      </Badge>
-                                    )}
-                                    {user.inRoom && (
-                                      <Badge variant="secondary" className="text-xs">{t('inRoom')}</Badge>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Clock className="h-3 w-3" />
-                                    {formatLastSeen(user.lastSeen)}
-                                  </div>
+                          <Card key={onlineUser.userId} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <div className="flex items-center gap-2">
+                              {onlineUser.profilePicture || onlineUser.profileImageUrl ? (
+                                <img
+                                  src={onlineUser.profilePicture || onlineUser.profileImageUrl}
+                                  alt={t('profile')}
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                                  <User className="h-4 w-4 text-white" />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <h3 className="font-medium text-sm">
+                                    {onlineUser.displayName || onlineUser.firstName || onlineUser.username}
+                                  </h3>
+                                  {onlineUser.inRoom && (
+                                    <Badge variant="secondary" className="text-xs">{t('inRoom')}</Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  {formatLastSeen(onlineUser.lastSeen)}
                                 </div>
                               </div>
-                              
-                              {/* Action Buttons Row */}
-                              <div className="flex items-center gap-2 flex-wrap">
+                              {/* Add Friend Button - Only show if not the current user */}
+                              {onlineUser.userId !== ((user as any)?.userId || (user as any)?.id) && (
                                 <Button
-                                  size="sm"
                                   variant="outline"
-                                  onClick={() => handleViewProfile(user)}
-                                  className="text-blue-600 hover:text-blue-700"
+                                  size="sm"
+                                  onClick={() => handleSendFriendRequest(onlineUser.userId)}
+                                  disabled={pendingFriendRequestId === onlineUser.userId}
+                                  className="ml-2"
+                                  data-testid={`button-add-friend-${onlineUser.userId}`}
                                 >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  {t('profile')}
+                                  <UserPlus className="h-3 w-3 mr-1" />
+                                  {pendingFriendRequestId === onlineUser.userId ? t('loading') : t('addFriend') || 'Add Friend'}
                                 </Button>
-                                
-                                {!isFriend && !isBlocked && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleAddFriend(user.userId)}
-                                    disabled={sendFriendRequestMutation.isPending}
-                                    className="text-green-600 hover:text-green-700"
-                                  >
-                                    <UserPlus className="h-4 w-4 mr-1" />
-                                    {t('addFriend')}
-                                  </Button>
-                                )}
-                                
-                                {isBlocked ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleUnblockUser(user.userId)}
-                                    disabled={unblockUserMutation.isPending}
-                                    className="text-green-600 hover:text-green-700"
-                                  >
-                                    <UserCheck className="h-4 w-4 mr-1" />
-                                    {t('unblock')}
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleBlockUser(user.userId)}
-                                    disabled={blockUserMutation.isPending}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    <UserX className="h-4 w-4 mr-1" />
-                                    {t('block')}
-                                  </Button>
-                                )}
-                              </div>
-                              
-                              {user.achievements && user.achievements.length > 0 && (
-                                <div className="flex items-center gap-1 pl-13">
-                                  {user.achievements.map((achievement: any) => (
-                                    <span
-                                      key={achievement.id}
-                                      className="text-xs bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2 py-1 rounded-full flex items-center gap-1"
-                                      title={achievement.description}
-                                    >
-                                      {achievement.icon}
-                                      <span className="font-medium">{achievement.achievementName}</span>
-                                    </span>
-                                  ))}
-                                </div>
                               )}
                             </div>
                           </Card>
@@ -317,19 +172,6 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
               )}
         </div>
       </DialogContent>
-      
-      {/* Profile Modal */}
-      {profileUser && (
-        <UserProfileModal
-          open={showProfileModal}
-          onClose={() => setShowProfileModal(false)}
-          userId={profileUser.userId}
-          username={profileUser.username}
-          displayName={profileUser.displayName || profileUser.firstName || profileUser.username}
-          profilePicture={profileUser.profilePicture}
-          profileImageUrl={profileUser.profileImageUrl}
-        />
-      )}
     </Dialog>
   );
 }

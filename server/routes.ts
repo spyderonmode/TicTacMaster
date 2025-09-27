@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { insertRoomSchema, insertGameSchema, insertMoveSchema, users, games, achievements } from "@shared/schema";
+import { z } from "zod";
 import { AIPlayer } from "./aiPlayer";
 import { makeMove, checkWin, checkDraw, getOpponentSymbol, validateMove } from "./gameLogic";
 import { db } from "./db";
@@ -21,29 +22,39 @@ interface WSConnection {
 }
 
 export async function registerRoutes(app: Express): Promise<void> {
-  const allowedOrigins = [
-    'https://darklayerstudios.com',
-    'https://www.darklayerstudios.com',
-    'http://localhost:3000',
-    'http://localhost:5000'
-  ];
+  // ✅ Apply CORS configuration
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  if (isDevelopment) {
+    // In development, allow all origins for easier development and migration
+    app.use(cors({
+      origin: true,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    }));
+  } else {
+    // In production, use restricted origins
+    const allowedOrigins = [
+      'https://darklayerstudios.com',
+      'https://www.darklayerstudios.com',
+    ];
 
-  // ✅ Apply CORS in all environments (dev + prod)
-  app.use(cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like Postman or curl)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
+    app.use(cors({
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        
+        if (origin.includes('.replit.app') || origin.includes('.replit.dev') || allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        
         return callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  }));
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    }));
+  }
 
   // 🛡️ Register authentication and all other routes
   setupAuth(app);
@@ -80,6 +91,195 @@ export async function registerRoutes(app: Express): Promise<void> {
   const matchmakingTimers = new Map<string, NodeJS.Timeout>(); // Track user timers for bot matches
   const recentReconnections = new Map<string, number>(); // Track recent reconnection messages to prevent duplicates
   const sentMatchNotifications = new Map<string, Set<string>>(); // Track sent match notifications per room
+  
+  // Game started acknowledgment tracking for retry logic
+  interface PendingGameStarted {
+    messageId: string;
+    connectionId: string;
+    userId: string;
+    payload: any;
+    timestamp: number;
+    retryCount: number;
+  }
+  const pendingGameStartedAcks = new Map<string, PendingGameStarted>(); // messageId -> pending ack info
+  
+  // Track games that have been broadcast to prevent duplicates and race conditions
+  const gameStartBroadcastTracker = new Map<string, {
+    gameId: string;
+    notifiedUsers: Set<string>;
+    timestamp: number;
+    inProgress: boolean;
+  }>();
+
+  // Global retry timer flag to prevent overlapping retry cycles
+  let retryTimerActive = false;
+  
+  // Unified function to broadcast game_started events with acknowledgment and retry logic
+  async function broadcastGameStartedWithRetry(roomId: string, gamePayload: any): Promise<void> {
+    const gameId = gamePayload.gameId || gamePayload.game?.id;
+    if (!gameId) {
+      console.error(`⚠️ No gameId found in payload for room ${roomId}`);
+      return;
+    }
+
+    const broadcastKey = `${roomId}_${gameId}`;
+    
+    // Check if broadcast is already in progress for this game (prevents race conditions)
+    if (gameStartBroadcastTracker.has(broadcastKey) && gameStartBroadcastTracker.get(broadcastKey)!.inProgress) {
+      console.log(`🔄 Game ${gameId} broadcast already in progress for room ${roomId}, skipping duplicate`);
+      return;
+    }
+
+    const roomUsers = roomConnections.get(roomId);
+    if (!roomUsers || roomUsers.size === 0) {
+      console.log(`⚠️ No connections found for room ${roomId} - game_started broadcast skipped`);
+      return;
+    }
+
+    // Initialize or get existing tracker for this game
+    if (!gameStartBroadcastTracker.has(broadcastKey)) {
+      gameStartBroadcastTracker.set(broadcastKey, {
+        gameId,
+        notifiedUsers: new Set(),
+        timestamp: Date.now(),
+        inProgress: true
+      });
+    }
+
+    const tracker = gameStartBroadcastTracker.get(broadcastKey)!;
+    tracker.inProgress = true;
+
+    //console.log(`📢 Broadcasting game_started for game ${gameId} to room ${roomId}`);
+
+    // Deduplicate per user - send only to primary connection for each user
+    const userConnections = new Map<string, string>(); // userId -> connectionId
+    for (const connectionId of roomUsers) {
+      const connection = connections.get(connectionId);
+      if (connection && connection.ws.readyState === WebSocket.OPEN) {
+        // Use first active connection per user (prevents duplicate messages to multiple tabs)
+        if (!userConnections.has(connection.userId)) {
+          userConnections.set(connection.userId, connectionId);
+        }
+      }
+    }
+
+    // Send to deduplicated user connections
+    for (const [userId, connectionId] of userConnections) {
+      // Skip if user was already notified for this game
+      if (tracker.notifiedUsers.has(userId)) {
+        console.log(`🔄 User ${userId} already notified for game ${gameId}, skipping`);
+        continue;
+      }
+
+      const connection = connections.get(connectionId);
+      if (!connection || connection.ws.readyState !== WebSocket.OPEN) {
+        continue;
+      }
+
+      const messageId = nanoid(); // Unique ID for each message
+      const messageWithId = {
+        ...gamePayload,
+        messageId,
+        requiresAck: true // Flag to tell client to send acknowledgment
+      };
+
+      try {
+        // Send the message
+        connection.ws.send(JSON.stringify(messageWithId));
+        
+        // Track this message for acknowledgment
+        pendingGameStartedAcks.set(messageId, {
+          messageId,
+          connectionId,
+          userId: connection.userId,
+          payload: messageWithId,
+          timestamp: Date.now(),
+          retryCount: 0
+        });
+
+        // Mark user as notified for this game
+        tracker.notifiedUsers.add(userId);
+
+        //console.log(`✅ Sent game_started (ID: ${messageId}) to user ${connection.userId} for game ${gameId}`);
+      } catch (error) {
+        console.error(`❌ Failed to send game_started to connection ${connectionId}:`, error);
+      }
+    }
+
+    // Mark broadcast as complete
+    tracker.inProgress = false;
+
+    // Start global retry timer if not already active
+    if (!retryTimerActive && pendingGameStartedAcks.size > 0) {
+      retryTimerActive = true;
+      setTimeout(() => {
+        retryUnacknowledgedGameStarted();
+      }, 2000);
+    }
+
+    // Cleanup old tracker entries (older than 5 minutes)
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    for (const [key, tracker] of gameStartBroadcastTracker.entries()) {
+      if (tracker.timestamp < fiveMinutesAgo && !tracker.inProgress) {
+        gameStartBroadcastTracker.delete(key);
+      }
+    }
+  }
+
+  // Function to retry unacknowledged game_started messages (consolidated global timer)
+  function retryUnacknowledgedGameStarted(): void {
+    const now = Date.now();
+    const maxRetries = 3;
+    const retryThreshold = 2000; // 2 seconds
+
+    let hasPendingMessages = false;
+
+    for (const [messageId, pendingAck] of pendingGameStartedAcks.entries()) {
+      const timeSinceLastAttempt = now - pendingAck.timestamp;
+      
+      // Only retry messages that are older than retry threshold and haven't exceeded max retries
+      if (timeSinceLastAttempt >= retryThreshold && pendingAck.retryCount < maxRetries) {
+        const connection = connections.get(pendingAck.connectionId);
+        
+        if (connection && connection.ws.readyState === WebSocket.OPEN) {
+          try {
+            // Retry sending the message
+            connection.ws.send(JSON.stringify(pendingAck.payload));
+            
+            // Update retry info
+            pendingAck.retryCount++;
+            pendingAck.timestamp = now;
+            
+            console.log(`🔄 Retrying game_started (ID: ${messageId}, attempt ${pendingAck.retryCount}/${maxRetries}) to user ${pendingAck.userId}`);
+            hasPendingMessages = true;
+          } catch (error) {
+            console.error(`❌ Retry failed for game_started message ${messageId}:`, error);
+          }
+        } else {
+          // Connection is closed, remove from pending
+          pendingGameStartedAcks.delete(messageId);
+          console.log(`🚪 Removed pending ack for closed connection: ${messageId}`);
+        }
+      } else if (pendingAck.retryCount >= maxRetries) {
+        // Max retries exceeded, remove from pending
+        pendingGameStartedAcks.delete(messageId);
+        console.log(`⚠️ Max retries exceeded for game_started message ${messageId} to user ${pendingAck.userId}`);
+      } else {
+        // Still has pending retries
+        hasPendingMessages = true;
+      }
+    }
+
+    // Schedule next retry check if there are still pending acknowledgments
+    if (hasPendingMessages && pendingGameStartedAcks.size > 0) {
+      setTimeout(() => {
+        retryUnacknowledgedGameStarted();
+      }, 2000);
+    } else {
+      // No more pending messages, deactivate retry timer
+      retryTimerActive = false;
+    }
+  }
   
   // Matchmaking mutex to prevent race conditions
   let isMatchmakingLocked = false;
@@ -670,6 +870,76 @@ export async function registerRoutes(app: Express): Promise<void> {
   }, 6 * 60 * 60 * 1000); // Every 6 hours
 
   // Offline reconnection handler with expiration check
+  // Helper function to check for missed game_started messages and send current game state
+  async function checkAndSendMissedGameState(userId: string, connectionId: string, ws: WebSocket) {
+    try {
+      // Check if user has an active game
+      const activeGame = await storage.getActiveGameForUser(userId);
+      if (!activeGame || activeGame.status !== 'active') {
+        return; // No active game to recover
+      }
+
+      // Get full game details with player information
+      const [playerXInfo, playerOInfo] = await Promise.all([
+        activeGame.playerXId ? storage.getUser(activeGame.playerXId) : Promise.resolve(null),
+        activeGame.playerOId ? storage.getUser(activeGame.playerOId) : Promise.resolve(null)
+      ]);
+
+      // Get achievements for both players
+      const [playerXAchievements, playerOAchievements] = await Promise.all([
+        playerXInfo ? storage.getUserAchievements(activeGame.playerXId!) : Promise.resolve([]),
+        playerOInfo ? storage.getUserAchievements(activeGame.playerOId!) : Promise.resolve([])
+      ]);
+
+      // Create enhanced game object
+      const gameWithPlayers = {
+        ...activeGame,
+        playerXInfo: playerXInfo ? {
+          ...playerXInfo,
+          achievements: playerXAchievements.slice(0, 3)
+        } : null,
+        playerOInfo: playerOInfo ? {
+          ...playerOInfo,
+          achievements: playerOAchievements.slice(0, 3)
+        } : null,
+        gameMode: 'online',
+        serverTime: new Date().toISOString(),
+        timeRemaining: Math.max(0, 10 * 60 * 1000) // Default 10 minutes
+      };
+
+      // Get room information if game has a room
+      let room = null;
+      if (activeGame.roomId) {
+        room = await storage.getRoomById(activeGame.roomId);
+        
+        // Ensure user is added to room connections
+        if (!roomConnections.has(activeGame.roomId)) {
+          roomConnections.set(activeGame.roomId, new Set());
+        }
+        roomConnections.get(activeGame.roomId)!.add(connectionId);
+        
+        // Update connection room info
+        const connection = connections.get(connectionId);
+        if (connection) {
+          connection.roomId = activeGame.roomId;
+        }
+      }
+
+      // Send game_started message to recover the client
+      ws.send(JSON.stringify({
+        type: 'game_started',
+        game: gameWithPlayers,
+        roomId: activeGame.roomId,
+        room: room,
+        recovery: true // Flag to indicate this is a recovery message
+      }));
+
+      //console.log(`🔄 Recovery: Sent game_started to user ${userId} for game ${activeGame.id}`);
+    } catch (error) {
+      console.error(`❌ Error in checkAndSendMissedGameState for user ${userId}:`, error);
+    }
+  }
+
   async function handleUserReconnection(userId: string, connectionId: string, ws: WebSocket) {
     try {
       // Checking for active game reconnection
@@ -1037,6 +1307,127 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Coin gift validation schema
+  const coinGiftSchema = z.object({
+    recipientId: z.string().min(1, "Recipient ID is required"),
+    amount: z.number().int().min(1).max(100000, "Gift amount must be between 1 and 100,000 coins"),
+    message: z.string().max(200, "Message cannot exceed 200 characters").optional()
+  });
+
+  // Coin gift endpoints
+  app.post('/api/coins/gift', requireAuth, async (req: any, res) => {
+    try {
+      // Validate request body with Zod
+      const validation = coinGiftSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid input", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { recipientId, amount, message } = validation.data;
+      const senderId = req.session.user.userId;
+      
+      // Additional validations
+      if (senderId === recipientId) {
+        return res.status(400).json({ message: "Cannot send gift to yourself" });
+      }
+      
+      // Send the gift
+      const result = await storage.sendCoinGift(senderId, recipientId, amount, message);
+      
+      if (result.success) {
+        // Get recipient info for notification
+        const recipient = await storage.getUser(recipientId);
+        const sender = await storage.getUser(senderId);
+        
+        // Send WebSocket notification to recipient if they're online
+        const recipientConnections = Array.from(connections.values()).filter(conn => conn.userId === recipientId);
+        if (recipientConnections.length > 0) {
+          const notification = JSON.stringify({
+            type: 'gift_received',
+            senderId: senderId,
+            senderName: sender?.displayName || sender?.username || 'Unknown',
+            amount: amount,
+            message: message || null,
+            timestamp: new Date().toISOString()
+          });
+          
+          recipientConnections.forEach(conn => {
+            if (conn.ws.readyState === WebSocket.OPEN) {
+              conn.ws.send(notification);
+            }
+          });
+        }
+        
+        res.json({ success: true, message: `Gift of ${amount} coins sent successfully!` });
+      } else {
+        res.status(400).json({ message: result.error });
+      }
+    } catch (error) {
+      console.error("Error sending coin gift:", error);
+      res.status(500).json({ message: "Failed to send coin gift" });
+    }
+  });
+
+  app.get('/api/coins/gifts', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const giftHistory = await storage.getCoinGiftHistory(userId, limit);
+      res.json(giftHistory);
+    } catch (error) {
+      console.error("Error fetching gift history:", error);
+      res.status(500).json({ message: "Failed to fetch gift history" });
+    }
+  });
+
+  app.get('/api/coins/received-gifts', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const unreadOnly = req.query.unreadOnly === 'true';
+      
+      const receivedGifts = await storage.getReceivedGifts(userId, unreadOnly);
+      res.json(receivedGifts);
+    } catch (error) {
+      console.error("Error fetching received gifts:", error);
+      res.status(500).json({ message: "Failed to fetch received gifts" });
+    }
+  });
+
+  // Get user data by ID
+  app.get('/api/users/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Get user's current coin balance
+      const coins = await storage.getUserCoins(userId);
+      
+      // Return user data with coins
+      res.json({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl,
+        coins: coins,
+        wins: user.wins,
+        losses: user.losses,
+        draws: user.draws
+      });
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      res.status(500).json({ message: "Failed to fetch user data" });
+    }
+  });
+
   // User stats route
   app.get('/api/users/:id/stats', requireAuth, async (req: any, res) => {
     try {
@@ -1052,7 +1443,15 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Online game stats route for current user
   app.get('/api/users/online-stats', requireAuth, async (req: any, res) => {
     try {
+      // Ensure user is authenticated
+      if (!req.session.user || !req.session.user.userId) {
+        console.error("No authenticated user found in session for online-stats");
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
       const userId = req.session.user.userId;
+      console.log(`Fetching online stats for authenticated user: ${userId}`);
+      
       // Fetching online stats for current user
       const stats = await storage.getOnlineGameStats(userId);
       // Stats retrieved successfully
@@ -2721,29 +3120,16 @@ export async function registerRoutes(app: Express): Promise<void> {
                   // Update room status to playing
                   await storage.updateRoomStatus(room.id, 'playing');
                   
-                  // Broadcast game start to all room participants (should only be the user)
-                  const roomConnections_botGame = roomConnections.get(room.id);
-                  if (roomConnections_botGame) {
-                    // Broadcasting bot game start
-                    roomConnections_botGame.forEach(connectionId => {
-                      const conn = connections.get(connectionId);
-                      if (conn && conn.ws.readyState === WebSocket.OPEN) {
-                        // Sending game_started message
-                        conn.ws.send(JSON.stringify({
-                          type: 'game_started',
-                          game: gameWithPlayers,
-                          roomId: room.id,
-                          room: {
-                            ...room,
-                            status: 'playing'
-                          }
-                        }));
-                      }
-                    });
-                    // Bot game started and broadcasted
-                  } else {
-                    //console.log(`🎮 Warning: No room connections found for room ${room.id}`);
-                  }
+                  // Broadcast game start to all room participants with retry logic
+                  await broadcastGameStartedWithRetry(room.id, {
+                    type: 'game_started',
+                    game: gameWithPlayers,
+                    roomId: room.id,
+                    room: {
+                      ...room,
+                      status: 'playing'
+                    }
+                  });
                 } catch (error) {
                   console.error('🤖 Error starting bot game:', error);
                 }
@@ -3026,24 +3412,16 @@ export async function registerRoutes(app: Express): Promise<void> {
             // Update room status to playing
             await storage.updateRoomStatus(room.id, 'playing');
             
-            // Broadcast game start to all room participants
-            const roomConnections_broadcast = roomConnections.get(room.id);
-            if (roomConnections_broadcast) {
-              roomConnections_broadcast.forEach(connectionId => {
-                const connection = connections.get(connectionId);
-                if (connection && connection.ws.readyState === WebSocket.OPEN) {
-                  connection.ws.send(JSON.stringify({
-                    type: 'game_started',
-                    game: gameWithPlayers,
-                    roomId: room.id,
-                    room: {
-                      ...room,
-                      status: 'playing'
-                    }
-                  }));
-                }
-              });
-            }
+            // Broadcast game start to all room participants with retry logic
+            await broadcastGameStartedWithRetry(room.id, {
+              type: 'game_started',
+              game: gameWithPlayers,
+              roomId: room.id,
+              room: {
+                ...room,
+                status: 'playing'
+              }
+            });
             
             //console.log(`🎯 Auto-started game ${game.id} for matchmaking room ${room.id}`);
           } catch (error) {
@@ -3379,47 +3757,16 @@ export async function registerRoutes(app: Express): Promise<void> {
         } : playerOInfo,
       };
       
-      // Broadcast to all room participants with proper synchronization
-      let broadcastSuccess = false;
-      if (roomConnections.has(roomId)) {
-        const roomUsers = roomConnections.get(roomId)!;
-        // Broadcasting game_started to users in room
-        
-        const broadcastPromises: Promise<void>[] = [];
-        roomUsers.forEach(connectionId => {
-          const connection = connections.get(connectionId);
-          if (connection && connection.ws.readyState === WebSocket.OPEN) {
-            // Sending game_started to user
-            // Create a promise for each WebSocket send to ensure delivery
-            const sendPromise = new Promise<void>((resolve) => {
-              try {
-                connection.ws.send(JSON.stringify({
-                  type: 'game_started',
-                  game: gameWithPlayers,
-                  gameId: game.id,
-                  roomId: roomId,
-                }));
-                // Small delay to ensure message is processed
-                setTimeout(resolve, 10);
-              } catch (error) {
-                console.error(`🎮 Error sending to user ${connection.userId}:`, error);
-                resolve();
-              }
-            });
-            broadcastPromises.push(sendPromise);
-          }
-        });
-        
-        // Wait for all broadcasts to complete
-        await Promise.all(broadcastPromises);
-        broadcastSuccess = true;
-        // All game_started broadcasts completed
-      }
+      // Broadcast to all room participants with unified retry logic
+      await broadcastGameStartedWithRetry(roomId, {
+        type: 'game_started',
+        game: gameWithPlayers,
+        gameId: game.id,
+        roomId: roomId,
+      });
       
-      // Ensure API response comes after WebSocket broadcasts
-      setTimeout(() => {
-        res.json(gameWithPlayers);
-      }, broadcastSuccess ? 50 : 10);
+      // Send API response
+      res.json(gameWithPlayers);
     } catch (error) {
       console.error("Error starting room game:", error);
       res.status(500).json({ message: "Failed to start game" });
@@ -3514,26 +3861,13 @@ export async function registerRoutes(app: Express): Promise<void> {
             }
           };
           
-          // INSTANT WebSocket broadcast for refreshed game
-          if (roomConnections.has(gameData.roomId)) {
-            const roomUsers = roomConnections.get(gameData.roomId)!;
-            // Fire and forget instant broadcast
-            roomUsers.forEach(connectionId => {
-              const connection = connections.get(connectionId);
-              if (connection && connection.ws.readyState === WebSocket.OPEN) {
-                try {
-                  connection.ws.send(JSON.stringify({
-                    type: 'game_started',
-                    game: refreshedGameWithPlayers,
-                    gameId: refreshedGame.id,
-                    roomId: gameData.roomId,
-                  }));
-                } catch (error) {
-                  console.error(`🎮 Error sending instant refreshed game_started to user ${connection.userId}:`, error);
-                }
-              }
-            });
-          }
+          // Broadcast refreshed game with unified retry logic
+          await broadcastGameStartedWithRetry(gameData.roomId, {
+            type: 'game_started',
+            game: refreshedGameWithPlayers,
+            gameId: refreshedGame.id,
+            roomId: gameData.roomId,
+          });
           
           return res.json(refreshedGameWithPlayers);
         }
@@ -3602,23 +3936,12 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
       };
       
-      // IMMEDIATE WebSocket broadcast for instant game start (before room status update)
-      if (gameData.roomId && roomConnections.has(gameData.roomId)) {
-        const roomUsers = roomConnections.get(gameData.roomId)!;
-        // Instant broadcast to all room users - no waiting, fire and forget for speed
-        roomUsers.forEach(connectionId => {
-          const connection = connections.get(connectionId);
-          if (connection && connection.ws.readyState === WebSocket.OPEN) {
-            try {
-              connection.ws.send(JSON.stringify({
-                type: 'game_started',
-                game: gameWithPlayers,
-                roomId: gameData.roomId,
-              }));
-            } catch (error) {
-              console.error(`🎮 Error sending instant game_started to user ${connection.userId}:`, error);
-            }
-          }
+      // Broadcast game start with unified retry logic
+      if (gameData.roomId) {
+        await broadcastGameStartedWithRetry(gameData.roomId, {
+          type: 'game_started',
+          game: gameWithPlayers,
+          roomId: gameData.roomId,
         });
       }
       
@@ -4301,6 +4624,9 @@ export async function registerRoutes(app: Express): Promise<void> {
             // Check for active game reconnection
             await handleUserReconnection(data.userId, connectionId, ws);
             
+            // Also check for missed game_started messages (recovery mechanism)
+            await checkAndSendMissedGameState(data.userId, connectionId, ws);
+            
             // Optimize: Only broadcast online updates when significant change occurs
             const onlineCount = onlineUsers.size;
             
@@ -4326,6 +4652,21 @@ export async function registerRoutes(app: Express): Promise<void> {
               global.lastOnlineCount = onlineCount;
             }
             
+            break;
+
+          case 'request_current_game_state':
+            // Handle client requesting current game state (recovery mechanism)
+            await checkAndSendMissedGameState(data.userId, connectionId, ws);
+            break;
+
+          case 'game_started_ack':
+            // Handle acknowledgment for game_started messages
+            const messageId = data.messageId;
+            if (messageId && pendingGameStartedAcks.has(messageId)) {
+              // Remove from pending acknowledgments since client confirmed receipt
+              pendingGameStartedAcks.delete(messageId);
+              //console.log(`✅ Game started acknowledgment received for message ${messageId}`);
+            }
             break;
 
           case 'ping':
@@ -5511,23 +5852,13 @@ export async function registerRoutes(app: Express): Promise<void> {
                   }));
                 }
 
-                // Broadcast to all room participants
-                if (roomConnections.has(roomId)) {
-                  const roomUsers = roomConnections.get(roomId)!;
-                  const gameStartMessage = JSON.stringify({
-                    type: 'game_started',
-                    game: gameWithPlayers,
-                    gameId: game.id,
-                    roomId: roomId,
-                  });
-
-                  roomUsers.forEach(connectionId => {
-                    const connection = connections.get(connectionId);
-                    if (connection && connection.ws.readyState === WebSocket.OPEN) {
-                      connection.ws.send(gameStartMessage);
-                    }
-                  });
-                }
+                // Broadcast to all room participants with retry logic
+                await broadcastGameStartedWithRetry(roomId, {
+                  type: 'game_started',
+                  game: gameWithPlayers,
+                  gameId: game.id,
+                  roomId: roomId,
+                });
 
                 //console.log(`🎮 Game started via WebSocket: ${game.id} in room ${roomId}`);
               } catch (error) {
@@ -5704,6 +6035,21 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
+      // CRITICAL FIX: Validate that the game is actually finished before allowing play again requests
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ error: 'Game not found' });
+      }
+
+      if (game.status !== 'finished') {
+        return res.status(400).json({ error: 'Cannot send play again request for active game' });
+      }
+
+      // Ensure the requester was actually a participant in this game
+      if (game.playerXId !== userId && game.playerOId !== userId) {
+        return res.status(403).json({ error: 'Not authorized to send play again request for this game' });
+      }
+
       // Check if there's already an active request for this game
       const existingRequest = await storage.getActivePlayAgainRequest(gameId, userId);
       if (existingRequest) {
@@ -5870,7 +6216,7 @@ export async function registerRoutes(app: Express): Promise<void> {
             timeRemaining: Math.max(0, 10 * 60 * 1000) // Full 10 minutes for new game
           };
 
-          // Broadcast game_started event to all player connections in the room
+          // Broadcast game_started event to all player connections in the room with retry logic
           const gameStartedPayload = {
             type: 'game_started',
             game: gameWithPlayers, // Now includes player profile information
@@ -5878,23 +6224,9 @@ export async function registerRoutes(app: Express): Promise<void> {
             room: existingRoom
           };
 
-          let onlinePlayersCount = 0;
-          allPlayerConnIds.forEach(connId => {
-            const connection = connections.get(connId);
-            if (connection && connection.ws.readyState === WebSocket.OPEN) {
-              connection.ws.send(JSON.stringify(gameStartedPayload));
-              onlinePlayersCount++;
-            }
-          });
-
+          // Broadcast to all players with unified retry logic
+          await broadcastGameStartedWithRetry(existingRoomId, gameStartedPayload);
           //console.log(`🎮 Play again accepted: Created new game ${newGame.id} in room ${existingRoomId}`);
-          //console.log(`🔗 Notified ${onlinePlayersCount}/${allPlayerConnIds.length} connections`);
-          
-          if (onlinePlayersCount === 0) {
-            //console.log(`⚠️ Both players are offline - game created but they will need to reconnect`);
-          } else if (onlinePlayersCount < allPlayerConnIds.length) {
-            //console.log(`⚠️ Some player connections are offline - they will need to refresh/reconnect`);
-          }
         } catch (error) {
           console.error('Error creating new game for play again:', error);
           // Still send success response even if game creation fails

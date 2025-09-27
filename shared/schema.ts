@@ -174,9 +174,13 @@ export const coinTransactions = pgTable("coins", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   gameId: uuid("game_id").references(() => games.id),
   amount: bigint("amount", { mode: 'number' }).notNull(), // positive for earned, negative for lost
-  type: varchar("type").notNull(), // game_win, game_loss, game_draw
+  type: varchar("type").notNull(), // game_win, game_loss, game_draw, gift_sent, gift_received
   balanceBefore: bigint("balance_before", { mode: 'number' }).notNull(),
   balanceAfter: bigint("balance_after", { mode: 'number' }).notNull(),
+  // Gift-specific fields
+  recipientId: varchar("recipient_id").references(() => users.id), // For gift_sent transactions
+  senderId: varchar("sender_id").references(() => users.id), // For gift_received transactions  
+  giftMessage: text("gift_message"), // Optional message with the gift
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -281,6 +285,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   sentRoomInvitations: many(roomInvitations, { relationName: "inviter" }),
   receivedRoomInvitations: many(roomInvitations, { relationName: "invited" }),
   coinTransactions: many(coinTransactions),
+  sentGifts: many(coinTransactions, { relationName: "giftRecipient" }),
+  receivedGifts: many(coinTransactions, { relationName: "giftSender" }),
   sentPlayAgainRequests: many(playAgainRequests, { relationName: "requester" }),
   receivedPlayAgainRequests: many(playAgainRequests, { relationName: "requested" }),
   levelUps: many(levelUps),
@@ -346,6 +352,8 @@ export const roomInvitationsRelations = relations(roomInvitations, ({ one }) => 
 export const coinTransactionsRelations = relations(coinTransactions, ({ one }) => ({
   user: one(users, { fields: [coinTransactions.userId], references: [users.id] }),
   game: one(games, { fields: [coinTransactions.gameId], references: [games.id] }),
+  recipient: one(users, { fields: [coinTransactions.recipientId], references: [users.id], relationName: "giftRecipient" }),
+  sender: one(users, { fields: [coinTransactions.senderId], references: [users.id], relationName: "giftSender" }),
 }));
 
 export const playAgainRequestsRelations = relations(playAgainRequests, ({ one }) => ({
@@ -442,6 +450,9 @@ export const insertCoinTransactionSchema = createInsertSchema(coinTransactions).
   type: true,
   balanceBefore: true,
   balanceAfter: true,
+  recipientId: true,
+  senderId: true,
+  giftMessage: true,
 });
 
 export const insertPlayAgainRequestSchema = createInsertSchema(playAgainRequests).pick({

@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 // useAudio hook removed as sound effects are removed
+// Force file update to clear cache
 // Removed useWebSocket import - messages now come from parent component
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { motion, AnimatePresence } from "framer-motion"; // Added back for winning line animation
@@ -602,14 +603,23 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     setShowChatPanel(false);
   };
 
-  // Cleanup timeouts on unmount
+  // Use ref to track timeouts to avoid dependency issues
+  const messageTimeoutsRef = useRef<{ X?: NodeJS.Timeout; O?: NodeJS.Timeout }>({});
+  
+  // Update ref when state changes
+  useEffect(() => {
+    messageTimeoutsRef.current = messageTimeouts;
+  }, [messageTimeouts]);
+
+  // Cleanup timeouts on unmount using ref
   useEffect(() => {
     return () => {
-      Object.values(messageTimeouts).forEach(timeout => {
+      // Clean up all message timeouts on unmount using ref
+      Object.values(messageTimeoutsRef.current).forEach(timeout => {
         if (timeout) clearTimeout(timeout);
       });
     };
-  }, [messageTimeouts]);
+  }, []); // Empty dependency array safe because it uses ref
 
 
 
@@ -644,7 +654,11 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         }
       }
     }
-  }, [game?.id, game?.board, game?.currentPlayer]); // Removed timestamp dependencies to prevent infinite loops
+  }, [game?.id, game?.board, game?.currentPlayer]); // Keep original for now, will fix properly
+
+  // Create stable dependencies for board to prevent infinite loops
+  const gameBoardKeys = game?.board ? Object.keys(game.board).sort().join(',') : '';
+  const gameBoardValues = game?.board ? Object.values(game.board).join(',') : '';
 
   // Remove WebSocket handling from GameBoard - it's now handled in Home component
   // This prevents double handling and state conflicts
@@ -683,12 +697,16 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   // Track board state changes for game synchronization and visual feedback
   const [isMoveProcessing, setIsMoveProcessing] = useState(false);
   
+  // Use a more stable dependency for board changes to prevent infinite loops
+  const boardKeys = Object.keys(board).join(',');
+  const boardValues = Object.values(board).join(',');
+  
   useEffect(() => {
     // Show processing indicator when board changes (any player's move)
     setIsMoveProcessing(true);
     const timer = setTimeout(() => setIsMoveProcessing(false), 1500); // Blink for 1.5 seconds
     return () => clearTimeout(timer);
-  }, [JSON.stringify(board)]);
+  }, [boardKeys, boardValues]); // Use stable string dependencies instead of JSON.stringify
 
   const makeMoveMutation = useMutation({
     mutationFn: async (position: number) => {

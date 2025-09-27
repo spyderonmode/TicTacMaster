@@ -8,13 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Users, UserPlus, UserCheck, UserX, Trophy, TrendingUp, Calendar, Loader2, MessageCircle, Send } from 'lucide-react';
+import { Users, UserPlus, UserCheck, UserX, Trophy, TrendingUp, Calendar, Loader2, MessageCircle, Send, Eye, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { User } from '@shared/schema';
 import { showUserFriendlyError } from '@/lib/errorUtils';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { BasicFriendInfo } from '@shared/schema';
+import { UserProfileModal } from './UserProfileModal';
+import { CoinGiftModal } from './CoinGiftModal';
 
 interface FriendRequest {
   id: string;
@@ -51,6 +53,10 @@ export function Friends() {
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<Map<string, any[]>>(new Map());
   const [unreadMessages, setUnreadMessages] = useState<Map<string, number>>(new Map());
+  const [profileUser, setProfileUser] = useState<any>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedGiftFriend, setSelectedGiftFriend] = useState<BasicFriendInfo | null>(null);
+  const [showCoinGiftModal, setShowCoinGiftModal] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -58,6 +64,12 @@ export function Friends() {
   const { data: friends = [], isLoading: friendsLoading } = useQuery<BasicFriendInfo[]>({
     queryKey: ['/api/friends'],
     enabled: isOpen,
+  });
+
+  // Fetch current user data for coin balance
+  const { data: currentUserData } = useQuery({
+    queryKey: ['/api/users', user?.userId],
+    enabled: isOpen && !!user?.userId,
   });
 
   // Fetch friend requests
@@ -264,6 +276,18 @@ export function Friends() {
     });
   };
 
+  const handleViewProfile = (friend: BasicFriendInfo) => {
+    setProfileUser({
+      userId: friend.id,
+      username: friend.username,
+      displayName: friend.displayName,
+      firstName: friend.firstName,
+      lastName: friend.lastName,
+      profileImageUrl: friend.profileImageUrl
+    });
+    setShowProfileModal(true);
+  };
+
   // Get current chat messages for selected friend
   const currentChatMessages = selectedChatFriend ? chatHistory.get(selectedChatFriend.id) || [] : [];
 
@@ -318,7 +342,7 @@ export function Friends() {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('friends')}</DialogTitle>
         </DialogHeader>
@@ -360,19 +384,19 @@ export function Friends() {
                   .map((friend) => (
                   <div
                     key={friend.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer"
+                    className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent cursor-pointer"
                     onClick={() => setSelectedFriend(friend)}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <div className="relative">
                         {friend.profileImageUrl ? (
                           <img
                             src={friend.profileImageUrl}
                             alt={friend.displayName || `${friend.firstName} ${friend.lastName || ''}`.trim()}
-                            className="w-10 h-10 rounded-full"
+                            className="w-8 h-8 rounded-full"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
                             {friend.firstName?.[0] || '?'}{friend.lastName?.[0] || ''}
                           </div>
                         )}
@@ -382,20 +406,24 @@ export function Friends() {
                         )}
                       </div>
                       <div>
-                        <div className="font-medium flex items-center gap-2">
+                        <div className="font-medium text-sm">
                           {friend.displayName || `${friend.firstName} ${friend.lastName || ''}`.trim()}
-                          {isUserOnline(friend.id) && (
-                            <Badge variant="secondary" className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                              Online
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          @{friend.username || 'Unknown'}
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewProfile(friend);
+                        }}
+                        className="text-xs px-2 py-1"
+                        data-testid={`button-view-profile-${friend.id}`}
+                      >
+                        <Eye className="h-3 w-3" />
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -403,12 +431,12 @@ export function Friends() {
                           e.stopPropagation();
                           startChatWithFriend(friend);
                         }}
-                        className="relative"
+                        className="relative text-xs px-2 py-1"
+                        data-testid={`button-chat-${friend.id}`}
                       >
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        {t('chat')}
+                        <MessageCircle className="h-3 w-3" />
                         {unreadMessages.get(friend.id) && (
-                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                             {unreadMessages.get(friend.id)}
                           </span>
                         )}
@@ -418,10 +446,24 @@ export function Friends() {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setSelectedGiftFriend(friend);
+                          setShowCoinGiftModal(true);
+                        }}
+                        className="text-xs px-2 py-1 text-yellow-600 hover:text-yellow-700"
+                        data-testid={`button-send-coins-${friend.id}`}
+                      >
+                        <Coins className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           removeFriend.mutate(friend.id);
                         }}
+                        className="text-xs px-2 py-1"
                       >
-                        <UserX className="h-4 w-4" />
+                        <UserX className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
@@ -521,26 +563,23 @@ export function Friends() {
                 {searchResults.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent"
+                    className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       {user.profileImageUrl ? (
                         <img
                           src={user.profileImageUrl}
                           alt={user.displayName || `${user.firstName} ${user.lastName || ''}`.trim()}
-                          className="w-10 h-10 rounded-full"
+                          className="w-8 h-8 rounded-full"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
                           {user.firstName?.[0] || '?'}{user.lastName?.[0] || ''}
                         </div>
                       )}
                       <div>
-                        <div className="font-medium">
+                        <div className="font-medium text-sm">
                           {user.displayName || `${user.firstName} ${user.lastName || ''}`.trim()}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          @{user.username || 'Unknown'}
                         </div>
                       </div>
                     </div>
@@ -549,8 +588,9 @@ export function Friends() {
                       size="sm"
                       onClick={() => sendFriendRequest.mutate(user.id)}
                       disabled={sendFriendRequest.isPending}
+                      className="text-xs px-2 py-1"
                     >
-                      <UserPlus className="h-4 w-4" />
+                      <UserPlus className="h-3 w-3" />
                     </Button>
                   </div>
                 ))}
@@ -558,6 +598,19 @@ export function Friends() {
             )}
           </TabsContent>
         </Tabs>
+        
+        {/* Profile Modal */}
+        {profileUser && (
+          <UserProfileModal
+            open={showProfileModal}
+            onClose={() => setShowProfileModal(false)}
+            userId={profileUser.userId}
+            username={profileUser.username}
+            displayName={profileUser.displayName || `${profileUser.firstName} ${profileUser.lastName || ''}`.trim()}
+            profilePicture={profileUser.profileImageUrl}
+            profileImageUrl={profileUser.profileImageUrl}
+          />
+        )}
         
         {/* Head-to-head stats modal */}
         {selectedFriend && (
@@ -696,6 +749,17 @@ export function Friends() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Coin Gift Modal */}
+        <CoinGiftModal
+          open={showCoinGiftModal}
+          onClose={() => {
+            setShowCoinGiftModal(false);
+            setSelectedGiftFriend(null);
+          }}
+          friend={selectedGiftFriend}
+          currentUserCoins={currentUserData?.coins || 0}
+        />
       </DialogContent>
     </Dialog>
   );

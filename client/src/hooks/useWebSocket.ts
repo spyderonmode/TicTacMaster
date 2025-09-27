@@ -27,7 +27,9 @@ export function useWebSocket() {
     }
 
     // Fix: Use strict same-origin WebSocket URL to ensure cookies are sent
-    const wsUrl = `${window.location.origin.replace(/^http/, 'ws')}/ws`;
+    const wsUrl = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
+    
+    console.log(`🔌 WebSocket connecting to: ${wsUrl}`);
 
 
     ws.current = new WebSocket(wsUrl);
@@ -64,6 +66,17 @@ export function useWebSocket() {
 
       // WebSocket authenticated
       ws.current?.send(JSON.stringify(authMessage));
+      
+      // Add recovery mechanism for missed game_started messages (helps with slow connections)
+      setTimeout(() => {
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+          // Request current game state in case we missed a game_started message
+          ws.current.send(JSON.stringify({
+            type: 'request_current_game_state',
+            userId: userId
+          }));
+        }
+      }, 1000); // Wait 1 second after authentication
     };
 
     ws.current.onmessage = (event) => {
@@ -78,6 +91,14 @@ export function useWebSocket() {
             detail: message
           });
           window.dispatchEvent(chatEvent);
+        }
+
+        // Handle gift received notifications
+        if (message.type === 'gift_received') {
+          const giftEvent = new CustomEvent('gift_received', {
+            detail: message
+          });
+          window.dispatchEvent(giftEvent);
         }
 
         // Handle room invitation messages
@@ -220,6 +241,35 @@ export function useWebSocket() {
         // Handle matchmaking-related messages
         if (['match_found', 'matchmaking_success', 'matchmaking_response', 'game_started'].includes(message.type)) {
           // Matchmaking message received
+          
+          // Special handling for game_started messages to ensure they're not missed
+          if (message.type === 'game_started') {
+            console.log('🎮 Received game_started message - ensuring proper handling');
+            
+            // Send acknowledgment if required (retry mechanism)
+            if (message.requiresAck && message.messageId && ws.current && ws.current.readyState === WebSocket.OPEN) {
+              try {
+                ws.current.send(JSON.stringify({
+                  type: 'game_started_ack',
+                  messageId: message.messageId
+                }));
+                console.log(`✅ Sent acknowledgment for game_started message ${message.messageId}`);
+              } catch (error) {
+                console.error('Failed to send game_started acknowledgment:', error);
+              }
+            }
+            
+            // Store game state locally as backup
+            try {
+              localStorage.setItem('lastGameStarted', JSON.stringify({
+                game: message.game,
+                roomId: message.roomId,
+                timestamp: Date.now()
+              }));
+            } catch (error) {
+              console.warn('Failed to store game_started backup:', error);
+            }
+          }
 
           // Dispatch a global event for matchmaking messages to ensure modal receives them
           const matchmakingEvent = new CustomEvent('matchmaking_message_received', {

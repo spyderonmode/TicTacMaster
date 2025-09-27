@@ -153,6 +153,12 @@ export interface IStorage {
   getUserCoins(userId: string): Promise<number>;
   updateUserCoins(userId: string, newBalance: number): Promise<void>;
   processCoinTransaction(userId: string, amount: number, type: string, gameId?: string): Promise<void>;
+  
+  // Coin gift operations
+  sendCoinGift(senderId: string, recipientId: string, amount: number, message?: string): Promise<{ success: boolean; error?: string }>;
+  getCoinGiftHistory(userId: string, limit?: number): Promise<Array<CoinTransaction & { sender?: User; recipient?: User }>>;
+  getReceivedGifts(userId: string, unreadOnly?: boolean): Promise<Array<CoinTransaction & { sender: User }>>;
+  markGiftsAsRead(userId: string, giftIds: string[]): Promise<void>;
 
   // Play Again operations
   sendPlayAgainRequest(requesterId: string, requestedId: string, gameId: string): Promise<PlayAgainRequest>;
@@ -1087,6 +1093,9 @@ export class DatabaseStorage implements IStorage {
     const level = getLevelFromWins(wins);
     const winsToNextLevel = getWinsToNextLevel(wins);
 
+    // Get current coin balance using the same method as coin gifts
+    const coins = await this.getUserCoins(userId);
+
     return {
       wins,
       losses,
@@ -1096,7 +1105,7 @@ export class DatabaseStorage implements IStorage {
       bestWinStreak,
       level,
       winsToNextLevel,
-      coins: user.coins ?? 2000
+      coins
     };
   }
 
@@ -1352,12 +1361,16 @@ export class DatabaseStorage implements IStorage {
       if (totalGames >= 100) shouldHaveAchievements.push('veteran_player');
       if (totalGames >= 500) shouldHaveAchievements.push('ultimate_veteran');
 
-      // Check for incorrect achievements
+      // Define historical achievements that should never be removed once earned
+      const historicalAchievements = ['master_of_diagonals', 'comeback_king'];
+      
+      // Check for incorrect achievements, but exclude historical ones from removal
       const incorrectAchievements = existingAchievements.filter(
-        achievement => !shouldHaveAchievements.includes(achievement.achievementType)
+        achievement => !shouldHaveAchievements.includes(achievement.achievementType) && 
+                      !historicalAchievements.includes(achievement.achievementType)
       );
 
-      // Remove incorrect achievements
+      // Remove incorrect achievements (but preserve historical achievements)
       if (incorrectAchievements.length > 0) {
         // console.log(`🔄 Auto-removing ${incorrectAchievements.length} incorrect achievements for user: ${userId}`);
         await db
@@ -1429,11 +1442,20 @@ export class DatabaseStorage implements IStorage {
         .where(eq(achievements.userId, userId));
 
       // Processing existing achievements
+      
+      // Preserve historical achievements that should never be removed once earned
+      const historicalAchievements = ['master_of_diagonals', 'comeback_king'];
+      const historicalUserAchievements = existingAchievements.filter(
+        achievement => historicalAchievements.includes(achievement.achievementType)
+      );
 
-      // Remove all existing achievements for this user
+      // Remove only non-historical achievements for this user
       await db
         .delete(achievements)
-        .where(eq(achievements.userId, userId));
+        .where(and(
+          eq(achievements.userId, userId),
+          not(inArray(achievements.achievementType, historicalAchievements))
+        ));
 
       const removedCount = existingAchievements.length;
       // Removed existing achievements
@@ -1541,9 +1563,17 @@ export class DatabaseStorage implements IStorage {
         },
       ];
 
+      // Get list of existing historical achievements to avoid duplicates
+      const existingHistoricalTypes = historicalUserAchievements.map(a => a.achievementType);
+
       // Grant achievements based on current stats
       for (const rule of achievementRules) {
         if (rule.condition) {
+          // Skip historical achievements that already exist
+          if (historicalAchievements.includes(rule.type) && existingHistoricalTypes.includes(rule.type)) {
+            continue;
+          }
+          
           try {
             // Creating achievement
 
@@ -2472,6 +2502,167 @@ export class DatabaseStorage implements IStorage {
 
     // Update user's coin balance
     await this.updateUserCoins(userId, newBalance);
+  }
+
+  // Coin gift operations
+  async sendCoinGift(senderId: string, recipientId: string, amount: number, message?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Validate amount
+      if (amount <= 0) {
+        return { success: false, error: "Gift amount must be greater than 0" };
+      }
+
+      // Validate amount is within bounds (server-side security check)
+      if (amount > 100000) {
+        return { success: false, error: "Gift amount cannot exceed 100,000 coins" };
+      }
+
+      // Check if sender has enough coins
+      const senderCoins = await this.getUserCoins(senderId);
+      if (senderCoins < amount) {
+        return { success: false, error: "Insufficient coins to send gift" };
+      }
+
+      // Check if recipient exists
+      const recipient = await this.getUser(recipientId);
+      if (!recipient) {
+        return { success: false, error: "Recipient not found" };
+      }
+
+      // Check if users are friends
+      const areFriends = await this.areFriends(senderId, recipientId);
+      if (!areFriends) {
+        return { success: false, error: "You can only send gifts to friends" };
+      }
+
+      // Use atomic database transaction for secure transfer
+      await db.transaction(async (tx) => {
+        // Get current balances within transaction
+        const senderBalance = await tx.select({ coins: users.coins }).from(users).where(eq(users.id, senderId)).then(rows => rows[0]?.coins || 0);
+        const recipientBalance = await tx.select({ coins: users.coins }).from(users).where(eq(users.id, recipientId)).then(rows => rows[0]?.coins || 0);
+
+        // Double-check sufficient balance within transaction
+        if (senderBalance < amount) {
+          throw new Error("Insufficient coins to send gift");
+        }
+
+        // Calculate new balances
+        const senderBalanceAfter = senderBalance - amount;
+        const recipientBalanceAfter = recipientBalance + amount;
+
+        // Ensure sender balance never goes negative
+        if (senderBalanceAfter < 0) {
+          throw new Error("Transfer would result in negative balance");
+        }
+
+        // Create transaction records
+        await tx.insert(coinTransactions).values({
+          id: crypto.randomUUID(),
+          userId: senderId,
+          amount: -amount,
+          type: 'gift_sent',
+          balanceBefore: senderBalance,
+          balanceAfter: senderBalanceAfter,
+          recipientId: recipientId,
+          giftMessage: message,
+          createdAt: new Date()
+        });
+
+        await tx.insert(coinTransactions).values({
+          id: crypto.randomUUID(),
+          userId: recipientId,
+          amount: amount,
+          type: 'gift_received',
+          balanceBefore: recipientBalance,
+          balanceAfter: recipientBalanceAfter,
+          senderId: senderId,
+          giftMessage: message,
+          createdAt: new Date()
+        });
+
+        // Update user balances atomically
+        await tx.update(users).set({ coins: senderBalanceAfter }).where(eq(users.id, senderId));
+        await tx.update(users).set({ coins: recipientBalanceAfter }).where(eq(users.id, recipientId));
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending coin gift:', error);
+      return { success: false, error: error instanceof Error ? error.message : "Failed to send gift" };
+    }
+  }
+
+  async getCoinGiftHistory(userId: string, limit: number = 50): Promise<Array<CoinTransaction & { sender?: User; recipient?: User }>> {
+    try {
+      const transactions = await db
+        .select({
+          transaction: coinTransactions,
+          sender: users,
+          recipient: users
+        })
+        .from(coinTransactions)
+        .leftJoin(users, eq(coinTransactions.senderId, users.id))
+        .leftJoin(users, eq(coinTransactions.recipientId, users.id))
+        .where(
+          and(
+            eq(coinTransactions.userId, userId),
+            or(
+              eq(coinTransactions.type, 'gift_sent'),
+              eq(coinTransactions.type, 'gift_received')
+            )
+          )
+        )
+        .orderBy(desc(coinTransactions.createdAt))
+        .limit(limit);
+
+      return transactions.map(row => ({
+        ...row.transaction,
+        sender: row.sender || undefined,
+        recipient: row.recipient || undefined
+      }));
+    } catch (error) {
+      console.error('Error fetching gift history:', error);
+      return [];
+    }
+  }
+
+  async getReceivedGifts(userId: string, unreadOnly: boolean = false): Promise<Array<CoinTransaction & { sender: User }>> {
+    try {
+      const query = db
+        .select({
+          transaction: coinTransactions,
+          sender: users
+        })
+        .from(coinTransactions)
+        .innerJoin(users, eq(coinTransactions.senderId, users.id))
+        .where(
+          and(
+            eq(coinTransactions.userId, userId),
+            eq(coinTransactions.type, 'gift_received')
+          )
+        )
+        .orderBy(desc(coinTransactions.createdAt));
+
+      const transactions = await query;
+
+      return transactions.map(row => ({
+        ...row.transaction,
+        sender: row.sender
+      }));
+    } catch (error) {
+      console.error('Error fetching received gifts:', error);
+      return [];
+    }
+  }
+
+  async markGiftsAsRead(userId: string, giftIds: string[]): Promise<void> {
+    try {
+      // For now, we don't have a read status in the schema
+      // This method is prepared for future implementation
+      // when we add a 'read' field to coin transactions
+    } catch (error) {
+      console.error('Error marking gifts as read:', error);
+    }
   }
 
 

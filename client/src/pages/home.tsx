@@ -26,6 +26,7 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { ShareButton } from "@/components/ShareButton";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import MonthlyRankPopup from "@/components/MonthlyRankPopup";
+import { GiftReceivedNotification } from "@/components/GiftReceivedNotification";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,12 +73,14 @@ export default function Home() {
   const [levelUpData, setLevelUpData] = useState<any>(null);
   const [showMonthlyRankPopup, setShowMonthlyRankPopup] = useState(false);
   const [monthlyRankData, setMonthlyRankData] = useState<any>(null);
+  const [showGiftNotification, setShowGiftNotification] = useState(false);
+  const [giftNotificationData, setGiftNotificationData] = useState<any>(null);
   const headerSidebarRef = useRef<HTMLDivElement>(null);
   const gameBoardRef = useRef<HTMLDivElement>(null);
 
   const { data: userStats } = useQuery({
-    queryKey: ["/api/users/online-stats"],
-    enabled: !!user,
+    queryKey: ["/api/users", (user as any)?.userId, "online-stats"],
+    enabled: !!user && !!(user as any)?.userId,
   });
 
   // Get current user's role in the room (to check if they're a spectator)
@@ -283,6 +286,18 @@ export default function Home() {
     return () => window.removeEventListener('openLeaderboard', handleOpenLeaderboard);
   }, []);
 
+  // Listen for gift received events
+  useEffect(() => {
+    const handleGiftReceived = (event: any) => {
+      console.log('🎁 Gift received event:', event.detail);
+      setGiftNotificationData(event.detail);
+      setShowGiftNotification(true);
+    };
+
+    window.addEventListener('gift_received', handleGiftReceived);
+    return () => window.removeEventListener('gift_received', handleGiftReceived);
+  }, []);
+
   // Listen for game abandonment custom events
   useEffect(() => {
     const handleGameAbandoned = (event: any) => {
@@ -455,6 +470,74 @@ export default function Home() {
     window.addEventListener('game_reconnection', handleGameReconnection);
     window.addEventListener('navigate_to_ai_mode', handleNavigateToAI);
     
+    // Handle matchmaking messages (including game_started from play again)
+    const handleMatchmakingMessage = (event: any) => {
+      const message = event.detail;
+      console.log('🎮 Matchmaking message received:', message.type, message);
+      
+      if (message.type === 'game_started') {
+        console.log('🎮 Game started from matchmaking message - processing...');
+        
+        // Handle game start - ensure both players transition to game
+        if (message.game && message.roomId) {
+          console.log('🎮 Processing game_started from play again - closing dialogs and setting game state');
+          
+          // Close any existing dialogs
+          setShowPlayAgainRequest(false);
+          setPlayAgainRequest(null);
+          setShowGameOver(false);
+          setGameResult(null);
+          setIsMatchmaking(false);
+          setShowMatchmaking(false);
+          
+          // Force close matchmaking modal
+          window.dispatchEvent(new CustomEvent('force_close_matchmaking', {
+            detail: { reason: 'game_started_from_play_again', timestamp: Date.now() }
+          }));
+          
+          // Set game mode to online
+          setSelectedMode('online');
+          
+          // Set the room state immediately
+          setCurrentRoom({
+            id: message.roomId,
+            status: 'playing',
+            code: message.room?.code || 'ONLINE'
+          });
+          
+          // Set the complete game state from the server message
+          setCurrentGame({
+            ...message.game,
+            board: message.game.board || {},
+            gameMode: 'online',
+            status: 'active'
+          });
+          
+          console.log('✅ Game state set from play again - Game ID:', message.game.id, 'Room ID:', message.roomId);
+          
+          // Show success message
+          toast({
+            title: "New Game Started!",
+            description: "Play again request accepted. Good luck!",
+            duration: 2000,
+          });
+          
+          // Scroll to game board
+          setTimeout(() => {
+            const gameBoard = document.getElementById('tic-tac-toe-board');
+            if (gameBoard) {
+              gameBoard.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center'
+              });
+            }
+          }, 100);
+        }
+      }
+    };
+
+    window.addEventListener('matchmaking_message_received', handleMatchmakingMessage);
+    
     return () => {
       window.removeEventListener('game_abandoned', handleGameAbandoned);
       window.removeEventListener('play_again_request_received', handlePlayAgainRequest);
@@ -462,6 +545,7 @@ export default function Home() {
       window.removeEventListener('reconnection_room_join', handleRoomReconnection);
       window.removeEventListener('game_reconnection', handleGameReconnection);
       window.removeEventListener('navigate_to_ai_mode', handleNavigateToAI);
+      window.removeEventListener('matchmaking_message_received', handleMatchmakingMessage);
     };
   }, []); // Remove toast dependency to prevent effect recreation
 
@@ -498,7 +582,8 @@ export default function Home() {
           }));
           break;
         case 'game_started':
-          console.log('🎮 Game started message received:', lastMessage);
+          console.log('🎮 Game started message received in home.tsx:', lastMessage);
+          console.log('🎮 Message has game?', !!lastMessage.game, 'Message has roomId?', !!lastMessage.roomId);
           
           // Handle game start from WebSocket - ensure both players transition
           if (lastMessage.game && lastMessage.roomId) {
@@ -551,6 +636,10 @@ export default function Home() {
               // Reset creating state since game was successfully created
               setIsCreatingGame(false);
               setShowGameOver(false);
+              
+              // CRITICAL FIX: Clear play again request state when new game starts
+              setShowPlayAgainRequest(false);
+              setPlayAgainRequest(null);
               setGameResult(null);
               setIsResettingState(false);
               
@@ -565,15 +654,24 @@ export default function Home() {
                 });
               }
               
-              // Auto-scroll to game board when game starts
-              setTimeout(() => {
-                if (gameBoardRef.current) {
-                  gameBoardRef.current.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                  });
-                }
-              }, 200); // Reduced delay for faster transition
+              // Auto-scroll to game board when game starts - fixed timing issues
+              console.log('🔄 About to trigger auto-scroll to game board');
+              // Use requestAnimationFrame to ensure DOM is ready, then scroll
+              requestAnimationFrame(() => {
+                setTimeout(() => {
+                  console.log('📍 Attempting to scroll to game board, ref exists:', !!gameBoardRef.current);
+                  if (gameBoardRef.current) {
+                    console.log('📍 GameBoardRef element:', gameBoardRef.current);
+                    gameBoardRef.current.scrollIntoView({ 
+                      behavior: 'smooth', 
+                      block: 'start' 
+                    });
+                    console.log('✅ Successfully scrolled to game board');
+                  } else {
+                    console.warn('⚠️ GameBoard ref not found, scroll failed');
+                  }
+                }, 150); // Single timeout with optimized delay
+              });
             }, 100); // Ensure proper state synchronization
             
             // Invalidate queries to refresh room data
@@ -783,7 +881,7 @@ export default function Home() {
             
             // Invalidate stats cache to update user stats immediately
             console.log('📊 Game ended - refreshing user stats cache');
-            queryClient.invalidateQueries({ queryKey: ['/api/users/online-stats'] });
+            queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
             queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
             queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
             
@@ -801,7 +899,7 @@ export default function Home() {
               }).then(stats => {
                 console.log('✅ User stats fetched and updated:', stats);
                 // Force re-invalidate after successful fetch
-                queryClient.invalidateQueries({ queryKey: ['/api/users/online-stats'] });
+                queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
                 queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
               }).catch(error => {
                 console.error('❌ Error fetching user stats:', error);
@@ -1365,7 +1463,7 @@ export default function Home() {
       //console.log('🎮 User available - initializing local game');
       initializeLocalGame();
     }
-  }, [user]);
+  }, [user, currentGame, currentRoom, selectedMode, isResettingState]);
 
   // Update AI difficulty when changed - reset the game
   useEffect(() => {
@@ -1440,7 +1538,7 @@ export default function Home() {
     
     // Invalidate stats cache for local games too
     console.log('📊 Local game ended - refreshing user stats cache');
-    queryClient.invalidateQueries({ queryKey: ['/api/users/online-stats'] });
+    queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
     queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
     queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
   };
@@ -2089,6 +2187,17 @@ export default function Home() {
           rankData={monthlyRankData}
           userDisplayName={(user as any)?.displayName || (user as any)?.firstName || (user as any)?.username || 'Player'}
           userProfileImage={(user as any)?.profilePicture || (user as any)?.photoURL}
+        />
+      )}
+
+      {/* Gift Received Notification */}
+      {showGiftNotification && giftNotificationData && (
+        <GiftReceivedNotification
+          gift={giftNotificationData}
+          onClose={() => {
+            setShowGiftNotification(false);
+            setGiftNotificationData(null);
+          }}
         />
       )}
 
