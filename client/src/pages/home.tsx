@@ -27,11 +27,14 @@ import { ShareButton } from "@/components/ShareButton";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import MonthlyRankPopup from "@/components/MonthlyRankPopup";
 import { GiftReceivedNotification } from "@/components/GiftReceivedNotification";
+import { ErrorModal } from "@/components/ErrorModal";
+import { ConnectingOverlay } from "@/components/ConnectingOverlay";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GamepadIcon, LogOut, User, Zap, Loader2, Users, Settings, Menu, X, Palette, Trophy, Languages } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { GamepadIcon, LogOut, User, Zap, Loader2, Users, Settings, Menu, X, Palette, Trophy, Languages, BookOpen, ShoppingBag } from "lucide-react";
 import { logout } from "@/lib/firebase";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { CustomLanguageSelector } from "@/components/CustomLanguageSelector";
@@ -72,9 +75,14 @@ export default function Home() {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpData, setLevelUpData] = useState<any>(null);
   const [showMonthlyRankPopup, setShowMonthlyRankPopup] = useState(false);
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [countdownNumber, setCountdownNumber] = useState(5);
   const [monthlyRankData, setMonthlyRankData] = useState<any>(null);
   const [showGiftNotification, setShowGiftNotification] = useState(false);
   const [giftNotificationData, setGiftNotificationData] = useState<any>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalData, setErrorModalData] = useState<{ title: string; message: string; type?: 'error' | 'coins' | 'warning' }>({ title: '', message: '' });
+  const [showGameRules, setShowGameRules] = useState(false);
   const headerSidebarRef = useRef<HTMLDivElement>(null);
   const gameBoardRef = useRef<HTMLDivElement>(null);
 
@@ -97,6 +105,75 @@ export default function Home() {
 
 
 
+  // Global error handler for all WebSocket error events
+  useEffect(() => {
+    const handleCreateRoomError = (event: any) => {
+      const { message } = event.detail;
+      const isCoinsError = message && message.toLowerCase().includes('coins');
+      setErrorModalData({
+        title: isCoinsError ? '💰 Insufficient Coins' : 'Create Room Error',
+        message: message || 'Failed to create room. Please try again.',
+        type: isCoinsError ? 'coins' : 'error'
+      });
+      setShowErrorModal(true);
+    };
+
+    const handleJoinRoomError = (event: any) => {
+      const { message } = event.detail;
+      const isCoinsError = message && message.toLowerCase().includes('coins');
+      setErrorModalData({
+        title: isCoinsError ? '💰 Insufficient Coins' : 'Join Room Error',
+        message: message || 'Failed to join room. Please try again.',
+        type: isCoinsError ? 'coins' : 'error'
+      });
+      setShowErrorModal(true);
+    };
+
+    const handleStartGameError = (event: any) => {
+      const { message } = event.detail;
+      setErrorModalData({
+        title: 'Start Game Error',
+        message: message || 'Failed to start game. Please try again.',
+        type: 'error'
+      });
+      setShowErrorModal(true);
+    };
+
+    const handleMoveError = (event: any) => {
+      const { error } = event.detail;
+      setErrorModalData({
+        title: 'Move Error',
+        message: error || 'Invalid move. Please try again.',
+        type: 'warning'
+      });
+      setShowErrorModal(true);
+    };
+
+    const handleAutoPlayError = (event: any) => {
+      const { error } = event.detail;
+      setErrorModalData({
+        title: 'Auto-play Error',
+        message: error || 'Auto-play failed. Please try again.',
+        type: 'warning'
+      });
+      setShowErrorModal(true);
+    };
+
+    window.addEventListener('create_room_error', handleCreateRoomError);
+    window.addEventListener('join_room_error', handleJoinRoomError);
+    window.addEventListener('start_game_error', handleStartGameError);
+    window.addEventListener('move_error', handleMoveError);
+    window.addEventListener('auto_play_error', handleAutoPlayError);
+
+    return () => {
+      window.removeEventListener('create_room_error', handleCreateRoomError);
+      window.removeEventListener('join_room_error', handleJoinRoomError);
+      window.removeEventListener('start_game_error', handleStartGameError);
+      window.removeEventListener('move_error', handleMoveError);
+      window.removeEventListener('auto_play_error', handleAutoPlayError);
+    };
+  }, []);
+
   // Check if email verification is required
   useEffect(() => {
     if (user && (user as any).email && !(user as any).isEmailVerified) {
@@ -108,12 +185,13 @@ export default function Home() {
   useEffect(() => {
     const checkPendingLevelUps = async () => {
       if (!user) return;
-      
+      if (showGameOver) return; // Don't show level up if game over modal is showing
+
       try {
         const response = await fetch('/api/level-ups/pending', {
           credentials: 'include'
         });
-        
+
         if (response.ok) {
           const levelUps = await response.json();
           if (levelUps.length > 0) {
@@ -129,18 +207,18 @@ export default function Home() {
     };
 
     checkPendingLevelUps();
-  }, [user]);
+  }, [user, showGameOver]);
 
   // Check for pending monthly rank popup when user loads home
   useEffect(() => {
     const checkPendingRankPopup = async () => {
       if (!user) return;
-      
+
       try {
         const response = await fetch('/api/user/pending-rank-popup', {
           credentials: 'include'
         });
-        
+
         if (response.ok) {
           const result = await response.json();
           if (result.hasPendingPopup && result.rankData) {
@@ -164,22 +242,22 @@ export default function Home() {
   // Handle level up acknowledgment
   const handleLevelUpAcknowledge = async () => {
     if (!levelUpData) return;
-    
+
     try {
       const response = await fetch(`/api/level-ups/${levelUpData.id}/acknowledge`, {
         method: 'POST',
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         setShowLevelUp(false);
         setLevelUpData(null);
-        
+
         // Check if there are more level ups to show
         const pendingResponse = await fetch('/api/level-ups/pending', {
           credentials: 'include'
         });
-        
+
         if (pendingResponse.ok) {
           const remainingLevelUps = await pendingResponse.json();
           if (remainingLevelUps.length > 0) {
@@ -193,6 +271,33 @@ export default function Home() {
     } catch (error) {
       console.error('Error acknowledging level up:', error);
     }
+  };
+
+  // Handle game over modal close - check for pending level ups after closing
+  const handleGameOverClose = async () => {
+    setShowGameOver(false);
+
+    // Small delay to ensure smooth transition before checking for level ups
+    setTimeout(async () => {
+      if (!user) return;
+
+      try {
+        const response = await fetch('/api/level-ups/pending', {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const levelUps = await response.json();
+          if (levelUps.length > 0) {
+            const latestLevelUp = levelUps[0];
+            setLevelUpData(latestLevelUp);
+            setShowLevelUp(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for level ups after game over:', error);
+      }
+    }, 300); // 300ms delay for smooth transition
   };
 
   // Close header sidebar when clicking outside or via custom event
@@ -234,7 +339,7 @@ export default function Home() {
           description: event.detail?.message || "You have left the room.",
           duration: 2000,
         });
-        
+
         // Immediate smooth state transition to AI mode without any delays
         setCurrentGame(null);
         setCurrentRoom(null);
@@ -242,7 +347,7 @@ export default function Home() {
         setShowGameOver(false);
         setGameResult(null);
         setIsCreatingGame(false);
-        
+
         // Initialize a fresh AI game
         setTimeout(() => {
           setCurrentGame({
@@ -257,7 +362,7 @@ export default function Home() {
             updatedAt: new Date().toISOString()
           });
         }, 100);
-        
+
       } catch (error) {
         // Fallback to simple state reset
         setCurrentGame(null);
@@ -268,9 +373,9 @@ export default function Home() {
         setIsCreatingGame(false);
       }
     };
-    
+
     window.addEventListener('spectator_transition_to_ai', handleSpectatorTransitionToAI);
-    
+
     return () => {
       window.removeEventListener('spectator_transition_to_ai', handleSpectatorTransitionToAI);
     };
@@ -305,7 +410,7 @@ export default function Home() {
       try {
         // Immediate transition to prevent blinking - no delays
         setIsResettingState(true);
-        
+
         // Batch all state changes in a single synchronous update to prevent flickering
         setCurrentGame(null);
         setCurrentRoom(null);
@@ -313,13 +418,13 @@ export default function Home() {
         setShowGameOver(false);
         setGameResult(null);
         setIsCreatingGame(false);
-        
+
         toast({
           title: "Game Ended",
           description: event.detail.message || "Game ended because a player left the room.",
           variant: "destructive",
         });
-        
+
         // Quick reset without delay to prevent visual artifacts
         setTimeout(() => {
           setIsResettingState(false);
@@ -333,13 +438,13 @@ export default function Home() {
     };
 
     window.addEventListener('game_abandoned', handleGameAbandoned);
-    
+
     // Handle play again request events
     const handlePlayAgainRequest = (event: any) => {
       try {
         const requestData = event.detail;
         console.log('🔄 Play again request received:', requestData);
-        
+
         // Store the request data and show the dialog
         setPlayAgainRequest({
           id: requestData.requestId,
@@ -364,31 +469,31 @@ export default function Home() {
     };
 
     window.addEventListener('play_again_request_received', handlePlayAgainRequest);
-    
+
     // Handle play again rejection - redirect to AI table
     const handlePlayAgainRejected = (event: any) => {
       try {
         const rejectionData = event.detail;
         console.log('❌ Play again rejected, redirecting to AI table:', rejectionData);
-        
+
         // Close any existing game over modal or play again dialog
         setShowGameOver(false);
         setShowPlayAgainRequest(false);
         setPlayAgainRequest(null);
         setGameResult(null);
-        
+
         // Transition to AI mode (home page with local games)
         setCurrentGame(null);
         setCurrentRoom(null);
         setSelectedMode('ai');
-        
+
         // Show notification
         toast({
           title: "Play Again Declined",
           description: "The play again request was declined. Starting a new AI game.",
           duration: 3000,
         });
-        
+
         // Initialize a fresh AI game after a short delay
         setTimeout(() => {
           initializeLocalGame();
@@ -399,12 +504,39 @@ export default function Home() {
     };
 
     window.addEventListener('play_again_rejected_received', handlePlayAgainRejected);
-    
+
+    // Handle play again countdown
+    const handlePlayAgainCountdown = (event: any) => {
+      try {
+        const countdownData = event.detail;
+        console.log('⏳ Play again countdown:', countdownData.countdown);
+
+        // Close game over modal and play again request dialog
+        setShowGameOver(false);
+        setShowPlayAgainRequest(false);
+
+        // Show countdown overlay
+        setCountdownNumber(countdownData.countdown);
+        setShowCountdown(true);
+
+        // If countdown is 0 or less, hide the overlay
+        if (countdownData.countdown <= 0) {
+          setTimeout(() => {
+            setShowCountdown(false);
+          }, 500);
+        }
+      } catch (error) {
+        console.error('❌ Error handling countdown:', error);
+      }
+    };
+
+    window.addEventListener('play_again_countdown', handlePlayAgainCountdown);
+
     // Handle room reconnection events
     const handleRoomReconnection = (event: any) => {
       const message = event.detail;
       console.log('🏠 Room reconnection event received:', message.room?.id);
-      
+
       if (message.room) {
         // Restore room state immediately
         setCurrentRoom(message.room);
@@ -412,19 +544,19 @@ export default function Home() {
         console.log('✅ Room reconnection processed - Room ID:', message.room.id);
       }
     };
-    
+
     // Handle immediate game reconnection events
     const handleGameReconnection = (event: any) => {
       const message = event.detail;
       console.log('🔄 Immediate reconnection event received:', message.game?.id);
-      
+
       if (message.game && message.roomId) {
         // Restore room state first if not already set
         if (!currentRoom || currentRoom.id !== message.roomId) {
           // Room state will be set by reconnection_room_join message
           console.log('🏠 Waiting for room reconnection...');
         }
-        
+
         // Restore game state immediately and consistently
         setSelectedMode('online');
         setCurrentGame({
@@ -434,13 +566,13 @@ export default function Home() {
           timestamp: Date.now(),
           syncTimestamp: Date.now()
         });
-        
+
         // Clear any interfering states
         setIsCreatingGame(false);
         setShowGameOver(false);
         setGameResult(null);
         setShowMatchmaking(false);
-        
+
         console.log('✅ Immediate reconnection processed');
       }
     };
@@ -448,7 +580,7 @@ export default function Home() {
     // Handle navigation to AI mode event from GameBoard
     const handleNavigateToAI = () => {
       console.log('🤖 Navigating to AI mode smoothly (no reload)');
-      
+
       // Clear all online game state
       setCurrentGame(null);
       setCurrentRoom(null);
@@ -456,10 +588,10 @@ export default function Home() {
       setGameResult(null);
       setIsCreatingGame(false);
       setShowMatchmaking(false);
-      
+
       // Switch to AI mode
       setSelectedMode('ai');
-      
+
       // Initialize local AI game
       setTimeout(() => {
         initializeLocalGame();
@@ -469,42 +601,43 @@ export default function Home() {
     window.addEventListener('reconnection_room_join', handleRoomReconnection);
     window.addEventListener('game_reconnection', handleGameReconnection);
     window.addEventListener('navigate_to_ai_mode', handleNavigateToAI);
-    
+
     // Handle matchmaking messages (including game_started from play again)
     const handleMatchmakingMessage = (event: any) => {
       const message = event.detail;
       console.log('🎮 Matchmaking message received:', message.type, message);
-      
+
       if (message.type === 'game_started') {
         console.log('🎮 Game started from matchmaking message - processing...');
-        
+
         // Handle game start - ensure both players transition to game
         if (message.game && message.roomId) {
           console.log('🎮 Processing game_started from play again - closing dialogs and setting game state');
-          
-          // Close any existing dialogs
+
+          // Close any existing dialogs and countdown
           setShowPlayAgainRequest(false);
           setPlayAgainRequest(null);
           setShowGameOver(false);
           setGameResult(null);
           setIsMatchmaking(false);
           setShowMatchmaking(false);
-          
+          setShowCountdown(false);
+
           // Force close matchmaking modal
           window.dispatchEvent(new CustomEvent('force_close_matchmaking', {
             detail: { reason: 'game_started_from_play_again', timestamp: Date.now() }
           }));
-          
+
           // Set game mode to online
           setSelectedMode('online');
-          
+
           // Set the room state immediately
           setCurrentRoom({
             id: message.roomId,
             status: 'playing',
             code: message.room?.code || 'ONLINE'
           });
-          
+
           // Set the complete game state from the server message
           setCurrentGame({
             ...message.game,
@@ -512,16 +645,11 @@ export default function Home() {
             gameMode: 'online',
             status: 'active'
           });
-          
+
           console.log('✅ Game state set from play again - Game ID:', message.game.id, 'Room ID:', message.roomId);
-          
-          // Show success message
-          toast({
-            title: "New Game Started!",
-            description: "Play again request accepted. Good luck!",
-            duration: 2000,
-          });
-          
+
+          // No notification needed for game start
+
           // Scroll to game board
           setTimeout(() => {
             const gameBoard = document.getElementById('tic-tac-toe-board');
@@ -537,11 +665,12 @@ export default function Home() {
     };
 
     window.addEventListener('matchmaking_message_received', handleMatchmakingMessage);
-    
+
     return () => {
       window.removeEventListener('game_abandoned', handleGameAbandoned);
       window.removeEventListener('play_again_request_received', handlePlayAgainRequest);
       window.removeEventListener('play_again_rejected_received', handlePlayAgainRejected);
+      window.removeEventListener('play_again_countdown', handlePlayAgainCountdown);
       window.removeEventListener('reconnection_room_join', handleRoomReconnection);
       window.removeEventListener('game_reconnection', handleGameReconnection);
       window.removeEventListener('navigate_to_ai_mode', handleNavigateToAI);
@@ -584,41 +713,42 @@ export default function Home() {
         case 'game_started':
           console.log('🎮 Game started message received in home.tsx:', lastMessage);
           console.log('🎮 Message has game?', !!lastMessage.game, 'Message has roomId?', !!lastMessage.roomId);
-          
+
           // Handle game start from WebSocket - ensure both players transition
           if (lastMessage.game && lastMessage.roomId) {
             console.log('🎮 Processing game_started - closing matchmaking modal and setting game state');
-            
-            // CRITICAL FIX: Force close matchmaking modal immediately when game starts
+
+            // CRITICAL FIX: Force close matchmaking modal and countdown immediately when game starts
             setIsMatchmaking(false);
             setShowMatchmaking(false);
+            setShowCountdown(false);
             handleMatchmakingClose();
-            
+
             // Dispatch global event to force close any stuck modals
             window.dispatchEvent(new CustomEvent('force_close_matchmaking', {
               detail: { reason: 'game_started', timestamp: Date.now() }
             }));
-            
+
             // CRITICAL FIX: Force UI refresh for proper game board display
             setIsResettingState(true);
-            
+
             // Clear any conflicting storage
             localStorage.removeItem('currentGameState');
             sessionStorage.removeItem('currentGameState');
             localStorage.removeItem('currentRoomState');
             sessionStorage.removeItem('currentRoomState');
-            
+
             setTimeout(() => {
               // Ensure game mode is set to online when receiving game_started
               setSelectedMode('online');
-              
+
               // Set the room state immediately
               setCurrentRoom({
                 id: lastMessage.roomId,
                 status: 'playing',
                 code: lastMessage.room?.code || 'ONLINE'
               });
-              
+
               // Set the complete game state from the server message
               const gameData = {
                 ...lastMessage.game,
@@ -629,20 +759,20 @@ export default function Home() {
                 currentPlayer: lastMessage.game.currentPlayer || 'X',
                 timestamp: Date.now()
               };
-              
+
               console.log('🎮 Setting game state:', gameData);
               setCurrentGame(gameData);
-              
+
               // Reset creating state since game was successfully created
               setIsCreatingGame(false);
               setShowGameOver(false);
-              
+
               // CRITICAL FIX: Clear play again request state when new game starts
               setShowPlayAgainRequest(false);
               setPlayAgainRequest(null);
               setGameResult(null);
               setIsResettingState(false);
-              
+
               // Show game started toast only once per game
               const gameToastKey = `${lastMessage.game.id}-${lastMessage.roomId}`;
               if (!shownGameStartedToasts.has(gameToastKey)) {
@@ -653,7 +783,7 @@ export default function Home() {
                   duration: 3000,
                 });
               }
-              
+
               // Auto-scroll to game board when game starts - fixed timing issues
               console.log('🔄 About to trigger auto-scroll to game board');
               // Use requestAnimationFrame to ensure DOM is ready, then scroll
@@ -673,7 +803,7 @@ export default function Home() {
                 }, 150); // Single timeout with optimized delay
               });
             }, 100); // Ensure proper state synchronization
-            
+
             // Invalidate queries to refresh room data
             queryClient.invalidateQueries({ queryKey: ["/api/rooms", lastMessage.roomId, "participants"] });
           }
@@ -683,7 +813,7 @@ export default function Home() {
           // Enhanced move handling - match by gameId OR roomId to ensure spectators see moves
           const isCurrentGame = currentGame && lastMessage.gameId === currentGame.id;
           const isCurrentRoom = currentRoom && lastMessage.roomId === currentRoom.id;
-          
+
           if (isCurrentGame || isCurrentRoom) {
             // Update or create game state for everyone (players and spectators)
             setCurrentGame(prevGame => {
@@ -699,7 +829,8 @@ export default function Home() {
                   timeRemaining: lastMessage.timeRemaining || prevGame.timeRemaining,
                   playerXInfo: lastMessage.playerXInfo || prevGame.playerXInfo,
                   playerOInfo: lastMessage.playerOInfo || prevGame.playerOInfo,
-                  timestamp: Date.now() // Force re-render
+                  timestamp: Date.now(), // Force re-render
+                  syncTimestamp: Date.now() // Single update with sync timestamp
                 };
               } else {
                 // Create new game state for spectators or reconnecting players
@@ -716,23 +847,18 @@ export default function Home() {
                   timeRemaining: lastMessage.timeRemaining,
                   playerXInfo: lastMessage.playerXInfo,
                   playerOInfo: lastMessage.playerOInfo,
-                  timestamp: Date.now()
+                  timestamp: Date.now(),
+                  syncTimestamp: Date.now()
                 };
               }
             });
-            
-            // Force immediate re-render for fast sync
-            setCurrentGame(prevGame => ({
-              ...prevGame,
-              syncTimestamp: Date.now()
-            }));
           }
           break;
         case 'auto_move':
           // Handle auto-play moves - same as regular moves but from AI
           const isCurrentGameAuto = currentGame && lastMessage.gameId === currentGame.id;
           const isCurrentRoomAuto = currentRoom && lastMessage.roomId === currentRoom.id;
-          
+
           if (isCurrentGameAuto || isCurrentRoomAuto) {
             console.log('🤖 Auto-play move received:', lastMessage);
             // Update or create game state for everyone (players and spectators)
@@ -750,7 +876,8 @@ export default function Home() {
                   playerXInfo: lastMessage.playerXInfo || prevGame.playerXInfo,
                   playerOInfo: lastMessage.playerOInfo || prevGame.playerOInfo,
                   autoPlayActive: lastMessage.player, // Track which player is in auto-play
-                  timestamp: Date.now() // Force re-render
+                  timestamp: Date.now(), // Force re-render
+                  syncTimestamp: Date.now() // Single update with sync timestamp
                 };
               } else {
                 // Create new game state for spectators or reconnecting players
@@ -767,16 +894,11 @@ export default function Home() {
                   timeRemaining: lastMessage.timeRemaining,
                   playerXInfo: lastMessage.playerXInfo,
                   playerOInfo: lastMessage.playerOInfo,
-                  timestamp: Date.now()
+                  timestamp: Date.now(),
+                  syncTimestamp: Date.now()
                 };
               }
             });
-            
-            // Force immediate re-render for fast sync
-            setCurrentGame(prevGame => ({
-              ...prevGame,
-              syncTimestamp: Date.now()
-            }));
           }
           break;
         case 'auto_play_enabled':
@@ -878,13 +1000,13 @@ export default function Home() {
 
             //console.log('🎮 Setting complete game result:', gameResult);
             setGameResult(gameResult);
-            
+
             // Invalidate stats cache to update user stats immediately
             console.log('📊 Game ended - refreshing user stats cache');
             queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
             queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
             queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
-            
+
             // Call individual stats API to ensure immediate update
             if (userId) {
               console.log(`📊 Fetching updated stats for user: ${userId}`);
@@ -905,7 +1027,7 @@ export default function Home() {
                 console.error('❌ Error fetching user stats:', error);
               });
             }
-            
+
             // Close all modals to prevent blocking the game over modal
             setShowOnlineUsers(false);
             setShowProfile(false);
@@ -914,7 +1036,7 @@ export default function Home() {
             setShowCreateRoom(false);
             setShowMatchmaking(false);
             setShowHeaderSidebar(false);
-            
+
             setShowGameOver(true);
 
             // Note: Removed auto-close behavior for bot games to allow users to properly see the win/loss popup
@@ -957,28 +1079,28 @@ export default function Home() {
           // Handle all matchmaking success scenarios
           console.log('🎮 Matchmaking success received:', lastMessage.type, lastMessage);
           console.log('🎮 Current matchmaking state - isMatchmaking:', isMatchmaking, 'showMatchmaking:', showMatchmaking);
-          
+
           // IMMEDIATELY force close all matchmaking UI states
           console.log('🎮 EMERGENCY CLOSE: Forcing all matchmaking states to false');
           setIsMatchmaking(false);
           setShowMatchmaking(false);
-          
+
           // Force update the DOM by triggering a re-render
           setTimeout(() => {
             setIsMatchmaking(false);
             setShowMatchmaking(false);
             console.log('🎮 SECONDARY CLOSE: Double-checking matchmaking modal closure');
           }, 10);
-          
+
           // Handle the room joining
           if (lastMessage.room) {
             console.log('🎮 Setting room from matchmaking success:', lastMessage.room.id);
             setCurrentRoom(lastMessage.room);
             setSelectedMode('online'); // Ensure we're in online mode
-            
+
             // Join the room via WebSocket to receive game updates
             joinRoom(lastMessage.room.id);
-            
+
             toast({
               title: "Match Found!",
               description: lastMessage.message || "You've been matched with an opponent. Game starting...",
@@ -1002,7 +1124,7 @@ export default function Home() {
           //console.log('🔄 Processing game reconnection:', lastMessage);
           if (lastMessage.game && lastMessage.roomId) {
             //console.log('✅ Restoring game state:', lastMessage.game.id);
-            
+
             // Restore game state immediately - room state will be handled by reconnection_room_join
             setSelectedMode('online');
             setCurrentGame({
@@ -1012,35 +1134,30 @@ export default function Home() {
               timestamp: Date.now(),
               syncTimestamp: Date.now()
             });
-            
+
             // Reset any modal states that might interfere
             setIsCreatingGame(false);
             setShowGameOver(false);
             setGameResult(null);
             setShowMatchmaking(false);
-            
+
             toast({
               title: "Game Reconnected",
               description: "Your game has been restored successfully.",
             });
-            
+
             //console.log('✅ Game reconnection completed');
           }
           break;
         case 'player_reconnected':
           //console.log('🔄 Player reconnected:', lastMessage);
-          if (currentRoom && lastMessage.userId !== (user?.userId || user?.id)) {
-            toast({
-              title: "Player Reconnected",
-              description: `${lastMessage.playerName} has reconnected to the game.`,
-            });
-          }
+          // Notification hidden to prevent spam when users reconnect
           break;
         case 'game_expired':
           console.log('⏰ Game expired:', lastMessage);
           // Prevent multiple resets and effects from triggering
           setIsResettingState(true);
-          
+
           setTimeout(() => {
             // Batch all state changes in a single update - preserve selectedMode
             setCurrentGame(null);
@@ -1049,13 +1166,13 @@ export default function Home() {
             setShowGameOver(false);
             setGameResult(null);
             setIsCreatingGame(false);
-            
+
             toast({
               title: "Game Expired",
               description: lastMessage.message || "Game expired due to inactivity. Returning to lobby.",
               variant: "destructive",
             });
-            
+
             // Complete reset and initialize game only if in AI mode
             setTimeout(() => {
               setIsResettingState(false);
@@ -1074,11 +1191,11 @@ export default function Home() {
           //console.log('🏠 HOME USEEFFECT: Current game state:', currentGame);
           //console.log('🏠 HOME USEEFFECT: Current room state:', currentRoom);
           //console.log('🏠 HOME USEEFFECT: Processing game abandonment via lastMessage');
-          
+
           try {
             // Immediate transition to prevent blinking - no delays
             setIsResettingState(true);
-            
+
             // Batch all state changes in a single synchronous update to prevent flickering
             setCurrentGame(null);
             setCurrentRoom(null);
@@ -1086,13 +1203,13 @@ export default function Home() {
             setShowGameOver(false);
             setGameResult(null);
             setIsCreatingGame(false);
-            
+
             toast({
               title: "Game Ended",
               description: lastMessage.message || "Game ended because a player left the room.",
               variant: "destructive",
             });
-            
+
             // Quick reset without delay to prevent visual artifacts
             setTimeout(() => {
               try {
@@ -1149,11 +1266,8 @@ export default function Home() {
           break;
         case 'play_again_response':
           console.log('🔄 Play again response received:', lastMessage);
-          if (lastMessage.response === 'accepted') {
-            toast({
-              description: "Your play again request was accepted! Starting new game...",
-            });
-          } else {
+          // Only show notification for declined requests
+          if (lastMessage.response === 'rejected') {
             toast({
               description: "Your play again request was declined",
             });
@@ -1181,17 +1295,17 @@ export default function Home() {
   const handleRoomJoin = (room: any) => {
     //console.log('🏠 handleRoomJoin called with room:', room.id);
     //console.log('🏠 Current room before join:', currentRoom?.id);
-    
+
     // Prevent duplicate room joins
     if (currentRoom && currentRoom.id === room.id) {
       //console.log('🏠 Already in this room, skipping duplicate join');
       return;
     }
-    
+
     // Automatically switch to online mode when joining a room
     //console.log('🏠 Switching to online mode for room join');
     setSelectedMode('online');
-    
+
     setCurrentRoom(room);
     joinRoom(room.id);
   };
@@ -1227,7 +1341,7 @@ export default function Home() {
 
       // Prevent multiple resets and effects from triggering
       setIsResettingState(true);
-      
+
       setTimeout(() => {
         console.log('🤖 Cleaning up after leave message sent');
         // Batch all state changes and switch to AI mode
@@ -1239,7 +1353,7 @@ export default function Home() {
         setIsMatchmaking(false); // Ensure matchmaking is off
         setShowMatchmaking(false); // Ensure modal is closed
         setSelectedMode('ai'); // Switch to AI mode
-        
+
         // Complete reset and initialize AI game
         setTimeout(() => {
           setIsResettingState(false);
@@ -1259,10 +1373,10 @@ export default function Home() {
         setShowMatchmaking(false); // Ensure modal is closed
         setSelectedMode('ai'); // Switch to AI mode
       };
-      
+
       // Prevent multiple resets and effects from triggering
       setIsResettingState(true);
-      
+
       setTimeout(() => {
         resetState();
         // Complete reset and initialize AI game
@@ -1281,26 +1395,26 @@ export default function Home() {
 
   const handleMatchmakingStart = () => {
     console.log('🎮 handleMatchmakingStart called - cleaning up all state');
-    
+
     // Clean up any existing game/room state first to prevent conflicts
     if (currentGame) {
       console.log('🎮 Clearing existing game state before matchmaking');
       setCurrentGame(null);
     }
-    
+
     if (currentRoom) {
       console.log('🎮 Clearing existing room state before matchmaking');
       setCurrentRoom(null);
     }
-    
+
     // Reset any lingering game over state
     setShowGameOver(false);
     setGameResult(null);
     setIsCreatingGame(false);
-    
+
     // Switch to online mode for matchmaking
     setSelectedMode('online');
-    
+
     // Start matchmaking
     setShowMatchmaking(true);
     setIsMatchmaking(true);
@@ -1314,24 +1428,24 @@ export default function Home() {
 
   const handleMatchFound = (room: any) => {
     console.log('🎮 handleMatchFound called - match found, processing...', room);
-    
+
     // CRITICAL FIX: Force close all modals and reset states immediately
     setIsMatchmaking(false);
     setShowMatchmaking(false);
-    
+
     // Clear any existing game state to prevent conflicts
     setCurrentGame(null);
-    
+
     // Clear local storage that might interfere
     localStorage.removeItem('currentGameState');
     sessionStorage.removeItem('currentGameState');
     localStorage.removeItem('currentRoomState');
     sessionStorage.removeItem('currentRoomState');
-    
+
     // CRITICAL FIX: Ensure proper UI refresh by forcing component re-render
     // This fixes the issue where the second player's game board doesn't refresh
     setIsResettingState(true);
-    
+
     setTimeout(() => {
       // Set the room state and switch to online mode
       setSelectedMode('online');
@@ -1345,26 +1459,26 @@ export default function Home() {
         isPrivate: room.isPrivate || false,
         createdAt: room.createdAt
       });
-      
+
       // Clear any conflicting states
       setIsCreatingGame(false);
       setShowGameOver(false);
       setGameResult(null);
       setIsResettingState(false);
-      
+
       // Join the room via WebSocket
       if (room.id) {
         console.log('🎮 Joining WebSocket room:', room.id);
         joinRoom(room.id);
       }
-      
+
       // Show success toast
       toast({
         title: "Match Found!",
         description: "Connecting to your opponent...",
         duration: 2000,
       });
-      
+
       console.log('🎮 Match found processing complete - room set and joined');
     }, 50); // Small delay for proper state synchronization
   };
@@ -1405,7 +1519,7 @@ export default function Home() {
   // Auto-initialize game when switching to AI or pass-play mode
   useEffect(() => {
     if (isResettingState) return; // Skip during reset operations
-    
+
     if (selectedMode === 'ai' || selectedMode === 'pass-play') {
       //console.log('🎮 Mode changed to:', selectedMode);
       // Clear any online game state first
@@ -1417,7 +1531,7 @@ export default function Home() {
         setGameResult(null);
         setIsCreatingGame(false);
       }
-      
+
       // Initialize local game if no game exists or if switching from online
       if (!currentGame || currentGame.gameMode === 'online') {
         //console.log('🎮 Auto-initializing game for mode:', selectedMode);
@@ -1431,13 +1545,59 @@ export default function Home() {
   // Fix white screen issue by ensuring game exists for all modes
   useEffect(() => {
     if (isResettingState) return; // Skip during reset operations
-    
+
     //console.log('🎮 Effect check - currentGame:', !!currentGame, 'currentRoom:', !!currentRoom, 'selectedMode:', selectedMode);
     if (!currentGame && !currentRoom && selectedMode !== 'online') {
       //console.log('🎮 White screen fix - initializing local game');
       initializeLocalGame();
     }
   }, [currentGame, currentRoom, selectedMode, user, isResettingState]);
+
+  // Handle WebSocket game over events for online games
+  useEffect(() => {
+    const handleWebSocketGameOver = (event: any) => {
+      const message = event.detail;
+      console.log('🎮 WebSocket game over event received:', message);
+
+      // Create enriched result object similar to local games but with WebSocket data
+      const enrichedResult = {
+        winner: message.winner,
+        winnerName: message.winner === 'X' 
+          ? (currentGame?.playerXInfo?.displayName || currentGame?.playerXInfo?.firstName || 'Player X')
+          : message.winner === 'O' 
+            ? (currentGame?.playerOInfo?.displayName || currentGame?.playerOInfo?.firstName || 'Player O')
+            : null,
+        condition: message.condition || 'unknown',
+        game: currentGame ? {
+          ...currentGame,
+          gameMode: 'online',
+          id: message.gameId || currentGame.id,
+          playerXId: currentGame.playerXId,
+          playerOId: currentGame.playerOId,
+          betAmount: message.betAmount
+        } : null,
+        betAmount: message.betAmount, // Direct from WebSocket message
+        playerXInfo: currentGame?.playerXInfo,
+        playerOInfo: currentGame?.playerOInfo
+      };
+
+      console.log('🎮 Setting WebSocket game result:', enrichedResult);
+      setGameResult(enrichedResult);
+      setShowGameOver(true);
+
+      // Refresh user stats cache for online games
+      console.log('📊 Online game ended - refreshing user stats cache');
+      queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
+    };
+
+    window.addEventListener('websocket_game_over', handleWebSocketGameOver);
+
+    return () => {
+      window.removeEventListener('websocket_game_over', handleWebSocketGameOver);
+    };
+  }, [currentGame, currentRoom, user, queryClient]);
 
   // Add effect to prevent game state loss on WebSocket reconnections
   useEffect(() => {
@@ -1458,7 +1618,7 @@ export default function Home() {
   // Force game initialization when user becomes available
   useEffect(() => {
     if (isResettingState) return; // Skip during reset operations
-    
+
     if (user && !currentGame && !currentRoom && selectedMode !== 'online') {
       //console.log('🎮 User available - initializing local game');
       initializeLocalGame();
@@ -1495,19 +1655,32 @@ export default function Home() {
   }, [aiDifficulty, selectedMode, user]);
 
   const handleGameOver = async (result: any) => {
-    //console.log('🎮 handleGameOver called with result:', result);
+    console.log('🎮 handleGameOver called with result:', result);
+    console.log('🎮 Current game:', currentGame);
+    console.log('🎮 Current room:', currentRoom);
 
-    // Ultra-simple approach - just store the winner and condition
-    const simpleResult = {
+    // Include all necessary data for coin display in GameOverModal
+    const enrichedResult = {
       winner: result?.winner || null,
-      winnerName: result?.winnerName || (result?.winner === 'X' ? 'Player X' : result?.winner === 'O' ? 'AI' : null),
-      condition: result?.condition || 'unknown'
+      winnerName: result?.winnerName || (result?.winner === 'X' ? 'Player X' : result?.winner === 'O' ? (selectedMode === 'ai' ? 'AI' : 'Player O') : null),
+      condition: result?.condition || 'unknown',
+      game: currentGame ? {
+        ...currentGame,
+        gameMode: currentGame.gameMode || selectedMode,
+        id: currentGame.id,
+        playerXId: currentGame.playerXId,
+        playerOId: currentGame.playerOId,
+        betAmount: currentRoom?.betAmount || currentGame.betAmount
+      } : null,
+      betAmount: currentRoom?.betAmount || currentGame?.betAmount, // Include bet amount from room for online games
+      playerXInfo: currentGame?.playerXInfo,
+      playerOInfo: currentGame?.playerOInfo
     };
 
-    //console.log('🎮 Setting simple game result:', simpleResult);
-    setGameResult(simpleResult);
+    console.log('🎮 Setting enriched game result:', enrichedResult);
+    setGameResult(enrichedResult);
     setShowGameOver(true);
-    
+
     // Award coins for AI game wins
     if (selectedMode === 'ai' && result?.winner === 'X' && user?.userId) {
       try {
@@ -1523,7 +1696,7 @@ export default function Home() {
             reason: 'AI game win'
           })
         });
-        
+
         if (response.ok) {
           console.log('🪙 Coins awarded successfully');
           // Refresh user data to show updated coin balance
@@ -1535,7 +1708,7 @@ export default function Home() {
         console.error('Error awarding coins:', error);
       }
     }
-    
+
     // Invalidate stats cache for local games too
     console.log('📊 Local game ended - refreshing user stats cache');
     queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
@@ -1550,17 +1723,17 @@ export default function Home() {
     }
 
     setIsCreatingGame(true);
-    setShowGameOver(false);
-    setGameResult(null);
 
     if (selectedMode === 'online' && currentRoom) {
       // For online mode, create a new game in the same room
       try {
         //console.log('🎮 Creating new game for room:', currentRoom.id);
-        
+
         // Clear the current game first to prevent using finished game
         setCurrentGame(null);
-        
+        setShowGameOver(false);
+        setGameResult(null);
+
         const response = await fetch(`/api/rooms/${currentRoom.id}/start-game`, {
           method: 'POST',
           headers: {
@@ -1572,7 +1745,7 @@ export default function Home() {
           const newGame = await response.json();
           //console.log('🎮 New game created for play again:', newGame);
           //console.log('🎮 Game created successfully, waiting for server broadcast to all participants');
-          
+
           // Don't set the game locally - let the server broadcast handle it
           // This ensures both players get the exact same game state at the same time
 
@@ -1581,14 +1754,19 @@ export default function Home() {
           //console.error('Failed to create new game:', response.status);
           // Reset game state on error
           setCurrentGame(null);
+          setIsCreatingGame(false);
         }
       } catch (error) {
         //console.error('Error starting new game:', error);
         // Reset game state on error
         setCurrentGame(null);
+        setIsCreatingGame(false);
       }
     } else {
       // For AI and pass-play modes, restart locally
+      setShowGameOver(false);
+      setGameResult(null);
+
       const newGame = {
         id: `local-game-${Date.now()}`,
         board: {},
@@ -1627,10 +1805,30 @@ export default function Home() {
 
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <>
+    <div className="relative min-h-screen bg-slate-900 text-white">
+      {/* Animated Background Graphics */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        {/* Gradient Orbs */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/4 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+        {/* Dot Pattern Overlay */}
+        <div className="absolute inset-0 opacity-20" style={{
+          backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0)',
+          backgroundSize: '32px 32px'
+        }}></div>
+
+        {/* Diagonal Lines */}
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.1) 35px, rgba(255,255,255,.1) 36px)',
+        }}></div>
+      </div>
+
       {/* Enhanced Navigation Header - Larger Topbar */}
-      <nav className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 border-b border-slate-600 shadow-lg px-2 py-4 sm:px-4 sm:py-7 md:py-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <nav className="sticky top-0 z-40 bg-slate-800 border-b border-slate-600 shadow-lg px-2 py-3 sm:px-4 sm:py-5 md:py-6">
+        <div className="relative max-w-7xl mx-auto flex items-center justify-between">
           {/* Epic Gaming Profile Section - Larger Layout */}
           <div 
             className="flex items-center space-x-3 sm:space-x-4 md:space-x-7 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -1642,10 +1840,10 @@ export default function Home() {
               {/* Epic Profile Picture with Multiple Visual Effects */}
               <div className="relative">
                 {/* Outer Glow Ring - Slightly larger */}
-                <div className="absolute inset-0 w-14 h-14 sm:w-18 sm:h-18 md:w-24 md:h-24 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-full blur-md opacity-75 group-hover:opacity-100 animate-pulse"></div>
-                
+                <div className="absolute inset-0 w-11 h-11 sm:w-14 sm:h-14 md:w-20 md:h-20 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-full blur-md opacity-75 group-hover:opacity-100 animate-pulse"></div>
+
                 {/* Main Profile Picture Container - Slightly larger sizing */}
-                <div className="relative w-14 h-14 sm:w-18 sm:h-18 md:w-24 md:h-24 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-full p-0.5 sm:p-1 shadow-2xl">
+                <div className="relative w-11 h-11 sm:w-14 sm:h-14 md:w-20 md:h-20 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-full p-0.5 sm:p-1 shadow-2xl">
                   {user?.profilePicture ? (
                     <img 
                       src={user.profilePicture} 
@@ -1654,19 +1852,19 @@ export default function Home() {
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 rounded-full flex items-center justify-center border-2 border-white/30">
-                      <User className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-white" />
+                      <User className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-white" />
                     </div>
                   )}
-                  
+
                   {/* Online Status with Enhanced Glow - Mobile responsive */}
-                  <div className={`absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full border-2 sm:border-3 border-slate-800 ${actualOnlineStatus ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-red-500 shadow-lg shadow-red-500/50'} animate-pulse`}></div>
-                  
+                  <div className={`absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-3 h-3 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 sm:border-3 border-slate-800 ${actualOnlineStatus ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-red-500 shadow-lg shadow-red-500/50'} animate-pulse`}></div>
+
                   {/* Level Badge - Mobile responsive */}
                   <div className="absolute -top-1 -left-1 sm:-top-2 sm:-left-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs sm:text-sm font-black px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-lg border border-yellow-300">
                     Lv.{userStats?.level || '0'}
                   </div>
                 </div>
-                
+
                 {/* Floating Particles Effect - Hidden on very small screens */}
                 <div className="absolute inset-0 pointer-events-none hidden sm:block">
                   <div className="absolute top-0 left-4 w-2 h-2 bg-blue-400 rounded-full animate-ping opacity-75"></div>
@@ -1675,11 +1873,11 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            
+
             {/* Player Info with Gaming Stats - Larger Layout */}
-            <div className="flex flex-col space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+            <div className="flex flex-col space-y-1 sm:space-y-1.5 min-w-0 flex-1">
               <div className="flex items-center space-x-2 sm:space-x-3">
-                <h2 className="text-base sm:text-xl md:text-3xl font-black bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent truncate">
+                <h2 className="text-sm sm:text-lg md:text-2xl font-black bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent truncate">
                   {user?.displayName || user?.firstName || user?.username || 'Player'}
                 </h2>
                 <div className={`flex items-center space-x-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-full text-xs sm:text-sm font-semibold ${actualOnlineStatus ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
@@ -1687,74 +1885,75 @@ export default function Home() {
                   <span className="hidden sm:inline">{actualOnlineStatus ? 'ONLINE' : 'OFFLINE'}</span>
                 </div>
               </div>
-              
+
               {/* Epic Stats Display - Larger Layout */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 md:flex md:items-center md:space-x-5 text-xs sm:text-sm">
-                <div className="flex items-center space-x-1 bg-blue-500/20 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded border border-blue-500/30">
-                  <Trophy className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400" />
-                  <span className="text-yellow-400 font-bold">{userStats?.wins || 0}</span>
-                  <span className="text-blue-300 hidden sm:inline">Wins</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 sm:gap-1.5 md:flex md:items-center md:space-x-4 text-xs sm:text-sm">
+                <div className="flex items-center space-x-1 bg-blue-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-blue-500/30">
+                  <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-yellow-400" />
+                  <span className="text-yellow-400 font-bold text-xs sm:text-sm">{userStats?.wins || 0}</span>
+                  <span className="text-blue-300 hidden sm:inline text-xs">Wins</span>
                 </div>
-                
-                <div className="flex items-center space-x-1 bg-purple-500/20 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded border border-purple-500/30">
-                  <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-orange-400" />
-                  <span className="text-orange-400 font-bold">{userStats?.currentWinStreak || 0}</span>
-                  <span className="text-purple-300 hidden sm:inline">Streak</span>
+
+                <div className="flex items-center space-x-1 bg-purple-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-purple-500/30">
+                  <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-400" />
+                  <span className="text-orange-400 font-bold text-xs sm:text-sm">{userStats?.currentWinStreak || 0}</span>
+                  <span className="text-purple-300 hidden sm:inline text-xs">Streak</span>
                 </div>
-                
-                <div className="flex items-center space-x-1 bg-pink-500/20 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded border border-pink-500/30">
-                  <span className="text-pink-400 font-bold">{Math.round(((userStats?.wins || 0) / Math.max((userStats?.wins || 0) + (userStats?.losses || 0), 1)) * 100)}%</span>
-                  <span className="text-pink-300 hidden sm:inline">Rate</span>
+
+                <div className="flex items-center space-x-1 bg-pink-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-pink-500/30">
+                  <span className="text-pink-400 font-bold text-xs sm:text-sm">{Math.round(((userStats?.wins || 0) / Math.max((userStats?.wins || 0) + (userStats?.losses || 0), 1)) * 100)}%</span>
+                  <span className="text-pink-300 hidden sm:inline text-xs">Rate</span>
                 </div>
-                
-                <div className="flex items-center space-x-1 bg-green-500/20 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded border border-green-500/30">
-                  <span className="text-green-400 font-bold text-sm">💰</span>
-                  <span className="text-green-400 font-bold">{formatNumber(userStats?.coins ?? 1000)}</span>
-                  <span className="text-green-300 hidden sm:inline">Coins</span>
+
+                <div className="flex items-center space-x-1 bg-green-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-green-500/30">
+                  <span className="text-green-400 font-bold text-xs">🪙</span>
+                  <span className="text-green-400 font-bold text-xs sm:text-sm">{formatNumber(userStats?.coins ?? 1000)}</span>
+                  <span className="text-green-300 hidden sm:inline text-xs">Coins</span>
                 </div>
               </div>
             </div>
           </div>
 
 
-            
+
             {/* Enhanced Action Buttons - Larger Layout */}
-            <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
+            <div className="relative flex items-center space-x-2 sm:space-x-3 md:space-x-4">
               {/* Leaderboard Button - Larger Size */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowLeaderboard(true)}
-                className="bg-gradient-to-r from-yellow-600 to-orange-600 border-yellow-500/50 text-white hover:from-yellow-500 hover:to-orange-500 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 rounded-xl shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 backdrop-blur-sm"
+                className="relative bg-gradient-to-r from-yellow-600 to-orange-600 border-yellow-500/50 text-white hover:from-yellow-500 hover:to-orange-500 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-2.5 rounded-xl shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 backdrop-blur-sm"
+                data-testid="button-leaderboard"
               >
-                <Trophy className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-                <span className="hidden md:inline ml-2 font-semibold">{t('leaderboard') || 'Leaderboard'}</span>
+                <Trophy className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                <span className="hidden md:inline ml-2 font-semibold text-sm">{t('leaderboard') || 'Leaderboard'}</span>
               </Button>
-              
+
               {/* Menu Button - Larger Size */}
               <div className="relative" ref={headerSidebarRef}>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => setShowHeaderSidebar(!showHeaderSidebar)}
-                  className="bg-slate-700/80 border-slate-500/50 text-white hover:bg-slate-600/80 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 rounded-xl shadow-lg backdrop-blur-sm hover:shadow-slate-500/25 transition-all duration-300"
+                  className="relative bg-slate-700/80 border-slate-500/50 text-white hover:bg-slate-600/80 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-2.5 rounded-xl shadow-lg backdrop-blur-sm hover:shadow-slate-500/25 transition-all duration-300"
                 >
                   {showHeaderSidebar ? (
-                    <X className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                    <X className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                   ) : (
-                    <Menu className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                    <Menu className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                   )}
-                  <span className="hidden md:inline ml-2 font-semibold">Menu</span>
+                  <span className="hidden md:inline ml-2 font-semibold text-sm">Menu</span>
                 </Button>
-              
+
               {/* Header Sidebar */}
               {showHeaderSidebar && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 overflow-visible">
+                <div className="absolute right-0 top-full mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-[9999] overflow-visible">
                   <div className="p-4 space-y-4 overflow-visible">
                     <div className="text-sm font-medium text-gray-300 border-b border-slate-700 pb-2">
                       {t('quickActions')}
                     </div>
-                    
+
                     {/* Language Selector */}
                     <div className="flex items-center justify-between overflow-visible">
                       <div className="flex items-center space-x-2">
@@ -1765,7 +1964,7 @@ export default function Home() {
                         <CustomLanguageSelector />
                       </div>
                     </div>
-                    
+
                     {/* Theme Selector */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -1788,12 +1987,12 @@ export default function Home() {
                         {t('change')}
                       </Button>
                     </div>
-                    
+
                     {/* Friends */}
                     <div className="w-full">
                       <Friends />
                     </div>
-                    
+
                     {/* Online Players */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -1812,7 +2011,7 @@ export default function Home() {
                         {onlineUserCount} {t('playersLabel')}
                       </Button>
                     </div>
-                    
+
                     {/* Achievements */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -1832,7 +2031,7 @@ export default function Home() {
                         {t('view')}
                       </Button>
                     </div>
-                    
+
                     {/* Share Game */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -1846,9 +2045,28 @@ export default function Home() {
                         className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600 text-xs"
                       />
                     </div>
-                    
 
-                    
+                    {/* Shop */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <ShoppingBag className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-300">Shop</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowHeaderSidebar(false);
+                          setLocation('/shop');
+                        }}
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 border-purple-500/50 text-white hover:from-purple-500 hover:to-pink-500 text-xs"
+                        data-testid="button-shop-menu"
+                      >
+                        Visit
+                      </Button>
+                    </div>
+
                     {/* Profile Settings */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -1871,7 +2089,7 @@ export default function Home() {
 {t('settings')}
                       </Button>
                     </div>
-                    
+
                     {/* Logout */}
                     <div className="border-t border-slate-700 pt-2">
                       <Button
@@ -1892,17 +2110,14 @@ export default function Home() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
+      {/* Main Content with relative positioning */}
+      <div className="relative z-0 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Game Board Section */}
           <div ref={gameBoardRef} className="lg:col-span-2">
             {currentGame ? (
               <div>
-                <div className="mb-4 text-center">
-                  <span className="text-sm text-gray-400">
-                    Game ID: {currentGame.id} | Room: {currentRoom?.code || 'Local'}
-                  </span>
-                </div>
                 <GameBoard 
                   key={currentGame?.id}
                   game={currentGame}
@@ -1920,27 +2135,26 @@ export default function Home() {
               </div>
             )}
 
-            {/* Game Rules */}
-            <Card className="mt-4 sm:mt-6 bg-slate-800 border-slate-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base sm:text-lg">{t('gameRules')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-300 pt-0">
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2"></div>
-                  <span>{t('horizontalWin')}</span>
+            {/* Game Rules - Small Trigger Card */}
+            <Card 
+              className="mt-4 sm:mt-6 bg-gradient-to-r from-blue-600 to-purple-600 border-blue-500/50 cursor-pointer hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg hover:shadow-blue-500/25" 
+              onClick={() => setShowGameRules(true)}
+              data-testid="card-game-rules-trigger"
+            >
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-white/20 p-2 rounded-lg">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm">{t('gameRules')}</h3>
+                    <p className="text-white/80 text-xs">{t('clickToView') || 'Click to view rules'}</p>
+                  </div>
                 </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2"></div>
-                  <span>{t('verticalWin')}</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2"></div>
-                  <span>{t('diagonalWin')}</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2"></div>
-                  <span>{t('gridLayout')}</span>
+                <div className="text-white/60">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </CardContent>
             </Card>
@@ -1948,37 +2162,6 @@ export default function Home() {
 
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6">
-            {/* User Profile */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base sm:text-lg flex items-center space-x-2">
-                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Profile</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-center">
-                  {user?.profilePicture ? (
-                    <img 
-                      src={user.profilePicture} 
-                      alt="Profile" 
-                      className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover mx-auto mb-2 sm:mb-3"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3">
-                      <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                    </div>
-                  )}
-                  <p className="text-xs sm:text-sm text-gray-300 mb-2 sm:mb-3 px-2 truncate">
-                    {user?.displayName || user?.username || 'Player'}
-                  </p>
-                  <ProfileManager user={user} open={false} />
-                </div>
-              </CardContent>
-            </Card>
-
-
-
             {/* Game Mode Selection */}
             <GameModeSelector 
               selectedMode={selectedMode}
@@ -2027,11 +2210,11 @@ export default function Home() {
                             </Button>
                           </div>
                         </div>
-                        
+
                         <div className="text-center text-sm text-gray-500">
                           <span>{t('or')}</span>
                         </div>
-                        
+
                         <div className="text-center">
                           <p className="text-sm text-gray-300 mb-2">
                             {t('createOrJoinRoom')}
@@ -2039,7 +2222,7 @@ export default function Home() {
                         </div>
                       </>
                     )}
-                    
+
                     {currentRoom && (
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -2109,7 +2292,95 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Game Rules Modal */}
+      <Dialog open={showGameRules} onOpenChange={setShowGameRules}>
+        <DialogContent className="max-w-[90%] md:max-w-[70%] max-h-[90vh] md:max-h-[80vh] overflow-y-auto bg-slate-900 border-slate-700" data-testid="dialog-game-rules">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-2">
+              <BookOpen className="w-6 h-6 text-blue-400" />
+              {t('gameRules')}
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {t('gameRulesDescription') || 'Learn how to play TicTac 3x5'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Grid Layout */}
+            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">{t('gridLayout')}</h3>
+                  <p className="text-gray-300 text-sm">{t('gridDescription') || 'The game is played on a 3x5 grid with 15 positions (numbered 1-15)'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Win Conditions */}
+            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-yellow-400" />
+                {t('winConditionsTitle') || 'Win Conditions'}
+              </h3>
+
+              <div className="space-y-4">
+                {/* Horizontal Win */}
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">{t('horizontalWin')}</h4>
+                    <p className="text-gray-400 text-sm">{t('horizontalWinDescription') || '4 consecutive symbols in any row'}</p>
+                  </div>
+                </div>
+
+                {/* Vertical Win */}
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">{t('verticalWin')}</h4>
+                    <p className="text-gray-400 text-sm">{t('verticalWinDescription') || '3 consecutive symbols in any column'}</p>
+                  </div>
+                </div>
+
+                {/* Diagonal Win */}
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">{t('diagonalWin')}</h4>
+                    <p className="text-gray-400 text-sm">{t('diagonalWinDescription') || '3 consecutive symbols diagonally (positions 5, 10, 15 excluded)'}</p>
+                  </div>
+                </div>
+
+                {/* First Move Rule */}
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">{t('firstMoveRule')}</h4>
+                    <p className="text-gray-400 text-sm">{t('firstMoveRuleDescription') || 'The center position (8) cannot be played on the first move'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-slate-700">
+              <Button 
+                onClick={() => setShowGameRules(false)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500"
+                data-testid="button-close-rules"
+              >
+                Got it!
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      </div>
+      {/* End of Main Content Wrapper */}
+
+    </div>
+    
+    {/* Modals - Rendered outside main container to avoid z-index stacking context issues */}
       <CreateRoomModal 
         open={showCreateRoom}
         onClose={() => setShowCreateRoom(false)}
@@ -2120,7 +2391,7 @@ export default function Home() {
 
       <GameOverModal 
         open={showGameOver}
-        onClose={() => setShowGameOver(false)}
+        onClose={handleGameOverClose}
         result={gameResult}
         onPlayAgain={handlePlayAgain}
         isCreatingGame={isCreatingGame}
@@ -2201,6 +2472,56 @@ export default function Home() {
         />
       )}
 
+      {/* Play Again Countdown Overlay */}
+      {showCountdown && (
+        <div 
+          className="z-[10001]"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(8px)'
+          }}
+        >
+          <div style={{
+            textAlign: 'center',
+            color: 'white'
+          }}>
+            <div style={{
+              fontSize: '120px',
+              fontWeight: 'bold',
+              marginBottom: '24px',
+              animation: 'pulse 0.5s ease-in-out',
+              textShadow: '0 0 30px rgba(59, 130, 246, 0.8)'
+            }}>
+              {countdownNumber}
+            </div>
+            <div style={{
+              fontSize: '24px',
+              opacity: 0.9,
+              fontWeight: '500'
+            }}>
+              Starting new game...
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Error Modal */}
+      <ErrorModal
+        open={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title={errorModalData.title}
+        message={errorModalData.message}
+        type={errorModalData.type}
+      />
+
       <ProfileManager 
         user={user}
         open={showProfile}
@@ -2218,16 +2539,10 @@ export default function Home() {
       <Leaderboard 
         open={showLeaderboard}
         onClose={() => setShowLeaderboard(false)}
-        trigger={
-          <div style={{ display: 'none' }} />
-        }
+        trigger={<></>}
       />
 
-      {/* Global Room Invitation Popup */}
-      <InvitationPopup onRoomJoin={handleRoomJoin} />
-
-      {/* User Profile Stats Modal */}
-      <UserProfileModal 
+      <UserProfileModal
         open={showUserProfile}
         onClose={() => setShowUserProfile(false)}
         userId={user?.userId || user?.id || ''}
@@ -2237,6 +2552,12 @@ export default function Home() {
         profileImageUrl={user?.profileImageUrl}
       />
 
-    </div>
+      <InvitationPopup onRoomJoin={handleRoomJoin} />
+
+      {/* Connecting overlay for online games */}
+      <ConnectingOverlay 
+        isVisible={selectedMode === 'online' && !isConnected && (!!currentGame || !!currentRoom)}
+      />
+    </>
   );
 }

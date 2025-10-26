@@ -220,22 +220,36 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
       let errorMessage = error.message;
       let variant: "destructive" | "default" = "destructive";
       
-      // Check for insufficient coins error and show modal instead of toast
-      if (error.status === 403 && error.message?.includes('coins')) {
+      // Extract clean message from error object
+      // Priority: error.data.message > error.message
+      // If error.message is a JSON string, try to parse it to get the message field
+      let displayMessage = error.data?.message || error.message;
+      
+      // If displayMessage looks like JSON, try to parse it to extract the message
+      if (displayMessage && typeof displayMessage === 'string' && displayMessage.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(displayMessage);
+          displayMessage = parsed.message || displayMessage;
+        } catch (e) {
+          // Keep original message if parsing fails
+        }
+      }
+      
+      if (error.status === 403 && (displayMessage?.includes('coins') || displayMessage?.includes('Insufficient'))) {
         setErrorModal({
           open: true,
           title: 'Insufficient Coins',
-          message: error.message || 'You need 100 coins to play online. Win AI games to earn coins!',
+          message: displayMessage || 'You need 1000 coins to play online. Win AI games to earn coins!',
           type: 'coins'
         });
-      } else if (error.message.includes('room') || error.message.includes('connection')) {
+      } else if (displayMessage?.includes('room') || displayMessage?.includes('connection')) {
         setErrorModal({
           open: true,
           title: 'Connection Error',
           message: 'Connection issue. Please try again.',
           type: 'error'
         });
-      } else if (error.message.includes('queue')) {
+      } else if (displayMessage?.includes('queue')) {
         setErrorModal({
           open: true,
           title: 'Matchmaking Error',
@@ -246,7 +260,7 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
         setErrorModal({
           open: true,
           title: 'Error',
-          message: errorMessage,
+          message: displayMessage || errorMessage || 'An error occurred. Please try again.',
           type: 'error'
         });
       }

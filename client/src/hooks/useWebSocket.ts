@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+   import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 
 interface WebSocketMessage {
@@ -11,32 +11,34 @@ export function useWebSocket() {
   const ws = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  const [connectionQuality, setConnectionQuality] = useState<'good' | 'poor' | 'disconnected'>('disconnected');
+  const [reconnectTrigger, setReconnectTrigger] = useState(0);
   const joinedRooms = useRef<Set<string>>(new Set());
   const messageQueue = useRef<WebSocketMessage[]>([]);
   const reconnectAttempts = useRef(0);
   const lastPingTime = useRef<number>(0);
   const pingResponseTime = useRef<number>(0);
+  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!user) return;
 
-    // Prevent duplicate connections by checking if one already exists
+    // Close existing connection if any
     if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
-      return;
+      ws.current.close();
+      ws.current = null;
     }
 
     // Fix: Use strict same-origin WebSocket URL to ensure cookies are sent
     const wsUrl = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
-    
+
     console.log(`🔌 WebSocket connecting to: ${wsUrl}`);
 
 
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => {
+      console.log('✅ WebSocket connected successfully!');
       setIsConnected(true);
-      setConnectionQuality('good');
       reconnectAttempts.current = 0; // Reset on successful connection
       // Clear joined rooms on reconnect to prevent duplicates
       joinedRooms.current.clear();
@@ -44,18 +46,11 @@ export function useWebSocket() {
       // Get user ID with fallback to backup data
       let userId = (user as any)?.userId || (user as any)?.id;
 
-      // If no user from API, try backup from localStorage
+      // If no user from API, don't use backup - force proper authentication
       if (!userId) {
-        try {
-          const backupUser = localStorage.getItem('backup_user_data');
-          if (backupUser) {
-            const parsedUser = JSON.parse(backupUser);
-            userId = parsedUser?.userId || parsedUser?.id;
-            //console.log('🔄 Using backup user data for WebSocket auth');
-          }
-        } catch (error) {
-          console.warn('Failed to read backup user data:', error);
-        }
+        console.warn('⚠️ No authenticated user found - WebSocket connection cancelled');
+        ws.current.close();
+        return;
       }
 
       // Authenticate with WebSocket
@@ -66,8 +61,9 @@ export function useWebSocket() {
 
       // WebSocket authenticated
       ws.current?.send(JSON.stringify(authMessage));
-      
-      // Add recovery mechanism for missed game_started messages (helps with slow connections)
+
+      // Immediately request current game state for fast reconnection (within 5 seconds total)
+      // This ensures players get fresh game data (moves, board state) quickly after reconnecting
       setTimeout(() => {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
           // Request current game state in case we missed a game_started message
@@ -76,7 +72,7 @@ export function useWebSocket() {
             userId: userId
           }));
         }
-      }, 1000); // Wait 1 second after authentication
+      }, 100); // Fast refresh - only 100ms to ensure auth completes first
     };
 
     ws.current.onmessage = (event) => {
@@ -107,6 +103,19 @@ export function useWebSocket() {
             detail: message.invitation
           });
           window.dispatchEvent(invitationEvent);
+        }
+
+        // Handle regular game over - dispatch custom event for proper modal display
+        if (message.type === 'game_over') {
+          console.log('🎮 WebSocket: game_over message received:', message);
+
+          // Dispatch custom event for game over handling
+          const gameOverEvent = new CustomEvent('websocket_game_over', {
+            detail: message
+          });
+          window.dispatchEvent(gameOverEvent);
+
+          return; // Don't process further
         }
 
         // Handle player left win scenario - dispatch custom event for game board handling
@@ -224,6 +233,13 @@ export function useWebSocket() {
           }));
         }
 
+        // Handle play again countdown
+        if (message.type === 'play_again_countdown') {
+          window.dispatchEvent(new CustomEvent('play_again_countdown', {
+            detail: message
+          }));
+        }
+
         // Handle online status updates for friends list
         if (message.type === 'online_users_update' || message.type === 'user_offline') {
           // Dispatching online status update
@@ -241,11 +257,11 @@ export function useWebSocket() {
         // Handle matchmaking-related messages
         if (['match_found', 'matchmaking_success', 'matchmaking_response', 'game_started'].includes(message.type)) {
           // Matchmaking message received
-          
+
           // Special handling for game_started messages to ensure they're not missed
           if (message.type === 'game_started') {
             console.log('🎮 Received game_started message - ensuring proper handling');
-            
+
             // Send acknowledgment if required (retry mechanism)
             if (message.requiresAck && message.messageId && ws.current && ws.current.readyState === WebSocket.OPEN) {
               try {
@@ -258,7 +274,7 @@ export function useWebSocket() {
                 console.error('Failed to send game_started acknowledgment:', error);
               }
             }
-            
+
             // Store game state locally as backup
             try {
               localStorage.setItem('lastGameStarted', JSON.stringify({
@@ -278,17 +294,10 @@ export function useWebSocket() {
           window.dispatchEvent(matchmakingEvent);
         }
 
-        // Handle pong response with connection quality analysis
+        // Handle pong response for keepalive
         if (message.type === 'pong') {
           const responseTime = Date.now() - lastPingTime.current;
           pingResponseTime.current = responseTime;
-
-          // Update connection quality based on response time
-          if (responseTime < 200) {
-            setConnectionQuality('good');
-          } else if (responseTime < 1000) {
-            setConnectionQuality('poor');
-          }
 
           window.dispatchEvent(new CustomEvent('websocket_pong_received', {
             detail: { ...message, responseTime }
@@ -343,6 +352,22 @@ export function useWebSocket() {
           window.dispatchEvent(startGameErrorEvent);
         }
 
+        // Handle move error
+        if (message.type === 'move_error') {
+          const moveErrorEvent = new CustomEvent('move_error', {
+            detail: message
+          });
+          window.dispatchEvent(moveErrorEvent);
+        }
+
+        // Handle auto-play error
+        if (message.type === 'auto_play_error') {
+          const autoPlayErrorEvent = new CustomEvent('auto_play_error', {
+            detail: message
+          });
+          window.dispatchEvent(autoPlayErrorEvent);
+        }
+
         // Setting lastMessage in useWebSocket
         setLastMessage(messageWithTimestamp);
       } catch (error) {
@@ -352,21 +377,28 @@ export function useWebSocket() {
 
     ws.current.onclose = (event) => {
       // WebSocket connection closed
+      console.log('🔌 WebSocket closed, attempting reconnection...');
       setIsConnected(false);
-      setConnectionQuality('disconnected');
       reconnectAttempts.current++;
 
       // Smart reconnection with exponential backoff, but cap at 5 seconds max
-      if (event.code !== 1000) {
+      if (event.code !== 1000 && user) {
         const baseDelay = Math.min(1000 * Math.pow(1.5, reconnectAttempts.current - 1), 5000);
         const jitter = Math.random() * 1000; // Add jitter to prevent thundering herd
         const delay = Math.min(baseDelay + jitter, 5000);
 
-        // Reconnecting with backoff
-        setTimeout(() => {
+        console.log(`⏳ Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempts.current})`);
+        
+        // Clear any existing reconnection timeout
+        if (reconnectTimeout.current) {
+          clearTimeout(reconnectTimeout.current);
+        }
+
+        // Schedule reconnection by triggering useEffect to run again
+        reconnectTimeout.current = setTimeout(() => {
           if (user && (!ws.current || ws.current.readyState === WebSocket.CLOSED)) {
-            // Reconnecting for active player
-            setIsConnected(false);
+            console.log('🔄 Triggering reconnection...');
+            setReconnectTrigger(prev => prev + 1);
           }
         }, delay);
       }
@@ -386,7 +418,7 @@ export function useWebSocket() {
 
     window.addEventListener('send_websocket_ping', handleSendPing as EventListener);
 
-    // Enhanced heartbeat with connection quality monitoring - send ping every 15 seconds
+    // Enhanced heartbeat with connection quality monitoring - send ping every 50 seconds
     const pingInterval = setInterval(() => {
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         lastPingTime.current = Date.now();
@@ -396,30 +428,27 @@ export function useWebSocket() {
           keepAlive: true 
         }));
       }
-    }, 30000); // Optimized ping frequency for stable connections
+    }, 50000); // Optimized ping frequency for stable connections
 
     return () => {
       window.removeEventListener('send_websocket_ping', handleSendPing as EventListener);
       clearInterval(pingInterval); // Clean up heartbeat interval
+      
+      // Clear reconnection timeout on cleanup
+      if (reconnectTimeout.current) {
+        clearTimeout(reconnectTimeout.current);
+      }
 
       if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
         ws.current.close();
       }
       ws.current = null;
     };
-  }, [(user as any)?.userId || (user as any)?.id]); // Only recreate when user ID changes, not the entire user object
+  }, [(user as any)?.userId || (user as any)?.id, reconnectTrigger]); // Re-run when user ID changes or reconnect is triggered
 
   const sendMessage = (message: WebSocketMessage) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      // For poor connections, prioritize game moves over other messages
-      if (connectionQuality === 'poor' && message.type === 'move') {
-        // Skip other queued messages and send move immediately
-        messageQueue.current = messageQueue.current.filter(m => m.type === 'move');
-        // Priority move sent on poor connection
-      } else {
-        // Sending WebSocket message
-      }
-
+      // Sending WebSocket message
       ws.current.send(JSON.stringify(message));
 
       // Process any queued messages after successful send
@@ -463,15 +492,8 @@ export function useWebSocket() {
             let userId = (user as any)?.userId || (user as any)?.id;
 
             if (!userId) {
-              try {
-                const backupUser = localStorage.getItem('backup_user_data');
-                if (backupUser) {
-                  const parsedUser = JSON.parse(backupUser);
-                  userId = parsedUser?.userId || parsedUser?.id;
-                }
-              } catch (error) {
-                console.warn('Failed to read backup user data:', error);
-              }
+              console.warn('⚠️ No authenticated user found - refresh connection cancelled');
+              return;
             }
 
             const authMessage = {
@@ -479,7 +501,7 @@ export function useWebSocket() {
               userId: userId,
             };
 
-            console.log('🔄 Refreshed WebSocket connection with userId:', userId);
+            //console.log('🔄 Refreshed WebSocket connection with userId:', userId);
             ws.current?.send(JSON.stringify(authMessage));
           };
 
@@ -697,7 +719,6 @@ export function useWebSocket() {
   return {
     isConnected,
     lastMessage,
-    connectionQuality,
     sendMessage,
     joinRoom,
     leaveRoom,

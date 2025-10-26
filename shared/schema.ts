@@ -56,6 +56,7 @@ export const rooms = pgTable("rooms", {
   maxPlayers: integer("max_players").default(2),
   isPrivate: boolean("is_private").default(false),
   ownerId: varchar("owner_id").references(() => users.id),
+  betAmount: bigint("bet_amount", { mode: 'number' }).default(5000).notNull(), // Bet amount: 5k, 50k, 250k, 1m
   status: varchar("status").default("waiting"), // waiting, playing, finished
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -131,6 +132,17 @@ export const userThemes = pgTable("user_themes", {
 }, (table) => [
   // Prevent duplicate theme unlocks
   index("unique_user_theme").on(table.userId, table.themeName),
+]);
+
+export const userPieceStyles = pgTable("user_piece_styles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  styleName: varchar("style_name").notNull(), // default, thunder, etc.
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+  isActive: boolean("is_active").default(false), // Whether this style is currently selected
+}, (table) => [
+  // Prevent duplicate piece style unlocks
+  index("unique_user_piece_style").on(table.userId, table.styleName),
 ]);
 
 export const friendRequests = pgTable("friend_requests", {
@@ -278,6 +290,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   blockedByUsers: many(blockedUsers, { relationName: "blocked" }),
   achievements: many(achievements),
   unlockedThemes: many(userThemes),
+  unlockedPieceStyles: many(userPieceStyles),
   sentFriendRequests: many(friendRequests, { relationName: "requester" }),
   receivedFriendRequests: many(friendRequests, { relationName: "requested" }),
   friendshipsAsUser1: many(friendships, { relationName: "user1" }),
@@ -333,6 +346,10 @@ export const userThemesRelations = relations(userThemes, ({ one }) => ({
   user: one(users, { fields: [userThemes.userId], references: [users.id] }),
 }));
 
+export const userPieceStylesRelations = relations(userPieceStyles, ({ one }) => ({
+  user: one(users, { fields: [userPieceStyles.userId], references: [users.id] }),
+}));
+
 export const friendRequestsRelations = relations(friendRequests, ({ one }) => ({
   requester: one(users, { fields: [friendRequests.requesterId], references: [users.id], relationName: "requester" }),
   requested: one(users, { fields: [friendRequests.requestedId], references: [users.id], relationName: "requested" }),
@@ -372,9 +389,14 @@ export const weeklyRewardsRelations = relations(weeklyRewards, ({ one }) => ({
 
 // Schemas
 export const insertRoomSchema = createInsertSchema(rooms).pick({
-  name: true,
   maxPlayers: true,
   isPrivate: true,
+  betAmount: true,
+}).extend({
+  name: z.string().optional().default('Game Room'), // Auto-generate name if not provided
+  betAmount: z.number().refine((val) => [5000, 50000, 250000, 1000000].includes(val), {
+    message: "Bet amount must be 5000, 50000, 250000, or 1000000 coins",
+  }),
 });
 
 export const insertRoomInvitationSchema = createInsertSchema(roomInvitations).pick({
@@ -431,6 +453,12 @@ export const insertUserThemeSchema = createInsertSchema(userThemes).pick({
   userId: true,
   themeName: true,
   isUnlocked: true,
+});
+
+export const insertUserPieceStyleSchema = createInsertSchema(userPieceStyles).pick({
+  userId: true,
+  styleName: true,
+  isActive: true,
 });
 
 export const insertFriendRequestSchema = createInsertSchema(friendRequests).pick({
@@ -518,6 +546,7 @@ export type RoomParticipant = typeof roomParticipants.$inferSelect;
 export type BlockedUser = typeof blockedUsers.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
 export type UserTheme = typeof userThemes.$inferSelect;
+export type UserPieceStyle = typeof userPieceStyles.$inferSelect;
 export type FriendRequest = typeof friendRequests.$inferSelect;
 export type Friendship = typeof friendships.$inferSelect;
 
@@ -540,6 +569,7 @@ export type InsertRoomParticipant = z.infer<typeof insertRoomParticipantSchema>;
 export type InsertBlockedUser = z.infer<typeof insertBlockedUserSchema>;
 export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
 export type InsertUserTheme = z.infer<typeof insertUserThemeSchema>;
+export type InsertUserPieceStyle = z.infer<typeof insertUserPieceStyleSchema>;
 export type InsertRoomInvitation = z.infer<typeof insertRoomInvitationSchema>;
 export type CoinTransaction = typeof coinTransactions.$inferSelect;
 export type InsertCoinTransaction = z.infer<typeof insertCoinTransactionSchema>;

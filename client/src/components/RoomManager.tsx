@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Plus, LogOut, Play, UserPlus } from "lucide-react";
+import { Plus, LogOut, Play, UserPlus, DoorOpen, Users2, Eye } from "lucide-react";
 import { InviteFriendsModal } from "./InviteFriendsModal";
 import { useTranslation } from "@/contexts/LanguageContext";
 
@@ -101,21 +101,7 @@ export function RoomManager({
         setIsJoiningAsSpectator(false);
         setCurrentJoinRequestId(null);
 
-        // Handle insufficient coins error
-        if (message && message.includes('coins')) {
-          toast({
-            title: '💰 Insufficient Coins',
-            description: message,
-            variant: "destructive",
-          });
-          return;
-        }
-
-        toast({
-          title: t('error'),
-          description: message || 'Failed to join room. Please try again.',
-          variant: "destructive",
-        });
+        // Note: Error modal is handled by home.tsx, no toast needed here to avoid duplicate messages
       }
     };
 
@@ -226,6 +212,7 @@ export function RoomManager({
       const error = event.detail;
       console.error('Start game error:', error);
 
+      // Handle unauthorized errors with redirect
       if (error.message && error.message.includes('unauthorized')) {
         toast({
           title: t('unauthorized'),
@@ -238,11 +225,7 @@ export function RoomManager({
         return;
       }
 
-      toast({
-        title: t('error'),
-        description: error.message || 'Failed to start game. Please try again.',
-        variant: "destructive",
-      });
+      // Note: Error modal is handled by home.tsx, no toast needed here to avoid duplicate messages
 
       // Cleanup listeners
       window.removeEventListener('start_game_success', handleSuccess as EventListener);
@@ -325,117 +308,176 @@ export function RoomManager({
 
   return (
     <Card className="bg-slate-800 border-slate-700">
-      <CardHeader>
-        <CardTitle className="text-lg">{t('roomManagement')}</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+          <DoorOpen className="w-5 h-5 text-orange-400" />
+          {t('roomManagement')}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-0">
         {!currentRoom ? (
           <>
-            {/* Join Room */}
-            <div className="space-y-2">
-              <Input
-                placeholder={t('roomCode')}
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                className="bg-slate-700 border-slate-600 text-white"
-                maxLength={8}
-              />
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                <Button 
+            {/* Join Room Section with Graphics */}
+            <div className="space-y-3">
+              <div className="relative">
+                <Input
+                  placeholder={t('roomCode')}
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  className="bg-slate-700/50 border-slate-600 text-white pl-10 h-12 text-base font-medium tracking-wider"
+                  maxLength={8}
+                  data-testid="input-room-code"
+                />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <DoorOpen className="w-5 h-5" />
+                </div>
+              </div>
+              
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2">
+                <span className="text-amber-400 text-lg">💰</span>
+                <p className="text-xs text-amber-200/90 leading-relaxed">
+                  Rooms have different bet amounts (50k, 250k, or 1M coins). Make sure you have enough coins to join as a player.
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
                   onClick={() => handleJoinRoom('player')}
                   disabled={!joinCode.trim() || isJoiningAsPlayer}
-                  className="w-full sm:flex-1 bg-green-600 hover:bg-green-700"
+                  className="flex-1 relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-medium transition-all duration-300 shadow-lg hover:shadow-green-500/25"
                   data-testid="button-join-player"
                 >
-                  {isJoiningAsPlayer ? t('loading') : t('joinAsPlayer')}
-                </Button>
-                <Button 
+                  <div className="flex items-center justify-center gap-2">
+                    <Users2 className="w-4 h-4" />
+                    <span>{isJoiningAsPlayer ? t('loading') : t('joinAsPlayer')}</span>
+                  </div>
+                </button>
+                
+                <button
+                  type="button"
                   onClick={() => handleJoinRoom('spectator')}
                   disabled={!joinCode.trim() || isJoiningAsSpectator}
-                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-medium transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
                   data-testid="button-join-spectator"
                 >
-                  {isJoiningAsSpectator ? t('loading') : t('joinAsSpectator')}
-                </Button>
+                  <div className="flex items-center justify-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    <span>{isJoiningAsSpectator ? t('loading') : t('joinAsSpectator')}</span>
+                  </div>
+                </button>
               </div>
             </div>
 
-            {/* Create Room */}
-            <Button 
-              onClick={onCreateRoom}
-              className="w-full bg-purple-600 hover:bg-purple-700"
-              data-testid="button-create-room"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {t('createNewRoom')}
-            </Button>
+            {/* Create Room Button with Graphics */}
+            <div className="relative pt-2">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+              <button
+                type="button"
+                onClick={onCreateRoom}
+                className="w-full mt-2 relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-medium transition-all duration-300 shadow-lg hover:shadow-purple-500/25"
+                data-testid="button-create-room"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  <span>{t('createNewRoom')}</span>
+                </div>
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-1000"></div>
+              </button>
+            </div>
           </>
         ) : (
           <>
-            {/* Current Room */}
-            <div className="p-3 bg-slate-700 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium">{t('currentRoom')}</span>
-                <Badge variant="secondary" className={`${
-                  currentRoom.status === 'playing' ? 'bg-orange-600' : 
-                  currentRoom.status === 'waiting' ? 'bg-green-600' : 'bg-gray-600'
-                }`}>
-                  {currentRoom.status === 'playing' ? t('playing') : 
-                   currentRoom.status === 'waiting' ? t('waiting') : t('active')}
-                </Badge>
+            {/* Current Room with Graphics */}
+            <div className="relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 border border-slate-600">
+              {/* Background pattern */}
+              <div className="absolute inset-0 opacity-5">
+                <div className="absolute inset-0" style={{
+                  backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+                  backgroundSize: '24px 24px'
+                }}></div>
               </div>
-              <div className="text-sm text-gray-400">
-                {t('roomLabel')} #{currentRoom.code}
-              </div>
-              <div className="text-sm text-gray-400">
-                {currentRoom.name}
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-orange-500/20 p-2 rounded-lg">
+                      <DoorOpen className="w-4 h-4 text-orange-400" />
+                    </div>
+                    <span className="font-semibold text-white">{t('currentRoom')}</span>
+                  </div>
+                  <Badge variant="secondary" className={`${
+                    currentRoom.status === 'playing' ? 'bg-gradient-to-r from-orange-600 to-red-600' : 
+                    currentRoom.status === 'waiting' ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-gray-600'
+                  } text-white border-0`}>
+                    {currentRoom.status === 'playing' ? t('playing') : 
+                     currentRoom.status === 'waiting' ? t('waiting') : t('active')}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-mono font-bold text-blue-400">
+                    {t('roomLabel')} #{currentRoom.code}
+                  </div>
+                  <div className="text-sm text-gray-300">
+                    {currentRoom.name}
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Room Actions */}
+            {/* Room Actions with Graphics */}
             <div className="space-y-2">
               {/* Main action buttons */}
-              <div className="flex space-x-2">
+              <div className="flex gap-2">
                 {/* Check if user is the room creator */}
                 {currentRoom.ownerId === (user?.userId || user?.id) ? (
-                  <Button
+                  <button
+                    type="button"
                     onClick={handleStartGame}
                     disabled={isStartingGame || currentRoom.status === 'playing'}
-                    className="flex-1 bg-primary hover:bg-primary/90"
+                    className="flex-1 relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-medium transition-all duration-300 shadow-lg hover:shadow-green-500/25"
                     data-testid="button-start-game"
                   >
-                    <Play className="w-4 h-4 mr-2" />
-                    {isStartingGame ? t('starting') : 
-                     currentRoom.status === 'playing' ? t('gameRunning') : t('startGame')}
-                  </Button>
+                    <div className="flex items-center justify-center gap-2">
+                      <Play className="w-4 h-4" />
+                      <span>{isStartingGame ? t('starting') : 
+                       currentRoom.status === 'playing' ? t('gameRunning') : t('startGame')}</span>
+                    </div>
+                  </button>
                 ) : (
-                  <Button
+                  <button
+                    type="button"
                     disabled
-                    className="flex-1 bg-gray-600 cursor-not-allowed"
+                    className="flex-1 rounded-lg px-4 py-3 bg-gray-700 text-gray-400 font-medium cursor-not-allowed"
                   >
-                    <Play className="w-4 h-4 mr-2" />
-                    {currentRoom.status === 'playing' ? t('gameRunning') : t('waitForStart')}
-                  </Button>
+                    <div className="flex items-center justify-center gap-2">
+                      <Play className="w-4 h-4" />
+                      <span>{currentRoom.status === 'playing' ? t('gameRunning') : t('waitForStart')}</span>
+                    </div>
+                  </button>
                 )}
-                <Button
-                  variant="outline"
+                <button
+                  type="button"
                   onClick={handleLeaveRoom}
-                  className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                  className="px-4 py-3 rounded-lg border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-all duration-300"
                 >
                   <LogOut className="w-4 h-4" />
-                </Button>
+                </button>
               </div>
 
               {/* Invite friends button (only for room owner and when not playing) */}
               {currentRoom.ownerId === (user?.userId || user?.id) && currentRoom.status !== 'playing' && (
-                <Button
+                <button
+                  type="button"
                   onClick={() => setShowInviteModal(true)}
-                  variant="outline"
-                  className="w-full border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+                  className="w-full relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-medium transition-all duration-300 shadow-lg hover:shadow-blue-500/25 border border-blue-500/30"
                 >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  {t('inviteFriends')}
-                </Button>
+                  <div className="flex items-center justify-center gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    <span>{t('inviteFriends')}</span>
+                  </div>
+                </button>
               )}
             </div>
           </>

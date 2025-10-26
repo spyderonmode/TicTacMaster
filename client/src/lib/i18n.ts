@@ -1,11 +1,10 @@
 // Internationalization system for TicTac 3x5 game
-// Supports Arabic, Bengali, Hindi, Spanish, and Indonesian languages
+// Supports Bengali, Hindi, Spanish, and Indonesian languages
 
-export type Language = 'en' | 'ar' | 'bn' | 'hi' | 'es' | 'id';
+export type Language = 'en' | 'bn' | 'hi' | 'es' | 'id';
 
 export const languages = {
   en: { name: 'English', flag: '🇺🇸', dir: 'ltr' },
-  ar: { name: 'العربية', flag: '🇸🇦', dir: 'rtl' },
   bn: { name: 'বাংলা', flag: '🇧🇩', dir: 'ltr' },
   hi: { name: 'हिंदी', flag: '🇮🇳', dir: 'ltr' },
   es: { name: 'Español', flag: '🇪🇸', dir: 'ltr' },
@@ -133,12 +132,12 @@ export const translations = {
     id: 'Aturan Permainan',
   },
   horizontalWin: {
-    en: 'Horizontal Win: Get 4 symbols in a row horizontally',
-    ar: 'الفوز الأفقي: احصل على 4 رموز في صف أفقي',
-    bn: 'অনুভূমিক জয়: একটি সারিতে 4টি চিহ্ন পান',
-    hi: 'क्षैतिज जीत: एक पंक्ति में 4 प्रतीक प्राप्त करें',
-    es: 'Victoria Horizontal: Consigue 4 símbolos en una fila horizontal',
-    id: 'Kemenangan Horizontal: Dapatkan 4 simbol dalam baris horizontal',
+    en: 'Horizontal Win: Get 4 symbols in top/bottom rows, or 5 symbols in middle row',
+    ar: 'الفوز الأفقي: احصل على 4 رموز في الصفوف العلوية/السفلية، أو 5 رموز في الصف الأوسط',
+    bn: 'অনুভূমিক জয়: উপরের/নিচের সারিতে 4টি চিহ্ন বা মাঝের সারিতে 5টি চিহ্ন পান',
+    hi: 'क्षैतिज जीत: ऊपरी/निचली पंक्तियों में 4 प्रतीक, या मध्य पंक्ति में 5 प्रतीक प्राप्त करें',
+    es: 'Victoria Horizontal: Consigue 4 símbolos en filas superior/inferior, o 5 símbolos en fila media',
+    id: 'Kemenangan Horizontal: Dapatkan 4 simbol di baris atas/bawah, atau 5 simbol di baris tengah',
   },
   verticalWin: {
     en: 'Vertical Win: Get 3 symbols in a column vertically',
@@ -163,6 +162,14 @@ export const translations = {
     hi: 'ग्रिड लेआउट: 3 पंक्तियाँ × 5 कॉलम (स्थिति 1-15)',
     es: 'Diseño de Cuadrícula: 3 filas × 5 columnas (posiciones 1-15)',
     id: 'Tata Letak Grid: 3 baris × 5 kolom (posisi 1-15)',
+  },
+  firstMoveRule: {
+    en: 'First Move: Position 8 (center) is locked on the first move',
+    ar: 'الحركة الأولى: الموضع 8 (المركز) مقفل في الحركة الأولى',
+    bn: 'প্রথম চাল: অবস্থান 8 (কেন্দ্র) প্রথম চালে লক থাকে',
+    hi: 'पहली चाल: स्थिति 8 (केंद्र) पहली चाल में लॉक है',
+    es: 'Primer Movimiento: La posición 8 (centro) está bloqueada en el primer movimiento',
+    id: 'Gerakan Pertama: Posisi 8 (tengah) dikunci pada gerakan pertama',
   },
   
   // Quick Chat Messages

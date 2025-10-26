@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { User, Eye } from "lucide-react";
+import { User, Eye, Users, Crown } from "lucide-react";
 
 interface PlayerListProps {
   roomId: string;
@@ -89,89 +89,123 @@ export function PlayerList({ roomId }: PlayerListProps) {
 
   return (
     <Card className="bg-slate-800 border-slate-700">
-      <CardHeader>
-        <CardTitle className="text-lg">{t('playersAndSpectators')}</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+          <Users className="w-5 h-5 text-green-400" />
+          {t('playersAndSpectators')}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Players */}
-        <div>
-          <h4 className="text-sm font-medium text-gray-400 mb-2">
-            {t('players')} ({players.length}/2)
-          </h4>
-          <div className="space-y-2">
-            {players.length === 0 ? (
-              <div className="text-sm text-gray-500 text-center py-4">
-                {t('noPlayersInRoom')}
-              </div>
-            ) : (
-              players.map((participant, index) => (
-                <div key={participant.id} className="flex items-center justify-between p-2 bg-slate-700 rounded">
-                  <div className="flex items-center space-x-3">
-                    {participant.user.profileImageUrl ? (
-                      <img 
-                        src={participant.user.profileImageUrl} 
-                        alt={t('playerAvatar')} 
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-gray-400" />
-                      </div>
-                    )}
-                    <span className="text-sm">
-                      {participant.user.firstName || participant.user.username || t('anonymous')}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${
-                      index === 0 ? 'bg-blue-500' : 'bg-red-500'
-                    }`}></div>
-                    <span className="text-xs text-gray-400">
-                      {index === 0 ? 'X' : 'O'}
-                    </span>
-                  </div>
+      <CardContent className="space-y-4 pt-0">
+        {/* Players Section with Graphics */}
+        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-3">
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+              backgroundSize: '16px 16px'
+            }}></div>
+          </div>
+          
+          <div className="relative z-10">
+            <h4 className="text-sm font-semibold text-blue-300 mb-3 flex items-center gap-2">
+              <Crown className="w-4 h-4 text-yellow-400" />
+              {t('players')} ({players.length}/2)
+            </h4>
+            <div className="space-y-2">
+              {players.length === 0 ? (
+                <div className="text-sm text-gray-400 text-center py-6 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                  {t('noPlayersInRoom')}
                 </div>
-              ))
-            )}
+              ) : (
+                players.map((participant, index) => (
+                  <div key={participant.id} className="relative overflow-hidden flex items-center justify-between p-3 bg-slate-700/50 backdrop-blur-sm rounded-lg border border-slate-600/50 hover:bg-slate-700/70 transition-all duration-300">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        {participant.user.profileImageUrl ? (
+                          <img 
+                            src={participant.user.profileImageUrl} 
+                            alt={t('playerAvatar')} 
+                            className="w-10 h-10 rounded-full object-cover border-2 border-blue-400/50"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center border-2 border-blue-400/50">
+                            <User className="w-5 h-5 text-white" />
+                          </div>
+                        )}
+                        {/* Player number badge */}
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-black border border-yellow-300">
+                          {index + 1}
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-white">
+                        {participant.user.firstName || participant.user.username || t('anonymous')}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`px-3 py-1.5 rounded-lg ${
+                        index === 0 
+                          ? 'bg-gradient-to-r from-blue-600 to-cyan-600' 
+                          : 'bg-gradient-to-r from-red-600 to-pink-600'
+                      } shadow-lg`}>
+                        <span className="text-sm font-bold text-white">
+                          {index === 0 ? 'X' : 'O'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Spectators */}
-        <div>
-          <h4 className="text-sm font-medium text-gray-400 mb-2">
-            {t('spectators')} ({spectators.length})
-          </h4>
-          <div className="space-y-2">
-            {spectators.length === 0 ? (
-              <div className="text-sm text-gray-500 text-center py-2">
-                {t('noSpectators')}
-              </div>
-            ) : (
-              spectators.map((participant) => (
-                <div key={participant.id} className="flex items-center justify-between p-2 bg-slate-700 rounded">
-                  <div className="flex items-center space-x-3">
-                    {participant.user.profileImageUrl ? (
-                      <img 
-                        src={participant.user.profileImageUrl} 
-                        alt={t('spectatorAvatar')} 
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-gray-400" />
-                      </div>
-                    )}
-                    <span className="text-sm">
-                      {participant.user.firstName || participant.user.username || t('anonymous')}
-                    </span>
-                  </div>
-                  <Badge variant="secondary" className="bg-gray-600 text-xs">
-                    <Eye className="w-3 h-3 mr-1" />
-                    {t('watching')}
-                  </Badge>
+        {/* Spectators Section with Graphics */}
+        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-700/30 to-slate-800/30 border border-slate-600 p-3">
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+              backgroundSize: '16px 16px'
+            }}></div>
+          </div>
+          
+          <div className="relative z-10">
+            <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-cyan-400" />
+              {t('spectators')} ({spectators.length})
+            </h4>
+            <div className="space-y-2">
+              {spectators.length === 0 ? (
+                <div className="text-sm text-gray-400 text-center py-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                  {t('noSpectators')}
                 </div>
-              ))
-            )}
+              ) : (
+                spectators.map((participant) => (
+                  <div key={participant.id} className="flex items-center justify-between p-3 bg-slate-700/50 backdrop-blur-sm rounded-lg border border-slate-600/50 hover:bg-slate-700/70 transition-all duration-300">
+                    <div className="flex items-center space-x-3">
+                      {participant.user.profileImageUrl ? (
+                        <img 
+                          src={participant.user.profileImageUrl} 
+                          alt={t('spectatorAvatar')} 
+                          className="w-9 h-9 rounded-full object-cover border-2 border-cyan-400/30"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center border-2 border-cyan-400/30">
+                          <User className="w-4 h-4 text-gray-300" />
+                        </div>
+                      )}
+                      <span className="text-sm text-gray-200">
+                        {participant.user.firstName || participant.user.username || t('anonymous')}
+                      </span>
+                    </div>
+                    <Badge variant="secondary" className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-xs border-0">
+                      <Eye className="w-3 h-3 mr-1" />
+                      {t('watching')}
+                    </Badge>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </CardContent>

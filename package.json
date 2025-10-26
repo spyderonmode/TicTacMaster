@@ -58,7 +58,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "ts-node": "^10.9.2",
-    "wouter": "^3.3.5",
+    "wouter": "^3.7.1",
     "ws": "^8.18.0",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0"
@@ -84,7 +84,7 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.1",
     "typescript": "5.6.3",
-    "vite": "^5.4.19"
+    "vite": "^5.4.20"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

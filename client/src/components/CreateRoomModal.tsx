@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { Plus, Users, Lock, Unlock, Sparkles } from "lucide-react";
 
 interface CreateRoomModalProps {
   open: boolean;
@@ -19,8 +20,8 @@ interface CreateRoomModalProps {
 
 export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, leaveRoom }: CreateRoomModalProps) {
   const { t } = useTranslation();
-  const [roomName, setRoomName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState("2");
+  const [betAmount, setBetAmount] = useState("5000");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
@@ -62,21 +63,7 @@ export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, lea
         setIsCreating(false);
         setCurrentRequestId(null);
         
-        // Handle insufficient coins error
-        if (message && message.includes('coins')) {
-          toast({
-            title: '💰 Insufficient Coins',
-            description: message,
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        toast({
-          title: t('error'),
-          description: message || 'Failed to create room. Please try again.',
-          variant: "destructive",
-        });
+        // Note: Error modal is handled by home.tsx, no toast needed here to avoid duplicate messages
       }
     };
 
@@ -90,21 +77,13 @@ export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, lea
   }, [onRoomCreated, onClose, toast, t, currentRequestId]);
 
   const resetForm = () => {
-    setRoomName("");
     setMaxPlayers("2");
+    setBetAmount("5000");
     setIsPrivate(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roomName.trim()) {
-      toast({
-        title: t('error'),
-        description: t('roomNameRequired'),
-        variant: "destructive",
-      });
-      return;
-    }
 
     // Check WebSocket connection before sending
     if (!isConnected) {
@@ -148,8 +127,9 @@ export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, lea
       type: 'create_room',
       requestId,
       roomData: {
-        name: roomName.trim(),
+        name: 'Game Room',
         maxPlayers: parseInt(maxPlayers),
+        betAmount: parseInt(betAmount),
         isPrivate,
       }
     });
@@ -179,75 +159,134 @@ export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, lea
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="bg-slate-800 border-slate-700 text-white">
-        <DialogHeader>
-          <DialogTitle className="text-xl">{t('createNewRoom')}</DialogTitle>
+      <DialogContent className="bg-slate-800 border-slate-700 text-white sm:max-w-md">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
+              <Plus className="w-5 h-5 text-white" />
+            </div>
+            {t('createNewRoom')}
+          </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="roomName" className="text-sm font-medium text-gray-300">
-              {t('roomName')}
-            </Label>
-            <Input
-              id="roomName"
-              placeholder={t('enterRoomName')}
-              value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white mt-1"
-              disabled={isCreating}
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="maxPlayers" className="text-sm font-medium text-gray-300">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Max Players Section */}
+          <div className="space-y-2">
+            <Label htmlFor="maxPlayers" className="text-sm font-medium text-gray-200 flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-400" />
               {t('maxPlayers')}
             </Label>
-            <Select 
-              value={maxPlayers} 
-              onValueChange={setMaxPlayers}
-              disabled={isCreating}
-            >
-              <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-700 border-slate-600">
-                <SelectItem value="2">{t('twoPlayers')}</SelectItem>
-                <SelectItem value="2">{t('Spectators')}</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <Select 
+                value={maxPlayers} 
+                onValueChange={setMaxPlayers}
+                disabled={isCreating}
+              >
+                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white h-11 hover:bg-slate-700 transition-colors">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectItem value="2" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      <span>2 Players</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="4" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      <span>4 Players (with spectators)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="private"
-              checked={isPrivate}
-              onCheckedChange={setIsPrivate}
-              className="border-slate-600"
-              disabled={isCreating}
-            />
-            <Label htmlFor="private" className="text-sm text-gray-300">
-              {t('private')}
+
+          {/* Bet Amount Section */}
+          <div className="space-y-2">
+            <Label htmlFor="betAmount" className="text-sm font-medium text-gray-200 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              Bet Amount
             </Label>
+            <div className="relative">
+              <Select 
+                value={betAmount} 
+                onValueChange={setBetAmount}
+                disabled={isCreating}
+              >
+                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white h-11 hover:bg-slate-700 transition-colors" data-testid="select-bet-amount">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectItem value="5000" data-testid="option-bet-5k" className="cursor-pointer">💵 5,000 coins</SelectItem>
+                  <SelectItem value="50000" data-testid="option-bet-50k" className="cursor-pointer">💰 50,000 coins</SelectItem>
+                  <SelectItem value="250000" data-testid="option-bet-250k" className="cursor-pointer">💎 250,000 coins</SelectItem>
+                  <SelectItem value="1000000" data-testid="option-bet-1m" className="cursor-pointer">👑 1,000,000 coins</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-gray-400 flex items-center gap-1">
+              <span>💡</span>
+              <span>Higher bets = bigger rewards!</span>
+            </p>
           </div>
           
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button
+          {/* Privacy Toggle */}
+          <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="private"
+                checked={isPrivate}
+                onCheckedChange={setIsPrivate}
+                className="border-slate-500 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                disabled={isCreating}
+              />
+              <div className="flex items-center gap-2 flex-1">
+                {isPrivate ? (
+                  <Lock className="w-4 h-4 text-purple-400" />
+                ) : (
+                  <Unlock className="w-4 h-4 text-green-400" />
+                )}
+                <Label htmlFor="private" className="text-sm text-gray-200 cursor-pointer">
+                  {t('private')}
+                </Label>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-2 ml-7">
+              {isPrivate ? "🔒 Only invited players can join" : "🌐 Anyone with the code can join"}
+            </p>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
               type="button"
-              variant="outline"
               onClick={handleClose}
               disabled={isCreating}
-              className="border-slate-600 text-gray-300 hover:bg-slate-700"
+              className="flex-1 px-4 py-2.5 rounded-lg border-2 border-slate-600 text-gray-300 hover:bg-slate-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t('cancel')}
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
               disabled={isCreating}
-              className="bg-primary hover:bg-primary/90"
+              className="flex-1 relative overflow-hidden px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium transition-all duration-300 shadow-lg hover:shadow-purple-500/25 disabled:cursor-not-allowed"
             >
-              {isCreating ? t('creating') : t('createRoom')}
-            </Button>
+              <div className="flex items-center justify-center gap-2">
+                {isCreating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>{t('creating')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    <span>{t('createRoom')}</span>
+                  </>
+                )}
+              </div>
+            </button>
           </div>
         </form>
       </DialogContent>

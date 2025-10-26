@@ -14,6 +14,7 @@ import VerifyEmail from "@/pages/verify-email";
 import ResetPassword from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 import LoadingScreen from "@/components/LoadingScreen";
+import ShopPage from "@/pages/ShopPage";
 import { Component, useState, useEffect } from "react";
 
 // Error boundary to catch white screen crashes
@@ -201,6 +202,7 @@ function Router() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/not-found" component={NotFound} />
+      <Route path="/shop" component={ShopPage} />
       <Route path="/">
         <Home />
       </Route>

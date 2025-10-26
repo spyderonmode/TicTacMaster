@@ -7,6 +7,7 @@ import {
   blockedUsers,
   achievements,
   userThemes,
+  userPieceStyles,
   friendRequests,
   friendships,
   roomInvitations,
@@ -25,6 +26,7 @@ import {
   type BlockedUser,
   type Achievement,
   type UserTheme,
+  type UserPieceStyle,
   type FriendRequest,
   type Friendship,
   type RoomInvitation,
@@ -69,6 +71,10 @@ export interface IStorage {
   getRoomByCode(code: string): Promise<Room | undefined>;
   getRoomById(id: string): Promise<Room | undefined>;
   updateRoomStatus(id: string, status: string): Promise<void>;
+
+  // Bet amount operations
+  validateUserCanJoinRoom(userId: string, roomId: string): Promise<{ canJoin: boolean; reason?: string }>;
+  processRoomBetTransaction(winnerId: string, loserId: string, betAmount: number, gameId: string): Promise<void>;
 
   // Game operations
   createGame(game: InsertGame): Promise<Game>;
@@ -121,6 +127,14 @@ export interface IStorage {
   getUserThemes(userId: string): Promise<UserTheme[]>;
   isThemeUnlocked(userId: string, themeName: string): Promise<boolean>;
 
+  // Piece Style operations
+  unlockPieceStyle(userId: string, styleName: string): Promise<UserPieceStyle>;
+  getUserPieceStyles(userId: string): Promise<UserPieceStyle[]>;
+  getActivePieceStyle(userId: string): Promise<UserPieceStyle | undefined>;
+  setActivePieceStyle(userId: string, styleName: string): Promise<UserPieceStyle | null>;
+  isPieceStyleUnlocked(userId: string, styleName: string): Promise<boolean>;
+  purchasePieceStyle(userId: string, styleName: string, price: number): Promise<{ success: boolean; message: string; style?: UserPieceStyle }>;
+
   // Friend operations
   sendFriendRequest(requesterId: string, requestedId: string): Promise<FriendRequest>;
   getFriendRequests(userId: string): Promise<(FriendRequest & { requester: User; requested: User })[]>;
@@ -153,7 +167,7 @@ export interface IStorage {
   getUserCoins(userId: string): Promise<number>;
   updateUserCoins(userId: string, newBalance: number): Promise<void>;
   processCoinTransaction(userId: string, amount: number, type: string, gameId?: string): Promise<void>;
-  
+
   // Coin gift operations
   sendCoinGift(senderId: string, recipientId: string, amount: number, message?: string): Promise<{ success: boolean; error?: string }>;
   getCoinGiftHistory(userId: string, limit?: number): Promise<Array<CoinTransaction & { sender?: User; recipient?: User }>>;
@@ -194,17 +208,17 @@ export class DatabaseStorage implements IStorage {
     const target = new Date(date.getTime());
     // Use UTC to avoid timezone issues
     target.setUTCHours(0, 0, 0, 0);
-    
+
     // Thursday in current week decides the year
     const thursday = new Date(target.getTime());
     thursday.setUTCDate(target.getUTCDate() - ((target.getUTCDay() + 6) % 7) + 3);
-    
+
     // January 4th is always in week 1 - use UTC constructor consistently
     const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
     firstThursday.setUTCDate(firstThursday.getUTCDate() - ((firstThursday.getUTCDay() + 6) % 7) + 3);
-    
+
     const weekNumber = Math.floor((thursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-    
+
     return {
       weekNumber,
       year: thursday.getUTCFullYear()
@@ -391,10 +405,85 @@ export class DatabaseStorage implements IStorage {
     await db.update(rooms).set({ status }).where(eq(rooms.id, id));
   }
 
+  // Bet amount operations
+  async validateUserCanJoinRoom(userId: string, roomId: string): Promise<{ canJoin: boolean; reason?: string }> {
+    const [room] = await db.select().from(rooms).where(eq(rooms.id, roomId));
+    if (!room) {
+      return { canJoin: false, reason: "Room not found" };
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) {
+      return { canJoin: false, reason: "User not found" };
+    }
+
+    const userCoins = user.coins || 0;
+    const requiredBet = room.betAmount || 50000;
+
+    if (userCoins < requiredBet) {
+      return { 
+        canJoin: false, 
+        reason: `Insufficient coins. You need ${requiredBet.toLocaleString()} coins but only have ${userCoins.toLocaleString()} coins.` 
+      };
+    }
+
+    return { canJoin: true };
+  }
+
+  async processRoomBetTransaction(winnerId: string, loserId: string, betAmount: number, gameId: string): Promise<void> {
+    // Get current balances
+    const [winner, loser] = await Promise.all([
+      db.select().from(users).where(eq(users.id, winnerId)),
+      db.select().from(users).where(eq(users.id, loserId))
+    ]);
+
+    if (!winner[0] || !loser[0]) {
+      throw new Error("Winner or loser not found");
+    }
+
+    const winnerCurrentBalance = winner[0].coins || 0;
+    const loserCurrentBalance = loser[0].coins || 0;
+
+    // Process in transaction to ensure atomicity
+    await db.transaction(async (tx) => {
+      // Winner gets the bet amount
+      await tx.update(users)
+        .set({ coins: winnerCurrentBalance + betAmount })
+        .where(eq(users.id, winnerId));
+
+      // Record winner transaction
+      await tx.insert(coinTransactions).values({
+        userId: winnerId,
+        gameId: gameId,
+        amount: betAmount,
+        type: 'room_game_win',
+        balanceBefore: winnerCurrentBalance,
+        balanceAfter: winnerCurrentBalance + betAmount
+      });
+
+      // Loser loses coins only if they have enough balance
+      if (loserCurrentBalance >= betAmount) {
+        await tx.update(users)
+          .set({ coins: loserCurrentBalance - betAmount })
+          .where(eq(users.id, loserId));
+
+        // Record loser transaction
+        await tx.insert(coinTransactions).values({
+          userId: loserId,
+          gameId: gameId,
+          amount: -betAmount,
+          type: 'room_game_loss',
+          balanceBefore: loserCurrentBalance,
+          balanceAfter: loserCurrentBalance - betAmount
+        });
+      }
+    });
+  }
+
   // Clean up old rooms (older than 30 minutes) SAFELY - only inactive rooms with no active games
   async cleanupOldRooms(): Promise<number> {
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    
+
     try {
       // SAFELY find old rooms that have NO active games AND no recent activity
       const safeToDeleteRooms = await db
@@ -433,13 +522,13 @@ export class DatabaseStorage implements IStorage {
       }
 
       const roomIds = safeToDeleteRooms.map(r => r.id);
-      
+
       // Use transaction for atomic cleanup
       const deletedCount = await db.transaction(async (tx) => {
         // Delete related data in correct order to avoid foreign key violations
         // 1. Delete room participants first
         await tx.delete(roomParticipants).where(inArray(roomParticipants.roomId, roomIds));
-        
+
         // 2. DETACH games from these rooms instead of deleting them (preserves game history)
         // Extra safety: only detach non-active games
         await tx.update(games)
@@ -448,7 +537,7 @@ export class DatabaseStorage implements IStorage {
             inArray(games.roomId, roomIds),
             ne(games.status, 'active') // Never touch active games
           ));
-        
+
         // 3. Finally delete the rooms themselves
         const deletedRooms = await tx.delete(rooms)
           .where(inArray(rooms.id, roomIds))
@@ -459,7 +548,7 @@ export class DatabaseStorage implements IStorage {
 
       //console.log(`🧹 Safely cleaned up ${deletedCount} inactive rooms (older than 30 minutes, no active games)`);
       return deletedCount;
-      
+
     } catch (error) {
       console.error('❌ Error cleaning up old rooms:', error);
       return 0;
@@ -525,7 +614,7 @@ export class DatabaseStorage implements IStorage {
           // Loser achievements
           await this.checkAndGrantAchievements(loserId, 'loss', gameData);
 
-          // Process coin transactions based on game mode
+          // Process coin transactions based on game mode and room
           try {
             //console.log(`💰 Processing coin transactions for game ${gameId} (mode: ${game.gameMode}):`);
 
@@ -535,32 +624,55 @@ export class DatabaseStorage implements IStorage {
               await this.processCoinTransaction(winnerId, 100, 'ai_game_win', gameId);
               //console.log(`💰 Awarded 100 coins to AI game winner: ${winnerId}`);
             } else if (game.gameMode === 'online') {
-              // Online games: Winner gets 1000 coins, loser loses 1000 coins (if sufficient balance)
-              //console.log(`💰 Online game - Winner: ${winnerId} (+1000 coins), Loser: ${loserId} (-1000 coins)`);
+              // Check if this is a room-based game or matchmaking game
+              if (game.roomId) {
+                // Room-based game: Use room's bet amount
+                const room = await this.getRoomById(game.roomId);
+                if (room) {
+                  const betAmount = room.betAmount || 50000;
+                  //console.log(`💰 Room-based game - Winner: ${winnerId} (+${betAmount} coins), Loser: ${loserId} (-${betAmount} coins)`);
 
-              // Winner always gets coins
-              await this.processCoinTransaction(winnerId, 1000, 'online_game_win', gameId);
-              //console.log(`💰 Awarded 1000 coins to online game winner: ${winnerId}`);
+                  await this.processRoomBetTransaction(winnerId, loserId, betAmount, gameId);
+                  //console.log(`💰 Processed room bet transaction: ${betAmount} coins`);
 
-              // Loser loses coins only if they have enough balance
-              const loserCoins = await this.getUserCoins(loserId);
-              //console.log(`💰 Loser ${loserId} current balance: ${loserCoins} coins`);
-
-              let loserCoinsLost = 0;
-              if (loserCoins >= 1000) {
-                await this.processCoinTransaction(loserId, -1000, 'online_game_loss', gameId);
-                //console.log(`💰 Deducted 1000 coins from loser: ${loserId}`);
-                loserCoinsLost = -1000;
+                  // Track weekly stats for room games
+                  try {
+                    const loserCoins = await this.getUserCoins(loserId);
+                    const actualLoss = loserCoins >= betAmount ? -betAmount : 0;
+                    await this.updateWeeklyStats(winnerId, 'win', betAmount);
+                    await this.updateWeeklyStats(loserId, 'loss', actualLoss);
+                  } catch (error) {
+                    //console.error('📊 Error updating weekly stats for room game:', error);
+                  }
+                }
               } else {
-                //console.log(`💰 Loser ${loserId} doesn't have enough coins (${loserCoins}), skipping deduction`);
-              }
+                // Online matchmaking games: Winner gets 1000 coins, loser loses 1000 coins (if sufficient balance)
+                //console.log(`💰 Online matchmaking game - Winner: ${winnerId} (+1000 coins), Loser: ${loserId} (-1000 coins)`);
 
-              // Track weekly stats for online games only
-              try {
-                await this.updateWeeklyStats(winnerId, 'win', 1000);
-                await this.updateWeeklyStats(loserId, 'loss', loserCoinsLost);
-              } catch (error) {
-                //console.error('📊 Error updating weekly stats:', error);
+                // Winner always gets coins
+                await this.processCoinTransaction(winnerId, 1000, 'online_game_win', gameId);
+                //console.log(`💰 Awarded 1000 coins to online game winner: ${winnerId}`);
+
+                // Loser loses coins only if they have enough balance
+                const loserCoins = await this.getUserCoins(loserId);
+                //console.log(`💰 Loser ${loserId} current balance: ${loserCoins} coins`);
+
+                let loserCoinsLost = 0;
+                if (loserCoins >= 1000) {
+                  await this.processCoinTransaction(loserId, -1000, 'online_game_loss', gameId);
+                  //console.log(`💰 Deducted 1000 coins from loser: ${loserId}`);
+                  loserCoinsLost = -1000;
+                } else {
+                  //console.log(`💰 Loser ${loserId} doesn't have enough coins (${loserCoins}), skipping deduction`);
+                }
+
+                // Track weekly stats for online matchmaking games only
+                try {
+                  await this.updateWeeklyStats(winnerId, 'win', 1000);
+                  await this.updateWeeklyStats(loserId, 'loss', loserCoinsLost);
+                } catch (error) {
+                  //console.error('📊 Error updating weekly stats:', error);
+                }
               }
             } else {
               //console.log(`💰 No coin transactions for game mode: ${game.gameMode}`);
@@ -655,7 +767,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGamesWithInactivePlayers(): Promise<Game[]> {
-    const oneMinuteAgo = new Date(Date.now() - 30 * 1000); // 60 seconds ago
+    const oneMinuteAgo = new Date(Date.now() - 40 * 1000); // 60 seconds ago
     return await db
       .select()
       .from(games)
@@ -838,7 +950,7 @@ export class DatabaseStorage implements IStorage {
     if (result === 'win') {
       const newWins = (user.wins || 0) + 1;
       updates.wins = newWins;
-      
+
       // Update win streak
       const currentStreak = (user.currentWinStreak || 0) + 1;
       updates.currentWinStreak = currentStreak;
@@ -1303,8 +1415,8 @@ export class DatabaseStorage implements IStorage {
 
     return currentAchievements;
   }
-   
-  
+
+
   // PERFORMANCE OPTIMIZATION: Fast achievement fetching without validation for room joins
   async getUserAchievementsFast(userId: string): Promise<Achievement[]> {
     return await db
@@ -1363,7 +1475,7 @@ export class DatabaseStorage implements IStorage {
 
       // Define historical achievements that should never be removed once earned
       const historicalAchievements = ['master_of_diagonals', 'comeback_king'];
-      
+
       // Check for incorrect achievements, but exclude historical ones from removal
       const incorrectAchievements = existingAchievements.filter(
         achievement => !shouldHaveAchievements.includes(achievement.achievementType) && 
@@ -1442,7 +1554,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(achievements.userId, userId));
 
       // Processing existing achievements
-      
+
       // Preserve historical achievements that should never be removed once earned
       const historicalAchievements = ['master_of_diagonals', 'comeback_king'];
       const historicalUserAchievements = existingAchievements.filter(
@@ -1573,7 +1685,7 @@ export class DatabaseStorage implements IStorage {
           if (historicalAchievements.includes(rule.type) && existingHistoricalTypes.includes(rule.type)) {
             continue;
           }
-          
+
           try {
             // Creating achievement
 
@@ -1976,6 +2088,143 @@ export class DatabaseStorage implements IStorage {
         eq(userThemes.isUnlocked, true)
       ));
     return !!theme;
+  }
+
+  // Piece Style operations
+  async unlockPieceStyle(userId: string, styleName: string): Promise<UserPieceStyle> {
+    const [style] = await db
+      .insert(userPieceStyles)
+      .values({
+        userId,
+        styleName,
+        isActive: false,
+      })
+      .onConflictDoUpdate({
+        target: [userPieceStyles.userId, userPieceStyles.styleName],
+        set: {
+          unlockedAt: new Date(),
+        },
+      })
+      .returning();
+    return style;
+  }
+
+  async getUserPieceStyles(userId: string): Promise<UserPieceStyle[]> {
+    return await db
+      .select()
+      .from(userPieceStyles)
+      .where(eq(userPieceStyles.userId, userId))
+      .orderBy(desc(userPieceStyles.unlockedAt));
+  }
+
+  async getActivePieceStyle(userId: string): Promise<UserPieceStyle | undefined> {
+    const [style] = await db
+      .select()
+      .from(userPieceStyles)
+      .where(and(
+        eq(userPieceStyles.userId, userId),
+        eq(userPieceStyles.isActive, true)
+      ));
+    return style;
+  }
+
+  async setActivePieceStyle(userId: string, styleName: string): Promise<UserPieceStyle | null> {
+    // Deactivate all styles for this user first
+    await db
+      .update(userPieceStyles)
+      .set({ isActive: false })
+      .where(eq(userPieceStyles.userId, userId));
+
+    // If setting to default, just deactivate all others and return null
+    if (styleName === 'default') {
+      return null;
+    }
+
+    // Activate the selected style
+    const [style] = await db
+      .update(userPieceStyles)
+      .set({ isActive: true })
+      .where(and(
+        eq(userPieceStyles.userId, userId),
+        eq(userPieceStyles.styleName, styleName)
+      ))
+      .returning();
+
+    if (!style) {
+      throw new Error('Piece style not found or not unlocked');
+    }
+
+    return style;
+  }
+
+  async isPieceStyleUnlocked(userId: string, styleName: string): Promise<boolean> {
+    const [style] = await db
+      .select()
+      .from(userPieceStyles)
+      .where(and(
+        eq(userPieceStyles.userId, userId),
+        eq(userPieceStyles.styleName, styleName)
+      ));
+    return !!style;
+  }
+
+  async purchasePieceStyle(userId: string, styleName: string, price: number): Promise<{ success: boolean; message: string; style?: UserPieceStyle }> {
+    try {
+      // Check if already unlocked
+      const alreadyUnlocked = await this.isPieceStyleUnlocked(userId, styleName);
+      if (alreadyUnlocked) {
+        return { success: false, message: 'You already own this piece style' };
+      }
+
+      // Get user's current coins
+      const [user] = await db
+        .select({ coins: users.coins })
+        .from(users)
+        .where(eq(users.id, userId));
+
+      if (!user) {
+        return { success: false, message: 'User not found' };
+      }
+
+      const currentCoins = user.coins || 0;
+
+      if (currentCoins < price) {
+        return { success: false, message: 'Insufficient coins' };
+      }
+
+      // Process the transaction atomically
+      return await db.transaction(async (tx) => {
+        // Deduct coins
+        await tx
+          .update(users)
+          .set({ coins: currentCoins - price })
+          .where(eq(users.id, userId));
+
+        // Record the transaction
+        await tx.insert(coinTransactions).values({
+          userId,
+          amount: -price,
+          type: 'piece_style_purchase',
+          balanceBefore: currentCoins,
+          balanceAfter: currentCoins - price,
+        });
+
+        // Unlock the piece style
+        const [style] = await tx
+          .insert(userPieceStyles)
+          .values({
+            userId,
+            styleName,
+            isActive: false,
+          })
+          .returning();
+
+        return { success: true, message: 'Piece style purchased successfully', style };
+      });
+    } catch (error) {
+      console.error('Error purchasing piece style:', error);
+      return { success: false, message: error instanceof Error ? error.message : 'Failed to purchase piece style' };
+    }
   }
 
   // Friend operations
@@ -3112,14 +3361,14 @@ export class DatabaseStorage implements IStorage {
 
   async getTimeUntilWeekEnd(): Promise<{ days: number; hours: number; minutes: number; seconds: number }> {
     const now = new Date();
-    
+
     // Calculate the next Monday (start of next week) in UTC
     const nextMonday = new Date(now.getTime());
     nextMonday.setUTCHours(0, 0, 0, 0);
-    
+
     // Get current day (0=Sunday, 1=Monday, etc.)
     const currentDay = now.getUTCDay();
-    
+
     // Calculate days until next Monday
     let daysUntilMonday;
     if (currentDay === 0) {
@@ -3139,9 +3388,9 @@ export class DatabaseStorage implements IStorage {
       // Tuesday through Saturday -> calculate days until next Monday
       daysUntilMonday = 8 - currentDay; // 2->6, 3->5, 4->4, 5->3, 6->2
     }
-    
+
     nextMonday.setUTCDate(nextMonday.getUTCDate() + daysUntilMonday);
-    
+
     const timeLeft = nextMonday.getTime() - now.getTime();
 
     // Ensure we never return negative values
@@ -3226,7 +3475,7 @@ export class DatabaseStorage implements IStorage {
             .from(users)
             .where(eq(users.id, player.userId))
             .limit(1);
-          
+
           const balanceBefore = userBefore?.coins || 0;
           const balanceAfter = balanceBefore + rewardAmount;
 
@@ -3284,7 +3533,7 @@ export class DatabaseStorage implements IStorage {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
+
     // Add unique constraint
     try {
       await db.execute(sql`
@@ -3319,12 +3568,12 @@ export class DatabaseStorage implements IStorage {
       })
       .onConflictDoNothing()
       .returning();
-    
+
     if (!status) {
       // Record already exists, return it
       return (await this.getResetStatus(weekNumber, year))!;
     }
-    
+
     return status;
   }
 
@@ -3394,7 +3643,7 @@ export class DatabaseStorage implements IStorage {
     // Archive the weekly stats by updating finalRank for all participants
     // Also mark them to see their rank popup
     const allParticipants = await this.getWeeklyLeaderboard(weekNumber, year, 1000);
-    
+
     for (const participant of allParticipants) {
       await db
         .update(weeklyLeaderboard)

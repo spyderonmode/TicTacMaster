@@ -269,7 +269,7 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
                             >
                                 <div className="flex flex-col">
                                     <div className="flex items-center gap-1">
-                                        <div className="text-lg font-extrabold drop-shadow-md">{profile?.level || 1}</div>
+                                        <div className="text-lg font-extrabold drop-shadow-md">{profile?.level || 0}</div>
                                         <Crown className="w-4 h-4 text-yellow-400 drop-shadow-lg" />
                                     </div>
                                     <div className="text-xs text-purple-200">Level</div>

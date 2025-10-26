@@ -45,11 +45,12 @@ export function PlayAgainRequestDialog({ open, onClose, request }: PlayAgainRequ
       });
     },
     onSuccess: (_, { response }) => {
-      toast({
-        description: response === 'accepted' ? 
-          "Play again request accepted! Starting new game..." : 
-          "Play again request declined",
-      });
+      // Only show notification for declined requests
+      if (response === 'rejected') {
+        toast({
+          description: "Play again request declined",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/play-again/requests'] });
       onClose();
     },

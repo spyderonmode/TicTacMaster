@@ -37,7 +37,7 @@ export function useOnlineStatus() {
           setHeartbeatFailures(prev => {
             const newCount = prev + 1;
             // Only mark as offline after 3 consecutive failures (45 seconds)
-            if (newCount >= 3) {
+            if (newCount >= 2) {
               setUserOnlineStatus(false);
             }
             return newCount;
@@ -48,7 +48,7 @@ export function useOnlineStatus() {
         setHeartbeatFailures(prev => {
           const newCount = prev + 1;
           // Only mark as offline after 3 consecutive failures (45 seconds)
-          if (newCount >= 3) {
+          if (newCount >= 2) {
             setUserOnlineStatus(false);
           }
           return newCount;
@@ -60,7 +60,7 @@ export function useOnlineStatus() {
     runHeartbeat();
     
     // Then run it every 15 seconds
-    const heartbeat = setInterval(runHeartbeat, 15000);
+    const heartbeat = setInterval(runHeartbeat, 45000);
 
     return () => clearInterval(heartbeat);
   }, [user]);
@@ -68,7 +68,7 @@ export function useOnlineStatus() {
   // Determine actual online status - prioritize heartbeat status since that's what backend uses
   // If heartbeat is working (< 3 failures), user is online regardless of WebSocket
   // If heartbeat fails repeatedly, then check WebSocket as backup
-  const actualOnlineStatus = heartbeatFailures < 3 ? userOnlineStatus : isConnected;
+  const actualOnlineStatus = heartbeatFailures < 2 ? userOnlineStatus : isConnected;
 
   return {
     isOnline: actualOnlineStatus,

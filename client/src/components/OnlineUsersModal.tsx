@@ -34,23 +34,35 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
     refetchOnMount: false,
   });
 
+  // Fetch friends list to check if user is already a friend
+  const { data: friends = [] } = useQuery<any[]>({
+    queryKey: ['/api/friends'],
+    enabled: open,
+    refetchOnWindowFocus: false,
+  });
+
+  // Helper function to check if a user is already a friend
+  const isAlreadyFriend = (userId: string) => {
+    return friends.some((friend: any) => friend.id === userId);
+  };
+
   // Function to send friend requests with per-user pending state
   const handleSendFriendRequest = async (requestedId: string) => {
     if (pendingFriendRequestId) return; // Prevent multiple simultaneous requests
-    
+
     setPendingFriendRequestId(requestedId);
-    
+
     try {
       await apiRequest('/api/friends/request', {
         method: 'POST',
-        body: JSON.stringify({ requestedId }),
+        body: { requestedId },
       });
-      
+
       toast({
         title: t('success'),
         description: t('friendRequestSent') || 'Friend request sent!',
       });
-      
+
       // Invalidate friend-related queries to update UI
       queryClient.invalidateQueries({ queryKey: ['/api/friends'] });
       queryClient.invalidateQueries({ queryKey: ['/api/friends/requests'] });
@@ -79,13 +91,13 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
   const formatLastSeen = (lastSeen: string) => {
     const diff = Date.now() - new Date(lastSeen).getTime();
     const minutes = Math.floor(diff / 60000);
-    
+
     if (minutes < 1) return t('justNow');
     if (minutes < 60) return `${minutes}${t('minutesAgo')}`;
-    
+
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours}${t('hoursAgo')}`;
-    
+
     const days = Math.floor(hours / 24);
     return `${days}${t('daysAgo')}`;
   };
@@ -99,14 +111,14 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
             {t('onlinePlayers')} ({onlineUsers?.total || 0})
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <p className="text-sm text-blue-800 dark:text-blue-200">
               <strong>{t('onlinePlayers')}:</strong> {t('players')}
             </p>
           </div>
-              
+
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -144,8 +156,8 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
                                   {formatLastSeen(onlineUser.lastSeen)}
                                 </div>
                               </div>
-                              {/* Add Friend Button - Only show if not the current user */}
-                              {onlineUser.userId !== ((user as any)?.userId || (user as any)?.id) && (
+                              {/* Add Friend Button - Only show if not the current user and not already a friend */}
+                              {onlineUser.userId !== ((user as any)?.userId || (user as any)?.id) && !isAlreadyFriend(onlineUser.userId) && (
                                 <Button
                                   variant="outline"
                                   size="sm"

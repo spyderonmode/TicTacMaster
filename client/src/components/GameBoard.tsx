@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { User, MessageCircle } from "lucide-react";
 import { QuickChatPanel } from '@/components/QuickChatPanel';
 import { useTranslation } from "@/contexts/LanguageContext";
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
+import { AnimatedPiece } from '@/components/AnimatedPieces';
 
 const VALID_POSITIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
@@ -255,20 +256,25 @@ const renderAchievementBorder = (borderType: string | null, playerName: string, 
 
 // Function to get winning positions for highlighting
 const getWinningPositions = (board: Record<string, string>, player: string): number[] => {
-  // Check horizontal wins
-  const rows = [
-    [1, 2, 3, 4, 5],
-    [6, 7, 8, 9, 10],
-    [11, 12, 13, 14, 15]
+  // Check horizontal wins: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
+  const edgeRows = [
+    [1, 2, 3, 4, 5],      // Row 1
+    [11, 12, 13, 14, 15]  // Row 3
   ];
   
-  for (const row of rows) {
+  for (const row of edgeRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
       if (positions.every(pos => board[pos.toString()] === player)) {
         return positions;
       }
     }
+  }
+  
+  // Row 2 (middle): Check for ALL 5 consecutive tokens
+  const middleRow = [6, 7, 8, 9, 10];
+  if (middleRow.every(pos => board[pos.toString()] === player)) {
+    return middleRow;
   }
   
   // Check vertical wins
@@ -346,20 +352,25 @@ const findBestMoveHard = (board: Record<string, string>, availableMoves: number[
 };
 
 const checkWinSimple = (board: Record<string, string>, player: string): boolean => {
-  // Check horizontal (4 in a row)
-  const rows = [
-    [1, 2, 3, 4, 5],
-    [6, 7, 8, 9, 10],
-    [11, 12, 13, 14, 15]
+  // Check horizontal: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
+  const edgeRows = [
+    [1, 2, 3, 4, 5],      // Row 1
+    [11, 12, 13, 14, 15]  // Row 3
   ];
   
-  for (const row of rows) {
+  for (const row of edgeRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
       if (positions.every(pos => board[pos.toString()] === player)) {
         return true;
       }
     }
+  }
+  
+  // Row 2 (middle): Check for ALL 5 consecutive tokens
+  const middleRow = [6, 7, 8, 9, 10];
+  if (middleRow.every(pos => board[pos.toString()] === player)) {
+    return true;
   }
   
   // Check vertical (3 in a column)
@@ -414,6 +425,21 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   // Profile modal state
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Fetch current user's active piece style
+  const { data: pieceStyleData } = useQuery<{ activeStyle: string }>({
+    queryKey: ["/api/piece-styles"],
+  });
+  const currentUserPieceStyle = pieceStyleData?.activeStyle || 'default';
+  
+  // Determine which player is the current user (X or O)
+  const currentUserSymbol = useMemo(() => {
+    if (!game || !user) return null;
+    const userId = (user as any)?.userId || (user as any)?.id;
+    if (game.playerXId === userId) return 'X';
+    if (game.playerOId === userId) return 'O';
+    return null;
+  }, [game, user]);
 
   // Handle profile picture click
   const handleProfileClick = (playerId: string) => {
@@ -625,6 +651,12 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
 
 
+  // Create stable dependencies for board to prevent infinite loops
+  const gameBoardKeys = game?.board ? Object.keys(game.board).sort().join(',') : '';
+  const gameBoardValues = game?.board ? Object.values(game.board).join(',') : '';
+  const gameTimestamp = game?.timestamp || 0;
+  const gameSyncTimestamp = game?.syncTimestamp || 0;
+
   useEffect(() => {
     if (game) {
       // Game prop changed
@@ -634,7 +666,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       const isNewGame = Object.keys(gameBoard).length === 0;
       
       // For local games, only set board if it's truly empty (new game)
-      if (game.id.startsWith('local-game')) {
+      if (game.id && game.id.startsWith('local-game')) {
         if (isNewGame) {
           console.log('📋 Initializing new local game board');
           setBoard({});
@@ -654,11 +686,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         }
       }
     }
-  }, [game?.id, game?.board, game?.currentPlayer]); // Keep original for now, will fix properly
-
-  // Create stable dependencies for board to prevent infinite loops
-  const gameBoardKeys = game?.board ? Object.keys(game.board).sort().join(',') : '';
-  const gameBoardValues = game?.board ? Object.values(game.board).join(',') : '';
+  }, [game?.id, gameBoardKeys, gameBoardValues, game?.currentPlayer, gameTimestamp, gameSyncTimestamp]);
 
   // Remove WebSocket handling from GameBoard - it's now handled in Home component
   // This prevents double handling and state conflicts
@@ -715,7 +743,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       }
       
       // For local games (AI and pass-play), handle moves locally
-      if (game.id.startsWith('local-game')) {
+      if (game.id && game.id.startsWith('local-game')) {
         return handleLocalMove(position);
       }
       
@@ -745,7 +773,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     },
     onSuccess: (data) => {
       // Move successful
-      if (game && !game.id.startsWith('local-game')) {
+      if (game && game.id && !game.id.startsWith('local-game')) {
         // For online games, the Home component will handle WebSocket updates
         // No need to update local state here
         // WebSocket will handle board update
@@ -793,14 +821,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     
     // Check for win condition with winning line detection
     const checkWin = (board: Record<string, string>, player: string) => {
-      // Check horizontal (4 consecutive)
-      const rows = [
-        [1, 2, 3, 4, 5],
-        [6, 7, 8, 9, 10],
-        [11, 12, 13, 14, 15]
+      // Check horizontal: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
+      const edgeRows = [
+        [1, 2, 3, 4, 5],      // Row 1
+        [11, 12, 13, 14, 15]  // Row 3
       ];
       
-      for (const row of rows) {
+      for (const row of edgeRows) {
         for (let i = 0; i <= row.length - 4; i++) {
           const positions = row.slice(i, i + 4);
           if (positions.every(pos => board[pos.toString()] === player)) {
@@ -808,6 +835,12 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
             return true;
           }
         }
+      }
+      
+      // Row 2 (middle): Check for ALL 5 consecutive tokens
+      const middleRow = [6, 7, 8, 9, 10];
+      if (middleRow.every(pos => board[pos.toString()] === player)) {
+        return true;
       }
       
       // Check vertical (3 consecutive)
@@ -870,7 +903,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         } catch (error) {
           console.error('🚨 Error in game over handler:', error);
         }
-      }, gameMode === 'ai' || gameMode === 'pass-play' ? 2500 : 0);
+      }, gameMode === 'ai' || gameMode === 'pass-play' ? 1500 : 0);
       return;
     }
     
@@ -936,20 +969,25 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     
     // Check for AI win using same logic
     const checkWin = (board: Record<string, string>, player: string) => {
-      // Check horizontal (4 consecutive)
-      const rows = [
-        [1, 2, 3, 4, 5],
-        [6, 7, 8, 9, 10],
-        [11, 12, 13, 14, 15]
+      // Check horizontal: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
+      const edgeRows = [
+        [1, 2, 3, 4, 5],      // Row 1
+        [11, 12, 13, 14, 15]  // Row 3
       ];
       
-      for (const row of rows) {
+      for (const row of edgeRows) {
         for (let i = 0; i <= row.length - 4; i++) {
           const positions = row.slice(i, i + 4);
           if (positions.every(pos => board[pos.toString()] === player)) {
             return true;
           }
         }
+      }
+      
+      // Row 2 (middle): Check for ALL 5 consecutive tokens
+      const middleRow = [6, 7, 8, 9, 10];
+      if (middleRow.every(pos => board[pos.toString()] === player)) {
+        return true;
       }
       
       // Check vertical (3 consecutive)
@@ -1005,7 +1043,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
             console.error('🚨 Error in AI win handler:', error);
           }
         }
-      }, 2500);
+      }, 1500);
       return;
     }
     
@@ -1055,6 +1093,16 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       return;
     }
 
+
+    // Check if position 8 is locked on first move
+    if (Object.keys(board).length === 0 && position === 8) {
+      toast({
+        title: "Position Locked",
+        description: "Position 8 is locked on the first move",
+        variant: "destructive",
+      });
+      return;
+    }
     // Check if it's the player's turn
     if (gameMode === 'online') {
       const userId = user?.userId || user?.id;
@@ -1110,6 +1158,8 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     const isEmpty = !symbol;
     const isWinningCell = derivedWinningLine?.includes(position);
     const isLastMove = lastMove === position;
+    const isFirstMove = Object.keys(board).length === 0;
+    const isLockedPosition = isFirstMove && position === 8;
     
     return (
       <motion.div
@@ -1122,6 +1172,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
           ${isLastMove ? 'ring-2 ring-yellow-400' : ''}
           ${!isEmpty && !isWinningCell && symbol === 'X' ? 'animate-pulse-border-x' : ''}
           ${!isEmpty && !isWinningCell && symbol === 'O' ? 'animate-pulse-border-o' : ''}
+          ${isLockedPosition ? 'opacity-40 cursor-not-allowed ring-2 ring-red-500' : ''}
         `}
         onClick={() => handleCellClick(position)}
         animate={isWinningCell ? {
@@ -1155,13 +1206,31 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         } : {}}
       >
         {symbol && (
-          <span
-            className={`text-lg sm:text-xl md:text-2xl font-bold ${
-              symbol === 'X' ? theme.playerXColor : theme.playerOColor
-            }`}
-          >
-            {symbol}
-          </span>
+          <div className="w-12 h-12 flex items-center justify-center">
+            <AnimatedPiece 
+              symbol={symbol as "X" | "O"} 
+              position={position}
+              style={
+                gameMode === 'online' 
+                  ? (symbol === 'X' 
+                      ? (game?.playerXInfo?.activePieceStyle || 'default') 
+                      : (game?.playerOInfo?.activePieceStyle || 'default'))
+                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer"))
+                    ? currentUserPieceStyle
+                    : "default"
+              }
+              className={
+                gameMode === 'online'
+                  ? (((symbol === 'X' && game?.playerXInfo?.activePieceStyle && game?.playerXInfo?.activePieceStyle !== 'default') || 
+                      (symbol === 'O' && game?.playerOInfo?.activePieceStyle && game?.playerOInfo?.activePieceStyle !== 'default'))
+                      ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
+                      : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
+                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer"))
+                      ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
+                      : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
+              }
+            />
+          </div>
         )}
         <span className={`text-xs ${theme.textColor} opacity-50 absolute mt-8 sm:mt-10 md:mt-12`}>{position}</span>
       </motion.div>
@@ -1208,23 +1277,6 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
           
           {/* Connection Status and Refresh Controls */}
           <div className="flex items-center space-x-2">
-            {gameMode === 'online' && (
-              <>
-                {/* Connection Quality Indicator */}
-                <div className="flex items-center space-x-1">
-                  <div 
-                    className={`w-2 h-2 rounded-full ${
-                      lastMessage ? 'bg-green-500' : 'bg-red-500'
-                    }`}
-                    title={lastMessage ? 'Connected' : 'Disconnected'}
-                  />
-                  <span className="text-xs text-gray-500">
-                    {lastMessage ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-                
-              </>
-            )}
           </div>
           <div className="flex flex-col space-y-3 text-right">
             {/* Player X - Top */}

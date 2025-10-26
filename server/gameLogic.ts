@@ -46,20 +46,25 @@ export function makeMove(board: GameBoard, position: number, player: string): Ga
 }
 
 export function checkHorizontalWin(board: GameBoard, player: string): boolean {
-  // Check for 4 consecutive tokens horizontally in any row
-  const rows = [
-    [1, 2, 3, 4, 5],
-    [6, 7, 8, 9, 10],
-    [11, 12, 13, 14, 15]
+  // Row 1 and Row 3: Check for 4 consecutive tokens
+  const edgeRows = [
+    [1, 2, 3, 4, 5],      // Row 1
+    [11, 12, 13, 14, 15]  // Row 3
   ];
   
-  for (const row of rows) {
+  for (const row of edgeRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
       if (positions.every(pos => board[pos.toString()] === player)) {
         return true;
       }
     }
+  }
+  
+  // Row 2 (middle): Check for ALL 5 consecutive tokens
+  const middleRow = [6, 7, 8, 9, 10];
+  if (middleRow.every(pos => board[pos.toString()] === player)) {
+    return true;
   }
   
   return false;
@@ -142,13 +147,13 @@ export function checkWin(board: GameBoard, player: string): { winner: boolean; c
 }
 
 function checkHorizontalWinWithPositions(board: GameBoard, player: string): { winner: boolean; positions?: number[] } {
-  const rows = [
-    [1, 2, 3, 4, 5],
-    [6, 7, 8, 9, 10],
-    [11, 12, 13, 14, 15]
+  // Row 1 and Row 3: Check for 4 consecutive tokens
+  const edgeRows = [
+    [1, 2, 3, 4, 5],      // Row 1
+    [11, 12, 13, 14, 15]  // Row 3
   ];
   
-  for (const row of rows) {
+  for (const row of edgeRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
       if (positions.every(pos => board[pos.toString()] === player)) {
@@ -156,6 +161,13 @@ function checkHorizontalWinWithPositions(board: GameBoard, player: string): { wi
       }
     }
   }
+  
+  // Row 2 (middle): Check for ALL 5 consecutive tokens
+  const middleRow = [6, 7, 8, 9, 10];
+  if (middleRow.every(pos => board[pos.toString()] === player)) {
+    return { winner: true, positions: middleRow };
+  }
+  
   return { winner: false };
 }
 
@@ -197,6 +209,14 @@ export function getOpponentSymbol(player: string): string {
   return player === 'X' ? 'O' : 'X';
 }
 
+export function isFirstMove(board: GameBoard): boolean {
+  return Object.keys(board).length === 0;
+}
+
 export function validateMove(board: GameBoard, position: number, player: string): boolean {
+  // Check if position 8 is locked on first move
+  if (isFirstMove(board) && position === 8) {
+    return false;
+  }
   return isValidPosition(position) && isPositionEmpty(board, position);
 }

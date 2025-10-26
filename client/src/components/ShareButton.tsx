@@ -78,22 +78,17 @@ export function ShareButton({
       try {
         await navigator.share({
           title: dynamicTitle,
-          text: dynamicText,
-          url: dynamicUrl,
+          text: `${dynamicText} ${dynamicUrl}`,
         });
       } catch (err) {
-        // User cancelled or share failed, fallback to dropdown
-        console.log('Native share cancelled or failed');
+        // User cancelled or share failed
+        console.log('Native share cancelled or failed:', err);
       }
     }
   };
 
   // Check if native sharing is available
-  const hasNativeShare = navigator.share && navigator.canShare && navigator.canShare({ 
-    title: dynamicTitle, 
-    text: dynamicText, 
-    url: dynamicUrl 
-  });
+  const hasNativeShare = typeof navigator !== 'undefined' && navigator.share;
 
   if (hasNativeShare) {
     return (
