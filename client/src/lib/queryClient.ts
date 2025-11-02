@@ -64,15 +64,18 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "returnNull" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      refetchOnMount: true, // Always fetch fresh data on component mount
-      staleTime: 0, // Always fetch fresh data, no caching
-      gcTime: 30000, // Keep data in cache for 30 seconds
-      retry: false,
+      refetchOnMount: true,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      networkMode: 'online',
     },
     mutations: {
-      retry: false,
+      retry: 2,
+      retryDelay: 1000,
+      networkMode: 'online',
       onError: (error) => {
-        // Handle unhandled promise rejections gracefully
         console.error('Mutation error:', error);
       },
     },

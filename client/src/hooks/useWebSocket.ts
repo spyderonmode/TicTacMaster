@@ -14,6 +14,13 @@ export function useWebSocket() {
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
   const joinedRooms = useRef<Set<string>>(new Set());
   const messageQueue = useRef<WebSocketMessage[]>([]);
+  const maxQueueSize = 50; // Prevent memory issues from excessive queuing
+  // Critical message types that must be queued if they fail to send
+  const criticalMessageTypes = [
+    'move', 'join_room', 'join_room_request', 'start_game_request',
+    'start_matchmaking', 'cancel_matchmaking', 'auth', 'game_started_ack',
+    'leave_room', 'play_again_response'
+  ];
   const reconnectAttempts = useRef(0);
   const lastPingTime = useRef<number>(0);
   const pingResponseTime = useRef<number>(0);
@@ -448,22 +455,62 @@ export function useWebSocket() {
 
   const sendMessage = (message: WebSocketMessage) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      // Sending WebSocket message
-      ws.current.send(JSON.stringify(message));
+      try {
+        // Sending WebSocket message with error handling
+        ws.current.send(JSON.stringify(message));
 
-      // Process any queued messages after successful send
-      while (messageQueue.current.length > 0 && ws.current.readyState === WebSocket.OPEN) {
-        const queuedMessage = messageQueue.current.shift();
-        if (queuedMessage) {
-          // Sending queued message
-          ws.current.send(JSON.stringify(queuedMessage));
+        // Process any queued messages after successful send
+        while (messageQueue.current.length > 0 && ws.current.readyState === WebSocket.OPEN) {
+          const queuedMessage = messageQueue.current.shift();
+          if (queuedMessage) {
+            try {
+              // Sending queued message with error handling
+              ws.current.send(JSON.stringify(queuedMessage));
+            } catch (sendError) {
+              console.error(`❌ Failed to send queued message:`, sendError);
+              // Re-queue the message if send fails
+              messageQueue.current.unshift(queuedMessage);
+              break; // Stop processing queue if send fails
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Failed to send WebSocket message:`, error);
+        // Queue the message for retry on critical message types (unified list)
+        if (criticalMessageTypes.includes(message.type)) {
+          // Check queue size limit
+          if (messageQueue.current.length < maxQueueSize) {
+            // Check for duplicates to prevent message spam
+            const isDuplicate = messageQueue.current.some(m => 
+              m.type === message.type && JSON.stringify(m) === JSON.stringify(message)
+            );
+            if (!isDuplicate) {
+              messageQueue.current.push(message);
+              console.log(`📥 Queued failed message for retry: ${message.type} (${messageQueue.current.length}/${maxQueueSize})`);
+            }
+          } else {
+            console.warn(`⚠️ Message queue full (${maxQueueSize}), dropping message:`, message.type);
+          }
+        } else {
+          console.warn(`⚠️ Non-critical message failed to send and will not be retried:`, message.type);
         }
       }
     } else {
-      // Queue critical messages for retry when connection is restored
-      if (['move', 'join_room', 'join_room_request', 'start_game_request', 'auth'].includes(message.type)) {
-        messageQueue.current.push(message);
-        // Queued critical message for retry
+      // Queue important messages for retry when connection is restored (unified list)
+      if (criticalMessageTypes.includes(message.type)) {
+        // Check queue size limit
+        if (messageQueue.current.length < maxQueueSize) {
+          // Check for duplicates to prevent message spam
+          const isDuplicate = messageQueue.current.some(m => 
+            m.type === message.type && JSON.stringify(m) === JSON.stringify(message)
+          );
+          if (!isDuplicate) {
+            messageQueue.current.push(message);
+            console.log(`📥 Queued message for reconnection: ${message.type} (${messageQueue.current.length}/${maxQueueSize})`);
+          }
+        } else {
+          console.warn(`⚠️ Message queue full (${maxQueueSize}), dropping message:`, message.type);
+        }
       } else {
         console.warn(`❌ WebSocket not ready, message not sent:`, message);
       }

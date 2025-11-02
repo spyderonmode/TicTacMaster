@@ -609,6 +609,7 @@ export function Friends() {
             displayName={profileUser.displayName || `${profileUser.firstName} ${profileUser.lastName || ''}`.trim()}
             profilePicture={profileUser.profileImageUrl}
             profileImageUrl={profileUser.profileImageUrl}
+            selectedAchievementBorder={profileUser.selectedAchievementBorder}
           />
         )}
         

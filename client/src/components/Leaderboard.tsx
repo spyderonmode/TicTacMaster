@@ -121,15 +121,21 @@ const RewardsList = ({ rewardData, timeUntilEnd }: { rewardData: any[], timeUnti
   const top3Rewards = rewardData.slice(0, 3);
   const remainingRewards = rewardData.slice(3);
 
-  const combinedReward = remainingRewards.length > 0 ? {
+  const combinedReward4to10 = remainingRewards.length > 0 ? {
     position: "4-10",
     coins: remainingRewards[0].coins,
     displayRange: true
   } : null;
 
+  const combinedReward11to50 = {
+    position: "11-50",
+    coins: 1000000,
+    displayRange: true
+  };
+
   return (
     <div className="py-4">
-      <h3 className="text-lg font-bold text-white mb-4 text-center">Top 10 Rewards</h3>
+      <h3 className="text-lg font-bold text-white mb-4 text-center">Top 50 Rewards</h3>
       {/* Time Left added here, below the title */}
       <div className="flex items-center justify-center text-gray-500 text-sm mt-2 gap-2">
         <Clock className="w-4 h-4 text-blue-500" />
@@ -158,23 +164,39 @@ const RewardsList = ({ rewardData, timeUntilEnd }: { rewardData: any[], timeUnti
           </motion.div>
         ))}
 
-        {combinedReward && (
+        {combinedReward4to10 && (
           <motion.div
-            key={combinedReward.position}
+            key={combinedReward4to10.position}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 3 * 0.05 }}
             className="flex items-center justify-between p-3 rounded-lg bg-gray-800/50 border border-gray-700"
           >
             <div className="flex items-center gap-3">
-              <span className="text-gray-300 font-medium">Rank #{combinedReward.position}</span>
+              <span className="text-gray-300 font-medium">Rank #{combinedReward4to10.position}</span>
             </div>
             <div className="flex items-center text-yellow-400 font-bold">
               <Coins className="w-4 h-4 mr-1" />
-              <span>{formatNumber(combinedReward.coins)}</span>
+              <span>{formatNumber(combinedReward4to10.coins)}</span>
             </div>
           </motion.div>
         )}
+
+        <motion.div
+          key={combinedReward11to50.position}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 4 * 0.05 }}
+          className="flex items-center justify-between p-3 rounded-lg bg-gray-800/50 border border-gray-700"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-gray-300 font-medium">Rank #{combinedReward11to50.position}</span>
+          </div>
+          <div className="flex items-center text-yellow-400 font-bold">
+            <Coins className="w-4 h-4 mr-1" />
+            <span>{formatNumber(combinedReward11to50.coins)}</span>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -198,12 +220,11 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     },
-    enabled: modalOpen,
     retry: 3,
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    staleTime: 60000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: modalOpen ? 30000 : false,
   });
 
   const { data: timeUntilEnd } = useQuery<TimeLeft>({
@@ -213,8 +234,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     },
-    enabled: modalOpen,
-    refetchInterval: 1000,
+    refetchInterval: modalOpen ? 1000 : false,
     staleTime: 0,
   });
 
@@ -222,16 +242,16 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   const remainingPlayers = weeklyLeaderboard?.slice(3) || [];
 
   const rewardData = [
-    { position: 1, coins: 10000000 },
-    { position: 2, coins: 5000000 },
-    { position: 3, coins: 3000000 },
-    { position: 4, coins: 1000000 },
-    { position: 5, coins: 1000000 },
-    { position: 6, coins: 1000000 },
-    { position: 7, coins: 1000000 },
-    { position: 8, coins: 1000000 },
-    { position: 9, coins: 1000000 },
-    { position: 10, coins: 1000000 },
+    { position: 1, coins: 30000000 },
+    { position: 2, coins: 20000000 },
+    { position: 3, coins: 10000000 },
+    { position: 4, coins: 5000000 },
+    { position: 5, coins: 5000000 },
+    { position: 6, coins: 5000000 },
+    { position: 7, coins: 5000000 },
+    { position: 8, coins: 5000000 },
+    { position: 9, coins: 5000000 },
+    { position: 10, coins: 5000000 },
   ];
 
   useEffect(() => {

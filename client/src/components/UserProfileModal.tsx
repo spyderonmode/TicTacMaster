@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Trophy, Users, Zap, Crown, Swords, Coins, TrendingUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { apiRequest } from '@/lib/queryClient'; 
+import { apiRequest } from '@/lib/queryClient';
+import { AvatarWithFrame } from './AvatarWithFrame'; 
 
 // 🎯 Utility function for large number formatting (used for stats, NOT for Coins)
 const formatLargeNumber = (num: number): string => {
@@ -24,17 +25,19 @@ interface PlayerStats {
     level: number; 
     winsToNextLevel: number;
     coins: number; 
-    achievementsUnlocked: number; 
+    achievementsUnlocked: number;
+    selectedAchievementBorder?: string | null;
 }
 
 interface UserProfileModalProps {
-  open: boolean;
-  onClose: () => void;
-  userId: string;
-  username: string;
-  displayName: string;
-  profilePicture?: string; 
-  profileImageUrl?: string; 
+  open: boolean;
+  onClose: () => void;
+  userId: string;
+  username: string;
+  displayName: string;
+  profilePicture?: string;
+  profileImageUrl?: string;
+  selectedAchievementBorder?: string | null;
 }
 // -----------------------------
 
@@ -46,7 +49,8 @@ export function UserProfileModal({
     username, 
     displayName, 
     profilePicture, 
-    profileImageUrl 
+    profileImageUrl,
+    selectedAchievementBorder
 }: UserProfileModalProps) {
     
     const [stats, setStats] = useState<PlayerStats | null>(null);
@@ -115,17 +119,13 @@ export function UserProfileModal({
                     <DialogTitle className="flex items-center gap-4">
                         {/* Profile Image - More vibrant border */}
                         <div className="relative flex-shrink-0">
-                            {profileImage ? (
-                                <img 
-                                    src={profileImage} 
-                                    alt={displayName}
-                                    className="w-14 h-14 rounded-full object-cover border-2 border-cyan-500 shadow-md"
-                                />
-                            ) : (
-                                <div className="w-14 h-14 rounded-full bg-indigo-600 border-2 border-cyan-500 flex items-center justify-center text-white font-bold text-xl shadow-md">
-                                    {displayName.charAt(0).toUpperCase()}
-                                </div>
-                            )}
+                            <AvatarWithFrame
+                                src={profileImage}
+                                alt={displayName}
+                                size="md"
+                                borderType={selectedAchievementBorder ?? stats?.selectedAchievementBorder ?? null}
+                                fallbackText={displayName.charAt(0).toUpperCase()}
+                            />
                         </div>
                         {/* Name/Username */}
                         <div className="flex-1 min-w-0">

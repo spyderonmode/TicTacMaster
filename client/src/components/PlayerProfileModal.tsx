@@ -6,6 +6,7 @@ import { Crown, Shield, Castle, Swords, Clock, Calendar, Gem } from "lucide-reac
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { AvatarWithFrame } from "./AvatarWithFrame";
 
 // --- (Interfaces remain the same) ---
 interface PlayerProfile {
@@ -20,7 +21,10 @@ interface PlayerProfile {
     coins: number;
     level: number;
     winsToNextLevel: number;
+    currentWinStreak: number;
+    bestWinStreak: number;
     createdAt: string;
+    selectedAchievementBorder?: string;
     achievements: Array<{
         id: string;
         name: string;
@@ -99,39 +103,54 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
     const renderAchievementBorder = (profile: PlayerProfile | undefined) => {
         if (!profile) return <span className="font-serif text-lg font-bold truncate text-white">Noble Guest</span>; 
 
-        const level = getAchievementLevel(profile);
         const baseClasses = "font-serif text-xl font-extrabold truncate";
+        
+        // Check if user has manually selected a border (only if it has a non-null value)
+        const borderType = profile.selectedAchievementBorder 
+            ? profile.selectedAchievementBorder 
+            : getAchievementLevel(profile);
 
-        switch (level) {
+        switch (borderType) {
+            case 'level_100_master':
             case 'level100Master':
                 return (
-                    <span className={`${baseClasses} text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 drop-shadow-lg`}>
+                    <span className={`${baseClasses} text-white drop-shadow-lg`}>
                         👑 {profile.displayName}
                     </span>
                 );
+            case 'ultimate_veteran':
             case 'ultimateVeteran':
                 return (
-                    <span className={`${baseClasses} text-indigo-300 drop-shadow-md`}>
+                    <span className={`${baseClasses} text-white drop-shadow-md`}>
                         🏰 {profile.displayName}
                     </span>
                 );
             case 'grandmaster':
                 return (
-                    <span className={`${baseClasses} text-purple-300 drop-shadow-md`}>
+                    <span className={`${baseClasses} text-white drop-shadow-md`}>
                         💎 {profile.displayName}
                     </span>
                 );
             case 'champion':
                 return (
-                    <span className={`${baseClasses} text-red-300 drop-shadow-md`}>
+                    <span className={`${baseClasses} text-white drop-shadow-md`}>
                         🛡️ {profile.displayName}
                     </span>
                 );
             case 'legend':
+            case 'veteran_player':
             case 'veteranPlayer':
                 return (
-                    <span className={`${baseClasses} text-amber-300 drop-shadow-md`}>
+                    <span className={`${baseClasses} text-white drop-shadow-md`}>
                         ⚜️ {profile.displayName}
+                    </span>
+                );
+            case null:
+            case '':
+                // User explicitly selected "no border"
+                return (
+                    <span className={`${baseClasses} text-white`}>
+                        {profile.displayName}
                     </span>
                 );
             default:
@@ -214,18 +233,14 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
                                     whileHover={{ scale: 1.05 }}
                                     className="flex-shrink-0 relative"
                                 >
-                                    {profile.profileImageUrl ? (
-                                        <img
-                                            src={profile.profileImageUrl}
-                                            alt={`${profile.displayName}'s profile`}
-                                            className="w-16 h-16 rounded-full object-cover border-4 border-yellow-500 shadow-[0_0_15px_rgba(255,215,0,0.8)]" 
-                                        />
-                                    ) : (
-                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-700/50 to-indigo-900 border-4 border-yellow-500 flex items-center justify-center text-yellow-300 font-bold text-xl shadow-xl">
-                                            {profile.displayName.charAt(0).toUpperCase()}
-                                        </div>
-                                    )}
-                                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-yellow-500 rounded-full"></div>
+                                    <AvatarWithFrame
+                                        src={profile.profileImageUrl}
+                                        alt={`${profile.displayName}'s profile`}
+                                        size="lg"
+                                        borderType={profile.selectedAchievementBorder}
+                                        fallbackText={profile.displayName.charAt(0).toUpperCase()}
+                                    />
+                                    <div className="absolute -top-2 -right-1 w-5 h-5 bg-green-500 border-2 border-yellow-500 rounded-full"></div>
                                 </motion.div>
                                 <div className="flex-1 min-w-0">
                                     <h1 className="mb-0 leading-none">
@@ -334,6 +349,24 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
                                 <div className="text-center bg-indigo-900/40 rounded-lg p-2 border border-indigo-700 shadow-md">
                                     <div className="text-base font-extrabold text-yellow-400 leading-tight">{winRate}%</div>
                                     <div className="text-[10px] text-indigo-300">{t('winRate') || 'Win Rate'}</div>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Current Win Streak */}
+                        <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.55, duration: 0.5 }}
+                            className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-lg p-2 shadow-lg border border-purple-600/60"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                    <Swords className="w-4 h-4 text-purple-400" />
+                                    <span className="text-xs font-semibold text-purple-200">Current Win Streak</span>
+                                </div>
+                                <div className="text-lg font-extrabold text-white drop-shadow-md">
+                                    {profile?.currentWinStreak ?? 0}
                                 </div>
                             </div>
                         </motion.div>

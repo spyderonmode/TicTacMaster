@@ -230,7 +230,7 @@ export function AchievementBorderSelector({ user }: AchievementBorderSelectorPro
               <h4 className="text-sm font-medium">{t('unlockedBorders') || 'Unlocked Borders'}:</h4>
               {achievements
                 .filter(a =>
-                  ['legend', 'champion', 'grandmaster', 'ultimate_veteran'].includes(a.achievementType)
+                  ['legend', 'champion', 'grandmaster', 'ultimate_veteran', 'level_100_master'].includes(a.achievementType)
                 )
                 .map(achievement => (
                   <Card

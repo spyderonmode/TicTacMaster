@@ -47,7 +47,7 @@ export default function Home() {
   const { isConnected, lastMessage, joinRoom, leaveRoom, sendMessage, refreshConnection } = useWebSocket();
   const { isOnline: actualOnlineStatus } = useOnlineStatus();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const queryClient = useQueryClient();
   const [location, setLocation] = useLocation();
   // Sound effects removed as requested
@@ -103,7 +103,29 @@ export default function Home() {
   const currentUserParticipant = (roomParticipants as any[]).find((p: any) => p.userId === ((user as any)?.userId || (user as any)?.id));
   const isSpectator = currentUserParticipant?.role === 'spectator';
 
-
+  // Prefetch leaderboard data on app load to eliminate wait time
+  useEffect(() => {
+    if (user) {
+      queryClient.prefetchQuery({
+        queryKey: ['/api/leaderboard/weekly', language],
+        queryFn: async () => {
+          const response = await fetch('/api/leaderboard/weekly?limit=50', { credentials: 'include' });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          return await response.json();
+        },
+        staleTime: 60000,
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['/api/leaderboard/time-left'],
+        queryFn: async () => {
+          const response = await fetch('/api/leaderboard/time-left');
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          return await response.json();
+        },
+        staleTime: 0,
+      });
+    }
+  }, [user, language, queryClient]);
 
   // Global error handler for all WebSocket error events
   useEffect(() => {
@@ -111,7 +133,7 @@ export default function Home() {
       const { message } = event.detail;
       const isCoinsError = message && message.toLowerCase().includes('coins');
       setErrorModalData({
-        title: isCoinsError ? '💰 Insufficient Coins' : 'Create Room Error',
+        title: isCoinsError ? 'Insufficient Coins' : 'Create Room Error',
         message: message || 'Failed to create room. Please try again.',
         type: isCoinsError ? 'coins' : 'error'
       });
@@ -122,7 +144,7 @@ export default function Home() {
       const { message } = event.detail;
       const isCoinsError = message && message.toLowerCase().includes('coins');
       setErrorModalData({
-        title: isCoinsError ? '💰 Insufficient Coins' : 'Join Room Error',
+        title: isCoinsError ? 'Insufficient Coins' : 'Join Room Error',
         message: message || 'Failed to join room. Please try again.',
         type: isCoinsError ? 'coins' : 'error'
       });
@@ -511,6 +533,12 @@ export default function Home() {
         const countdownData = event.detail;
         console.log('⏳ Play again countdown:', countdownData.countdown);
 
+        // If countdown is 0 or less, hide the overlay immediately
+        if (countdownData.countdown <= 0) {
+          setShowCountdown(false);
+          return;
+        }
+
         // Close game over modal and play again request dialog
         setShowGameOver(false);
         setShowPlayAgainRequest(false);
@@ -518,13 +546,6 @@ export default function Home() {
         // Show countdown overlay
         setCountdownNumber(countdownData.countdown);
         setShowCountdown(true);
-
-        // If countdown is 0 or less, hide the overlay
-        if (countdownData.countdown <= 0) {
-          setTimeout(() => {
-            setShowCountdown(false);
-          }, 500);
-        }
       } catch (error) {
         console.error('❌ Error handling countdown:', error);
       }
@@ -693,6 +714,13 @@ export default function Home() {
     }
   }, [currentGame?.status, currentGame?.id, currentRoom?.id]);
 
+  // Hide countdown when game becomes active
+  useEffect(() => {
+    if (currentGame && currentGame.status === 'active') {
+      setShowCountdown(false);
+    }
+  }, [currentGame, currentGame?.status]);
+
   useEffect(() => {
     if (lastMessage) {
       // Home received WebSocket message
@@ -832,13 +860,13 @@ export default function Home() {
                   timestamp: Date.now(), // Force re-render
                   syncTimestamp: Date.now() // Single update with sync timestamp
                 };
-              } else {
-                // Create new game state for spectators or reconnecting players
+              } else if (lastMessage.gameId) {
+                // Create new game state for spectators or reconnecting players OR if game ID changed
                 return {
                   id: lastMessage.gameId,
                   roomId: lastMessage.roomId || currentRoom?.id,
-                  gameMode: 'online',
-                  status: 'active',
+                  gameMode: 'online' as const,
+                  status: 'active' as const,
                   board: lastMessage.board,
                   currentPlayer: lastMessage.currentPlayer,
                   lastMove: lastMessage.position,
@@ -850,6 +878,8 @@ export default function Home() {
                   timestamp: Date.now(),
                   syncTimestamp: Date.now()
                 };
+              } else {
+                return prevGame;
               }
             });
           }
@@ -860,7 +890,7 @@ export default function Home() {
           const isCurrentRoomAuto = currentRoom && lastMessage.roomId === currentRoom.id;
 
           if (isCurrentGameAuto || isCurrentRoomAuto) {
-            console.log('🤖 Auto-play move received:', lastMessage);
+            // Auto-play move received (logging removed to prevent spam)
             // Update or create game state for everyone (players and spectators)
             setCurrentGame(prevGame => {
               // If we have a currentGame, update it
@@ -904,7 +934,6 @@ export default function Home() {
         case 'auto_play_enabled':
           // Handle auto-play activation notification
           if (currentGame && lastMessage.gameId === currentGame.id) {
-            console.log('🤖 Auto-play enabled for player:', lastMessage.player);
             setCurrentGame(prevGame => ({
               ...prevGame,
               autoPlayActive: lastMessage.player,
@@ -915,7 +944,6 @@ export default function Home() {
         case 'auto_play_disabled':
           // Handle auto-play deactivation notification
           if (currentGame && lastMessage.gameId === currentGame.id) {
-            console.log('🎮 Auto-play disabled for player:', lastMessage.player);
             setCurrentGame(prevGame => ({
               ...prevGame,
               autoPlayActive: null,
@@ -926,7 +954,6 @@ export default function Home() {
         case 'auto_play_disabled_success':
           // Handle successful auto-play disabling with user feedback
           if (currentGame && lastMessage.gameId === currentGame.id) {
-            console.log('✅ Auto-play disabled successfully:', lastMessage.player);
             toast({
               title: "Auto-Play Disabled",
               description: lastMessage.message || "You've regained control! Make your next move.",
@@ -1725,81 +1752,158 @@ export default function Home() {
     setIsCreatingGame(true);
 
     if (selectedMode === 'online' && currentRoom) {
-      // For online mode, create a new game in the same room
-      try {
-        //console.log('🎮 Creating new game for room:', currentRoom.id);
+      // Check if opponent is a bot (ID starts with 'player_')
+      // Also check gameResult for bot info if currentGame is not available
+      const opponentIdFromGame = currentGame?.playerXId === (user as any)?.userId 
+        ? currentGame?.playerOId 
+        : currentGame?.playerXId;
+      const opponentIdFromResult = gameResult?.game?.playerXId === (user as any)?.userId
+        ? gameResult?.game?.playerOId
+        : gameResult?.game?.playerXId;
+      const opponentId = opponentIdFromGame || opponentIdFromResult;
+      const isPlayingWithBot = opponentId && opponentId.startsWith('player_');
 
-        // Clear the current game first to prevent using finished game
-        setCurrentGame(null);
-        setShowGameOver(false);
-        setGameResult(null);
+      // For online mode with bot, show 2-second countdown
+      if (isPlayingWithBot) {
+        const startBotGameCountdown = async () => {
+          // IMMEDIATELY show countdown before clearing game state
+          setCountdownNumber(2);
+          setShowCountdown(true);
+          
+          // Then clear game state
+          setCurrentGame(null);
+          setShowGameOver(false);
+          setGameResult(null);
 
-        const response = await fetch(`/api/rooms/${currentRoom.id}/start-game`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+          // Countdown: 2 -> 1
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          setCountdownNumber(1);
 
-        if (response.ok) {
-          const newGame = await response.json();
-          //console.log('🎮 New game created for play again:', newGame);
-          //console.log('🎮 Game created successfully, waiting for server broadcast to all participants');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          setShowCountdown(false);
 
-          // Don't set the game locally - let the server broadcast handle it
-          // This ensures both players get the exact same game state at the same time
+          // Create new game after countdown
+          try {
+            const response = await fetch(`/api/rooms/${currentRoom.id}/start-game`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
 
-          // Sound effects removed as requested
-        } else {
-          //console.error('Failed to create new game:', response.status);
+            if (response.ok) {
+              const newGame = await response.json();
+              // Server will broadcast game_started to all participants
+              
+              // Reset creating state after game is created
+              setIsCreatingGame(false);
+            } else {
+              setCurrentGame(null);
+              setIsCreatingGame(false);
+            }
+          } catch (error) {
+            setCurrentGame(null);
+            setIsCreatingGame(false);
+          }
+        };
+
+        startBotGameCountdown();
+      } else {
+        // For online mode with real player, create game immediately (they have their own 5-second countdown on server)
+        try {
+          //console.log('🎮 Creating new game for room:', currentRoom.id);
+
+          // Clear the current game first to prevent using finished game
+          setCurrentGame(null);
+          setShowGameOver(false);
+          setGameResult(null);
+
+          const response = await fetch(`/api/rooms/${currentRoom.id}/start-game`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const newGame = await response.json();
+            //console.log('🎮 New game created for play again:', newGame);
+            //console.log('🎮 Game created successfully, waiting for server broadcast to all participants');
+
+            // Don't set the game locally - let the server broadcast handle it
+            // This ensures both players get the exact same game state at the same time
+
+            // Sound effects removed as requested
+            
+            // Reset creating state after a short delay (server will send game_started)
+            setTimeout(() => {
+              setIsCreatingGame(false);
+            }, 1000);
+          } else {
+            //console.error('Failed to create new game:', response.status);
+            // Reset game state on error
+            setCurrentGame(null);
+            setIsCreatingGame(false);
+          }
+        } catch (error) {
+          //console.error('Error starting new game:', error);
           // Reset game state on error
           setCurrentGame(null);
           setIsCreatingGame(false);
         }
-      } catch (error) {
-        //console.error('Error starting new game:', error);
-        // Reset game state on error
-        setCurrentGame(null);
-        setIsCreatingGame(false);
       }
     } else {
-      // For AI and pass-play modes, restart locally
+      // For AI and pass-play modes, restart locally with countdown
       setShowGameOver(false);
       setGameResult(null);
 
-      const newGame = {
-        id: `local-game-${Date.now()}`,
-        board: {},
-        currentPlayer: 'X',
-        status: 'active',
-        gameMode: selectedMode,
-        aiDifficulty,
-        playerXId: user?.userId || user?.id,
-        playerOId: selectedMode === 'ai' ? 'ai' : 'player2',
-        playerXInfo: {
-          displayName: 'Player X',
-          firstName: 'Player X',
-          username: 'Player X'
-        },
-        playerOInfo: selectedMode === 'ai' ? {
-          displayName: 'AI',
-          firstName: 'AI',
-          username: 'AI'
-        } : {
-          displayName: 'Player O',
-          firstName: 'Player O',
-          username: 'Player O'
-        }
+      // Show 2-second countdown for bot games
+      const startCountdown = async () => {
+        // Countdown: 2, 1
+        setCountdownNumber(2);
+        setShowCountdown(true);
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setCountdownNumber(1);
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setShowCountdown(false);
+
+        // Create new game after countdown
+        const newGame = {
+          id: `local-game-${Date.now()}`,
+          board: {},
+          currentPlayer: 'X',
+          status: 'active',
+          gameMode: selectedMode,
+          aiDifficulty,
+          playerXId: user?.userId || user?.id,
+          playerOId: selectedMode === 'ai' ? 'ai' : 'player2',
+          playerXInfo: {
+            displayName: 'Player X',
+            firstName: 'Player X',
+            username: 'Player X'
+          },
+          playerOInfo: selectedMode === 'ai' ? {
+            displayName: 'AI',
+            firstName: 'AI',
+            username: 'AI'
+          } : {
+            displayName: 'Player O',
+            firstName: 'Player O',
+            username: 'Player O'
+          }
+        };
+
+        setCurrentGame(newGame);
+        // Sound effects removed as requested
+        
+        // Reset creating state after game is created (after countdown completes)
+        setIsCreatingGame(false);
       };
 
-      setCurrentGame(newGame);
-      // Sound effects removed as requested
+      startCountdown();
     }
-
-    // Reset creating state after a short delay
-    setTimeout(() => {
-      setIsCreatingGame(false);
-    }, 1000);
   };
 
 
@@ -1860,7 +1964,7 @@ export default function Home() {
                   <div className={`absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-3 h-3 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 sm:border-3 border-slate-800 ${actualOnlineStatus ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-red-500 shadow-lg shadow-red-500/50'} animate-pulse`}></div>
 
                   {/* Level Badge - Mobile responsive */}
-                  <div className="absolute -top-1 -left-1 sm:-top-2 sm:-left-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs sm:text-sm font-black px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-lg border border-yellow-300">
+                  <div className="absolute -top-3 -left-3 sm:-top-4 sm:-left-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs sm:text-sm font-black px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-lg border border-yellow-300">
                     Lv.{userStats?.level || '0'}
                   </div>
                 </div>
@@ -1877,7 +1981,7 @@ export default function Home() {
             {/* Player Info with Gaming Stats - Larger Layout */}
             <div className="flex flex-col space-y-1 sm:space-y-1.5 min-w-0 flex-1">
               <div className="flex items-center space-x-2 sm:space-x-3">
-                <h2 className="text-sm sm:text-lg md:text-2xl font-black bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent truncate">
+                <h2 className="text-sm sm:text-lg md:text-2xl font-black text-white truncate">
                   {user?.displayName || user?.firstName || user?.username || 'Player'}
                 </h2>
                 <div className={`flex items-center space-x-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-full text-xs sm:text-sm font-semibold ${actualOnlineStatus ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
@@ -2550,6 +2654,7 @@ export default function Home() {
         displayName={user?.displayName || user?.firstName || user?.username || 'Player'}
         profilePicture={user?.profilePicture}
         profileImageUrl={user?.profileImageUrl}
+        selectedAchievementBorder={user?.selectedAchievementBorder}
       />
 
       <InvitationPopup onRoomJoin={handleRoomJoin} />

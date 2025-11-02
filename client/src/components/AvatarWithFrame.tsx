@@ -1,0 +1,231 @@
+import { motion } from "framer-motion";
+
+interface AvatarWithFrameProps {
+  src?: string;
+  alt: string;
+  size?: 'sm' | 'md' | 'lg';
+  borderType?: string | null;
+  fallbackText?: string;
+}
+
+export function AvatarWithFrame({ 
+  src, 
+  alt, 
+  size = 'md',
+  borderType = null,
+  fallbackText = '?'
+}: AvatarWithFrameProps) {
+  const sizeClasses = {
+    sm: 'w-10 h-10',
+    md: 'w-14 h-14',
+    lg: 'w-20 h-20'
+  };
+
+  const paddingClasses = {
+    sm: 'p-[3px]',
+    md: 'p-1',
+    lg: 'p-1.5'
+  };
+
+  const getFrameStyle = () => {
+    switch (borderType) {
+      case 'level_100_master':
+      case 'level100Master':
+        return (
+          <motion.div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 25%, #d97706 50%, #f59e0b 75%, #fbbf24 100%)',
+              backgroundSize: '200% 200%',
+            }}
+            animate={{
+              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+              boxShadow: [
+                '0 0 20px 2px rgba(251, 191, 36, 0.6), 0 0 30px 4px rgba(245, 158, 11, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.3)',
+                '0 0 30px 4px rgba(251, 191, 36, 0.8), 0 0 40px 6px rgba(245, 158, 11, 0.5), inset 0 0 25px rgba(251, 191, 36, 0.4)',
+                '0 0 20px 2px rgba(251, 191, 36, 0.6), 0 0 30px 4px rgba(245, 158, 11, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.3)'
+              ],
+              rotate: [0, 360]
+            }}
+            transition={{
+              backgroundPosition: { duration: 3, repeat: Infinity, ease: 'linear' },
+              boxShadow: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+              rotate: { duration: 8, repeat: Infinity, ease: 'linear' }
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 via-yellow-600 to-amber-700 p-[2px] relative">
+              <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
+                {src ? (
+                  <img 
+                    src={src} 
+                    alt={alt}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg">
+                    {fallbackText}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        );
+      
+      case 'ultimate_veteran':
+        return (
+          <motion.div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #ff6347 0%, #ff4500 50%, #ff8c00 100%)',
+            }}
+            animate={{
+              boxShadow: [
+                '0 0 15px 2px rgba(255, 99, 71, 0.6), 0 0 25px 3px rgba(255, 69, 0, 0.4)',
+                '0 0 20px 3px rgba(255, 99, 71, 0.8), 0 0 30px 4px rgba(255, 69, 0, 0.5)',
+                '0 0 15px 2px rgba(255, 99, 71, 0.6), 0 0 25px 3px rgba(255, 69, 0, 0.4)'
+              ]
+            }}
+            transition={{
+              boxShadow: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
+              {src ? (
+                <img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg">
+                  {fallbackText}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        );
+      
+      case 'grandmaster':
+        return (
+          <motion.div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #818cf8 0%, #a5b4fc 50%, #c7d2fe 100%)',
+            }}
+            animate={{
+              boxShadow: [
+                '0 0 12px 2px rgba(129, 140, 248, 0.6), 0 0 20px 3px rgba(165, 180, 252, 0.4)',
+                '0 0 18px 3px rgba(129, 140, 248, 0.8), 0 0 25px 4px rgba(165, 180, 252, 0.5)',
+                '0 0 12px 2px rgba(129, 140, 248, 0.6), 0 0 20px 3px rgba(165, 180, 252, 0.4)'
+              ]
+            }}
+            transition={{
+              boxShadow: { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
+              {src ? (
+                <img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg">
+                  {fallbackText}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        );
+      
+      case 'champion':
+        return (
+          <motion.div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #8a2be2 0%, #9932cc 50%, #ba55d3 100%)',
+            }}
+            animate={{
+              boxShadow: [
+                '0 0 12px 2px rgba(138, 43, 226, 0.6), 0 0 20px 3px rgba(153, 50, 204, 0.4)',
+                '0 0 18px 3px rgba(138, 43, 226, 0.8), 0 0 25px 4px rgba(153, 50, 204, 0.5)',
+                '0 0 12px 2px rgba(138, 43, 226, 0.6), 0 0 20px 3px rgba(153, 50, 204, 0.4)'
+              ]
+            }}
+            transition={{
+              boxShadow: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
+              {src ? (
+                <img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg">
+                  {fallbackText}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        );
+      
+      case 'legend':
+        return (
+          <motion.div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #ff4500 0%, #ff6600 50%, #ff8800 100%)',
+            }}
+            animate={{
+              boxShadow: [
+                '0 0 10px 2px rgba(255, 69, 0, 0.6)',
+                '0 0 15px 3px rgba(255, 69, 0, 0.8)',
+                '0 0 10px 2px rgba(255, 69, 0, 0.6)'
+              ]
+            }}
+            transition={{
+              boxShadow: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
+              {src ? (
+                <img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg">
+                  {fallbackText}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        );
+      
+      default:
+        // No frame
+        return (
+          <div className={`${sizeClasses[size]} rounded-full`}>
+            {src ? (
+              <img 
+                src={src} 
+                alt={alt}
+                className="w-full h-full rounded-full object-cover border-2 border-gray-600"
+              />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 border-2 border-gray-600 flex items-center justify-center text-white font-bold text-lg">
+                {fallbackText}
+              </div>
+            )}
+          </div>
+        );
+    }
+  };
+
+  return getFrameStyle();
+}

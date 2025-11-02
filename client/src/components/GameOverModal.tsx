@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ConfettiExplosion } from './ConfettiExplosion';
+import { formatNumber } from "@/lib/utils";
 
 interface GameOverModalProps {
   open: boolean;
@@ -153,6 +154,119 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
   const loser = winner ? (winner === 'X' ? 'O' : 'X') : null;
   const loserName = loser ? getPlayerDisplayName(loser) : null;
   const loserInfo = isOnlineGame && loser ? (loser === 'X' ? result.playerXInfo : result.playerOInfo) : null;
+
+  // Helper function to render text with emojis, keeping emoji colors natural
+  const renderTextWithEmojis = (text: string, style: React.CSSProperties) => {
+    const isEmojiCodePoint = (codePoint: number): boolean => {
+      return (
+        (codePoint >= 0x1F300 && codePoint <= 0x1F9FF) || // Misc symbols and pictographs
+        (codePoint >= 0x2600 && codePoint <= 0x26FF) ||   // Misc symbols
+        (codePoint >= 0x2700 && codePoint <= 0x27BF) ||   // Dingbats
+        (codePoint >= 0x1F000 && codePoint <= 0x1F02F) || // Mahjong tiles
+        (codePoint >= 0x1F0A0 && codePoint <= 0x1F0FF) || // Playing cards
+        (codePoint >= 0x1F100 && codePoint <= 0x1F64F) || // Enclosed characters and emoticons
+        (codePoint >= 0x1F680 && codePoint <= 0x1F6FF) || // Transport and map symbols
+        (codePoint >= 0x1F900 && codePoint <= 0x1F9FF) || // Supplemental symbols and pictographs
+        (codePoint >= 0x1FA70 && codePoint <= 0x1FAFF)    // Extended-A
+      );
+    };
+
+    const isEmojiModifier = (codePoint: number): boolean => {
+      return (
+        (codePoint >= 0xFE00 && codePoint <= 0xFE0F) ||   // Variation selectors
+        codePoint === 0x200D ||                            // Zero-width joiner
+        (codePoint >= 0x1F3FB && codePoint <= 0x1F3FF) || // Skin tone modifiers
+        (codePoint >= 0x1F1E6 && codePoint <= 0x1F1FF) || // Regional indicators (flags)
+        codePoint === 0x20E3                               // Combining enclosing keycap
+      );
+    };
+
+    // Check if a character is a keycap base (0-9, #, *)
+    const isKeycapBase = (codePoint: number): boolean => {
+      return (
+        (codePoint >= 0x30 && codePoint <= 0x39) || // 0-9
+        codePoint === 0x23 ||                        // #
+        codePoint === 0x2A                           // *
+      );
+    };
+
+    const chars = Array.from(text);
+    const elements: React.ReactNode[] = [];
+    let textBuffer = '';
+    let i = 0;
+    
+    while (i < chars.length) {
+      const char = chars[i];
+      const codePoint = char.codePointAt(0);
+      
+      // Check if this starts an emoji sequence
+      const isEmojiStart = codePoint && (isEmojiCodePoint(codePoint) || isEmojiModifier(codePoint));
+      
+      // Check if this is a keycap base followed by variation selector or keycap combiner
+      const isKeycapEmoji = codePoint && isKeycapBase(codePoint) && i + 1 < chars.length && 
+        chars[i + 1].codePointAt(0) && 
+        (chars[i + 1].codePointAt(0) === 0xFE0F || chars[i + 1].codePointAt(0) === 0x20E3);
+      
+      if (isEmojiStart || isKeycapEmoji) {
+        // Push any buffered text first
+        if (textBuffer) {
+          elements.push(textBuffer);
+          textBuffer = '';
+        }
+        
+        // Collect the entire emoji sequence
+        let emojiSequence = char;
+        let j = i + 1;
+        
+        // Continue collecting while we find modifiers or ZWJs
+        while (j < chars.length) {
+          const nextChar = chars[j];
+          const nextCodePoint = nextChar.codePointAt(0);
+          
+          if (nextCodePoint && (isEmojiModifier(nextCodePoint) || isEmojiCodePoint(nextCodePoint))) {
+            // Check if previous character was a ZWJ or this is part of a flag/modifier sequence
+            const prevCodePoint = emojiSequence.codePointAt(emojiSequence.length - 1);
+            if (prevCodePoint === 0x200D || isEmojiModifier(nextCodePoint)) {
+              emojiSequence += nextChar;
+              j++;
+            } else {
+              // This is a new emoji sequence, stop here
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+        
+        // Add the complete emoji sequence with no color styling
+        elements.push(
+          <span 
+            key={`emoji-${i}`}
+            style={{ 
+              background: 'none',
+              WebkitTextFillColor: 'initial',
+              backgroundClip: 'border-box',
+              WebkitBackgroundClip: 'border-box'
+            }}
+          >
+            {emojiSequence}
+          </span>
+        );
+        
+        i = j;
+      } else {
+        textBuffer += char;
+        i++;
+      }
+    }
+    
+    // Push any remaining buffered text
+    if (textBuffer) {
+      elements.push(textBuffer);
+    }
+    
+    return <span style={style}>{elements}</span>;
+  };
 
   return (
     <>
@@ -476,7 +590,7 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                         margin: '4px 0 0',
                         fontWeight: '600'
                       }}>
-                        +{result.betAmount.toLocaleString()} 🪙
+                        +{formatNumber(result.betAmount)} 🪙
                       </p>
                     )}
                   </div>
@@ -554,7 +668,7 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                         margin: '4px 0 0',
                         fontWeight: '600'
                       }}>
-                        -{result.betAmount.toLocaleString()} 🪙
+                        -{formatNumber(result.betAmount)} 🪙
                       </p>
                     )}
                   </div>
@@ -569,14 +683,15 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                     fontSize: '24px', 
                     fontWeight: '800',
                     margin: 0,
-                    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
                     letterSpacing: '0.5px',
                     animation: 'slide-in-bottom 0.6s ease-out 0.3s backwards'
                   }}>
-                    {winnerName} Wins
+                    {renderTextWithEmojis(`${winnerName} Wins`, {
+                      background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent'
+                    })}
                   </p>
                 </div>
 

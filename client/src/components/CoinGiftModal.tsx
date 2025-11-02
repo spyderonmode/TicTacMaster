@@ -72,15 +72,6 @@ export function CoinGiftModal({ open, onClose, friend, currentUserCoins }: CoinG
       return;
     }
 
-    if (giftAmount > 100000) {
-      toast({
-        title: "Amount Too Large",
-        description: "Maximum gift amount is 100,000 coins.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (giftAmount > currentUserCoins) {
       toast({
         title: "Insufficient Coins",

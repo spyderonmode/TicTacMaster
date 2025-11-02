@@ -8,6 +8,9 @@ import {
   achievements,
   userThemes,
   userPieceStyles,
+  emojiItems,
+  userEmojis,
+  gameEmojiSends,
   friendRequests,
   friendships,
   roomInvitations,
@@ -27,6 +30,9 @@ import {
   type Achievement,
   type UserTheme,
   type UserPieceStyle,
+  type EmojiItem,
+  type UserEmoji,
+  type GameEmojiSend,
   type FriendRequest,
   type Friendship,
   type RoomInvitation,
@@ -100,11 +106,12 @@ export interface IStorage {
   addRoomParticipant(participant: InsertRoomParticipant): Promise<RoomParticipant>;
   getRoomParticipants(roomId: string): Promise<(RoomParticipant & { user: User })[]>;
   removeRoomParticipant(roomId: string, userId: string): Promise<void>;
+  clearRoomParticipants(roomId: string): Promise<void>;
 
   // Statistics
   updateUserStats(userId: string, result: 'win' | 'loss' | 'draw'): Promise<void>;
   getUserStats(userId: string): Promise<{ wins: number; losses: number; draws: number }>;
-  getOnlineGameStats(userId: string): Promise<{ wins: number; losses: number; draws: number; totalGames: number; currentWinStreak: number; bestWinStreak: number; level: number; winsToNextLevel: number; coins: number }>;
+  getOnlineGameStats(userId: string): Promise<{ wins: number; losses: number; draws: number; totalGames: number; currentWinStreak: number; bestWinStreak: number; level: number; winsToNextLevel: number; coins: number; selectedAchievementBorder?: string | null; achievementsUnlocked: number }>;
 
   // Blocked Users
   blockUser(blockerId: string, blockedId: string): Promise<BlockedUser>;
@@ -200,6 +207,16 @@ export interface IStorage {
   getPendingResets(): Promise<WeeklyResetStatus[]>;
   getFailedResets(): Promise<WeeklyResetStatus[]>;
   createWeeklyResetTable(): Promise<void>;
+
+  // Emoji operations
+  getAllEmojiItems(): Promise<EmojiItem[]>;
+  getEmojiItemById(id: string): Promise<EmojiItem | undefined>;
+  getUserEmojis(userId: string): Promise<(UserEmoji & { emoji: EmojiItem })[]>;
+  hasUserPurchasedEmoji(userId: string, emojiId: string): Promise<boolean>;
+  purchaseEmoji(userId: string, emojiId: string): Promise<{ success: boolean; message: string; emoji?: UserEmoji }>;
+  sendEmojiInGame(gameId: string, senderId: string, recipientId: string, emojiId: string): Promise<GameEmojiSend>;
+  getGameEmojiSends(gameId: string): Promise<(GameEmojiSend & { emoji: EmojiItem; sender: User })[]>;
+  createDefaultEmojis(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -602,8 +619,8 @@ export class DatabaseStorage implements IStorage {
           // Define loser ID
           const loserId = winnerId === game.playerXId ? game.playerOId : game.playerXId;
 
-          // Update user stats for winner and loser (only for online games) - BEFORE achievements
-          if (game.gameMode === 'online') {
+          // Update user stats for winner and loser (only for online games, skip if abandonment since routes.ts handles it) - BEFORE achievements
+          if (game.gameMode === 'online' && winCondition !== 'abandonment') {
             await this.updateUserStats(winnerId, 'win');
             await this.updateUserStats(loserId, 'loss');
           }
@@ -635,14 +652,16 @@ export class DatabaseStorage implements IStorage {
                   await this.processRoomBetTransaction(winnerId, loserId, betAmount, gameId);
                   //console.log(`💰 Processed room bet transaction: ${betAmount} coins`);
 
-                  // Track weekly stats for room games
-                  try {
-                    const loserCoins = await this.getUserCoins(loserId);
-                    const actualLoss = loserCoins >= betAmount ? -betAmount : 0;
-                    await this.updateWeeklyStats(winnerId, 'win', betAmount);
-                    await this.updateWeeklyStats(loserId, 'loss', actualLoss);
-                  } catch (error) {
-                    //console.error('📊 Error updating weekly stats for room game:', error);
+                  // Track weekly stats for room games (exclude abandonment wins)
+                  if (winCondition !== 'abandonment') {
+                    try {
+                      const loserCoins = await this.getUserCoins(loserId);
+                      const actualLoss = loserCoins >= betAmount ? -betAmount : 0;
+                      await this.updateWeeklyStats(winnerId, 'win', betAmount);
+                      await this.updateWeeklyStats(loserId, 'loss', actualLoss);
+                    } catch (error) {
+                      //console.error('📊 Error updating weekly stats for room game:', error);
+                    }
                   }
                 }
               } else {
@@ -666,12 +685,14 @@ export class DatabaseStorage implements IStorage {
                   //console.log(`💰 Loser ${loserId} doesn't have enough coins (${loserCoins}), skipping deduction`);
                 }
 
-                // Track weekly stats for online matchmaking games only
-                try {
-                  await this.updateWeeklyStats(winnerId, 'win', 1000);
-                  await this.updateWeeklyStats(loserId, 'loss', loserCoinsLost);
-                } catch (error) {
-                  //console.error('📊 Error updating weekly stats:', error);
+                // Track weekly stats for online matchmaking games (exclude abandonment wins)
+                if (winCondition !== 'abandonment') {
+                  try {
+                    await this.updateWeeklyStats(winnerId, 'win', 1000);
+                    await this.updateWeeklyStats(loserId, 'loss', loserCoinsLost);
+                  } catch (error) {
+                    //console.error('📊 Error updating weekly stats:', error);
+                  }
                 }
               }
             } else {
@@ -690,12 +711,14 @@ export class DatabaseStorage implements IStorage {
             await this.updateUserStats(game.playerXId, 'draw');
             await this.updateUserStats(game.playerOId, 'draw');
 
-            // Track weekly stats for online draws (no coins earned/lost)
-            try {
-              await this.updateWeeklyStats(game.playerXId, 'draw', 0);
-              await this.updateWeeklyStats(game.playerOId, 'draw', 0);
-            } catch (error) {
-              //console.error('📊 Error updating weekly stats for draw:', error);
+            // Track weekly stats for online draws (exclude abandonment - though draws shouldn't happen with abandonment)
+            if (winCondition !== 'abandonment') {
+              try {
+                await this.updateWeeklyStats(game.playerXId, 'draw', 0);
+                await this.updateWeeklyStats(game.playerOId, 'draw', 0);
+              } catch (error) {
+                //console.error('📊 Error updating weekly stats for draw:', error);
+              }
             }
           }
 
@@ -934,6 +957,12 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(roomParticipants)
       .where(and(eq(roomParticipants.roomId, roomId), eq(roomParticipants.userId, userId)));
+  }
+
+  async clearRoomParticipants(roomId: string): Promise<void> {
+    await db
+      .delete(roomParticipants)
+      .where(eq(roomParticipants.roomId, roomId));
   }
 
   // Statistics - for game results
@@ -1187,12 +1216,12 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getOnlineGameStats(userId: string): Promise<{ wins: number; losses: number; draws: number; totalGames: number; currentWinStreak: number; bestWinStreak: number; level: number; winsToNextLevel: number; coins: number }> {
+  async getOnlineGameStats(userId: string): Promise<{ wins: number; losses: number; draws: number; totalGames: number; currentWinStreak: number; bestWinStreak: number; level: number; winsToNextLevel: number; coins: number; selectedAchievementBorder?: string | null; achievementsUnlocked: number }> {
     // Since we're properly updating user stats in the database, just return the user's stats
     // This represents their online game performance since we only update stats for online games
     const user = await this.getUser(userId);
     if (!user) {
-      return { wins: 0, losses: 0, draws: 0, totalGames: 0, currentWinStreak: 0, bestWinStreak: 0, level: 0, winsToNextLevel: 10, coins: 2000 };
+      return { wins: 0, losses: 0, draws: 0, totalGames: 0, currentWinStreak: 0, bestWinStreak: 0, level: 0, winsToNextLevel: 10, coins: 2000, selectedAchievementBorder: null, achievementsUnlocked: 0 };
     }
 
     const wins = user.wins || 0;
@@ -1208,6 +1237,10 @@ export class DatabaseStorage implements IStorage {
     // Get current coin balance using the same method as coin gifts
     const coins = await this.getUserCoins(userId);
 
+    // Get achievements count
+    const userAchievements = await this.getUserAchievements(userId);
+    const achievementsUnlocked = userAchievements.length;
+
     return {
       wins,
       losses,
@@ -1217,7 +1250,9 @@ export class DatabaseStorage implements IStorage {
       bestWinStreak,
       level,
       winsToNextLevel,
-      coins
+      coins,
+      selectedAchievementBorder: user.selectedAchievementBorder,
+      achievementsUnlocked
     };
   }
 
@@ -1993,25 +2028,35 @@ export class DatabaseStorage implements IStorage {
 
   private async checkThemeUnlocks(userId: string): Promise<void> {
     try {
-      // Check if user has achievements that should unlock themes
-      const userAchievements = await db
-        .select()
-        .from(achievements)
-        .where(eq(achievements.userId, userId));
+      // Get user data to check theme unlock conditions
+      const user = await this.getUser(userId);
+      if (!user) return;
 
-      const achievementTypes = userAchievements.map(a => a.achievementType);
+      // Calculate total games played
+      const totalGames = (user.wins || 0) + (user.losses || 0) + (user.draws || 0);
 
-      // Check theme unlock conditions
-      if (achievementTypes.includes('win_streak_10')) {
+      // Calculate user level from wins
+      const { getLevelFromWins } = await import('../shared/level.js');
+      const userLevel = getLevelFromWins(user.wins || 0);
+
+      // Check theme unlock conditions based on actual user stats
+      // Halloween: 10+ win streak
+      if ((user.currentWinStreak || 0) >= 10) {
         await this.unlockTheme(userId, 'halloween');
       }
-      if (achievementTypes.includes('speed_demon')) {
+
+      // Christmas: 20+ total wins
+      if ((user.wins || 0) >= 20) {
         await this.unlockTheme(userId, 'christmas');
       }
-      if (achievementTypes.includes('veteran_player')) {
+
+      // Summer: 100+ total games played
+      if (totalGames >= 100) {
         await this.unlockTheme(userId, 'summer');
       }
-      if (achievementTypes.includes('level_100_master')) {
+
+      // Level 100 Master: Level 100+
+      if (userLevel >= 100) {
         await this.unlockTheme(userId, 'level_100_frame');
       }
     } catch (error) {
@@ -2761,11 +2806,6 @@ export class DatabaseStorage implements IStorage {
         return { success: false, error: "Gift amount must be greater than 0" };
       }
 
-      // Validate amount is within bounds (server-side security check)
-      if (amount > 100000) {
-        return { success: false, error: "Gift amount cannot exceed 100,000 coins" };
-      }
-
       // Check if sender has enough coins
       const senderCoins = await this.getUserCoins(senderId);
       if (senderCoins < amount) {
@@ -2927,7 +2967,10 @@ export class DatabaseStorage implements IStorage {
     coins: number;
     level: number;
     winsToNextLevel: number;
+    currentWinStreak: number;
+    bestWinStreak: number;
     createdAt: string;
+    selectedAchievementBorder?: string;
     achievements: Array<{
       id: string;
       name: string;
@@ -2974,7 +3017,10 @@ export class DatabaseStorage implements IStorage {
         coins: userData.coins ?? 2000,
         level: level,
         winsToNextLevel: winsToNextLevel,
+        currentWinStreak: userData.currentWinStreak || 0,
+        bestWinStreak: userData.bestWinStreak || 0,
         createdAt: userData.createdAt?.toISOString() || new Date().toISOString(),
+        selectedAchievementBorder: userData.selectedAchievementBorder || undefined,
         achievements: userAchievements.map(achievement => ({
           id: achievement.id,
           name: achievement.achievementName,
@@ -2989,7 +3035,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getHeadToHeadStats(currentUserId: string, targetUserId: string): Promise<{
+  async getDetailedHeadToHeadStats(currentUserId: string, targetUserId: string): Promise<{
     totalGames: number;
     wins: number;
     losses: number;
@@ -3438,19 +3484,22 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Get final leaderboard snapshot for this week/year
-      const topPlayers = await this.getWeeklyLeaderboard(weekNumber, year, 10);
-      // 1st=10M, 2nd=5M, 3rd=3M, 4th-10th=1M each
+      const topPlayers = await this.getWeeklyLeaderboard(weekNumber, year, 50);
+      // 1st=30M, 2nd=20M, 3rd=10M, 4th-10th=5M each, 11th-50th=1M each
       const getRewardAmount = (rank: number): number => {
         switch (rank) {
-          case 1: return 10000000; // 10M
-          case 2: return 5000000;  // 5M
-          case 3: return 3000000;  // 3M
-          default: return 1000000; // 1M for ranks 4-10
+          case 1: return 30000000; // 30M
+          case 2: return 20000000; // 20M
+          case 3: return 10000000; // 10M
+          default: 
+            if (rank <= 10) return 5000000; // 5M for ranks 4-10
+            if (rank <= 50) return 1000000; // 1M for ranks 11-50
+            return 0; // No reward for ranks beyond 50
         }
       };
       const rewards: WeeklyReward[] = [];
 
-      for (let i = 0; i < Math.min(topPlayers.length, 10); i++) {
+      for (let i = 0; i < Math.min(topPlayers.length, 50); i++) {
         const player = topPlayers[i];
         const rank = i + 1;
         const rewardAmount = getRewardAmount(rank);
@@ -3724,6 +3773,275 @@ export class DatabaseStorage implements IStorage {
           eq(weeklyLeaderboard.year, year)
         )
       );
+  }
+
+  // ===== Emoji Operations =====
+  
+  async getAllEmojiItems(): Promise<EmojiItem[]> {
+    const items = await db
+      .select()
+      .from(emojiItems)
+      .where(eq(emojiItems.isActive, true))
+      .orderBy(emojiItems.price);
+    return items;
+  }
+
+  async getEmojiItemById(id: string): Promise<EmojiItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(emojiItems)
+      .where(eq(emojiItems.id, id))
+      .limit(1);
+    return item;
+  }
+
+  async getUserEmojis(userId: string): Promise<(UserEmoji & { emoji: EmojiItem })[]> {
+    const emojis = await db
+      .select({
+        id: userEmojis.id,
+        userId: userEmojis.userId,
+        emojiId: userEmojis.emojiId,
+        purchasedAt: userEmojis.purchasedAt,
+        emoji: emojiItems,
+      })
+      .from(userEmojis)
+      .innerJoin(emojiItems, eq(userEmojis.emojiId, emojiItems.id))
+      .where(eq(userEmojis.userId, userId));
+    
+    return emojis.map(e => ({
+      id: e.id,
+      userId: e.userId,
+      emojiId: e.emojiId,
+      purchasedAt: e.purchasedAt,
+      emoji: e.emoji,
+    }));
+  }
+
+  async hasUserPurchasedEmoji(userId: string, emojiId: string): Promise<boolean> {
+    const [result] = await db
+      .select({ id: userEmojis.id })
+      .from(userEmojis)
+      .where(
+        and(
+          eq(userEmojis.userId, userId),
+          eq(userEmojis.emojiId, emojiId)
+        )
+      )
+      .limit(1);
+    return !!result;
+  }
+
+  async purchaseEmoji(userId: string, emojiId: string): Promise<{ success: boolean; message: string; emoji?: UserEmoji }> {
+    try {
+      // Check if emoji exists
+      const emoji = await this.getEmojiItemById(emojiId);
+      if (!emoji) {
+        return { success: false, message: 'Emoji not found' };
+      }
+
+      if (!emoji.isActive) {
+        return { success: false, message: 'This emoji is not available for purchase' };
+      }
+
+      // Check if already purchased
+      const alreadyOwned = await this.hasUserPurchasedEmoji(userId, emojiId);
+      if (alreadyOwned) {
+        return { success: false, message: 'You already own this emoji' };
+      }
+
+      // Check user's coins
+      const currentCoins = await this.getUserCoins(userId);
+      if (currentCoins < emoji.price) {
+        return { success: false, message: 'Insufficient coins' };
+      }
+
+      // Deduct coins and record purchase (transaction)
+      await db.transaction(async (tx) => {
+        // Deduct coins
+        const newBalance = currentCoins - emoji.price;
+        await tx
+          .update(users)
+          .set({ coins: newBalance })
+          .where(eq(users.id, userId));
+
+        // Record coin transaction
+        await tx.insert(coinTransactions).values({
+          userId,
+          amount: -emoji.price,
+          type: 'emoji_purchase',
+          balanceBefore: currentCoins,
+          balanceAfter: newBalance,
+        });
+
+        // Add emoji to user's collection
+        await tx.insert(userEmojis).values({
+          userId,
+          emojiId,
+        });
+      });
+
+      const [purchasedEmoji] = await db
+        .select()
+        .from(userEmojis)
+        .where(
+          and(
+            eq(userEmojis.userId, userId),
+            eq(userEmojis.emojiId, emojiId)
+          )
+        )
+        .limit(1);
+
+      return {
+        success: true,
+        message: `Successfully purchased ${emoji.name}!`,
+        emoji: purchasedEmoji,
+      };
+    } catch (error) {
+      console.error('Error purchasing emoji:', error);
+      return { success: false, message: 'Failed to purchase emoji' };
+    }
+  }
+
+  async sendEmojiInGame(gameId: string, senderId: string, recipientId: string, emojiId: string): Promise<GameEmojiSend> {
+    const [emojiSend] = await db
+      .insert(gameEmojiSends)
+      .values({
+        gameId,
+        senderId,
+        recipientId,
+        emojiId,
+      })
+      .returning();
+
+    return emojiSend;
+  }
+
+  async getGameEmojiSends(gameId: string): Promise<(GameEmojiSend & { emoji: EmojiItem; sender: User })[]> {
+    const sends = await db
+      .select({
+        id: gameEmojiSends.id,
+        gameId: gameEmojiSends.gameId,
+        senderId: gameEmojiSends.senderId,
+        recipientId: gameEmojiSends.recipientId,
+        emojiId: gameEmojiSends.emojiId,
+        sentAt: gameEmojiSends.sentAt,
+        emoji: emojiItems,
+        sender: users,
+      })
+      .from(gameEmojiSends)
+      .innerJoin(emojiItems, eq(gameEmojiSends.emojiId, emojiItems.id))
+      .innerJoin(users, eq(gameEmojiSends.senderId, users.id))
+      .where(eq(gameEmojiSends.gameId, gameId));
+
+    return sends.map(s => ({
+      id: s.id,
+      gameId: s.gameId,
+      senderId: s.senderId,
+      recipientId: s.recipientId,
+      emojiId: s.emojiId,
+      sentAt: s.sentAt,
+      emoji: s.emoji,
+      sender: s.sender,
+    }));
+  }
+
+  async createDefaultEmojis(): Promise<void> {
+    const defaultEmojis = [
+      {
+        id: 'kiss',
+        name: '😘 Kiss',
+        description: 'Blow a kiss to your opponent',
+        price: 2000000,
+        animationType: '😘',
+      },
+      {
+        id: 'heart',
+        name: '❤️ Heart',
+        description: 'Show some love with a heart',
+        price: 2000000,
+        animationType: '❤️',
+      },
+      {
+        id: 'unamused',
+        name: '😒 Unamused',
+        description: 'Show your disapproval',
+        price: 2000000,
+        animationType: '😒',
+      },
+      {
+        id: 'pensive',
+        name: '😔 Pensive',
+        description: 'A thoughtful reaction',
+        price: 2000000,
+        animationType: '😔',
+      },
+      {
+        id: 'cool',
+        name: '😎 Cool',
+        description: 'You\'re so cool!',
+        price: 2000000,
+        animationType: '😎',
+      },
+      {
+        id: 'smirk',
+        name: '😏 Smirk',
+        description: 'Send a smirk to your opponent',
+        price: 2000000,
+        animationType: '😏',
+      },
+      {
+        id: 'thumbs_up',
+        name: '👍 Thumbs Up',
+        description: 'Show your approval',
+        price: 2000000,
+        animationType: '👍',
+      },
+      {
+        id: 'raised_eyebrow',
+        name: '🤨 Raised Eyebrow',
+        description: 'Show your suspicion',
+        price: 2000000,
+        animationType: '🤨',
+      },
+    ];
+
+    try {
+      // Remove old emojis that are no longer used
+      const oldEmojiIds = ['rose', 'fire', 'trophy', 'star', 'clap', 'sparkles'];
+      
+      // Mark these emojis as inactive instead of deleting them
+      // This way they won't show in the shop but preserve purchase history
+      for (const oldId of oldEmojiIds) {
+        try {
+          await db.update(emojiItems)
+            .set({ isActive: false })
+            .where(eq(emojiItems.id, oldId));
+        } catch (e) {
+          // Ignore if emoji doesn't exist
+        }
+      }
+
+      // Insert or update current emojis
+      for (const emoji of defaultEmojis) {
+        const existing = await this.getEmojiItemById(emoji.id);
+        if (!existing) {
+          await db.insert(emojiItems).values(emoji);
+        } else {
+          // Update existing emoji with new values
+          await db.update(emojiItems)
+            .set({
+              name: emoji.name,
+              description: emoji.description,
+              price: emoji.price,
+              animationType: emoji.animationType,
+            })
+            .where(eq(emojiItems.id, emoji.id));
+        }
+      }
+      console.log('✅ Default emojis initialized');
+    } catch (error) {
+      console.error('Error creating default emojis:', error);
+    }
   }
 }
 

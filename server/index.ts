@@ -63,10 +63,11 @@ app.use((req, res, next) => {
   // Run database migrations first
   await runMigrations();
   
-  const server = await registerRoutes(app);
-  
   // Import storage for room cleanup
   const { storage } = await import("./storage");
+  
+  // Initialize default emojis
+  await storage.createDefaultEmojis();
   
   // Clean up old rooms immediately on startup - BUG FIXED: Now preserves game history
   //console.log("🧹 Running initial room cleanup...");
@@ -91,6 +92,8 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
     throw err;
   });
+
+  const server = await registerRoutes(app);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route

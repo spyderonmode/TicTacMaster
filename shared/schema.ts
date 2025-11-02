@@ -56,7 +56,7 @@ export const rooms = pgTable("rooms", {
   maxPlayers: integer("max_players").default(2),
   isPrivate: boolean("is_private").default(false),
   ownerId: varchar("owner_id").references(() => users.id),
-  betAmount: bigint("bet_amount", { mode: 'number' }).default(5000).notNull(), // Bet amount: 5k, 50k, 250k, 1m
+  betAmount: bigint("bet_amount", { mode: 'number' }).default(5000).notNull(), // Bet amount: 5k, 50k, 250k, 1m, 10m
   status: varchar("status").default("waiting"), // waiting, playing, finished
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -144,6 +144,38 @@ export const userPieceStyles = pgTable("user_piece_styles", {
   // Prevent duplicate piece style unlocks
   index("unique_user_piece_style").on(table.userId, table.styleName),
 ]);
+
+// Animated emojis that can be sent during games
+export const emojiItems = pgTable("emoji_items", {
+  id: varchar("id").primaryKey(), // rose, heart, fire, trophy, etc.
+  name: varchar("name").notNull(), // Display name
+  description: text("description").notNull(),
+  price: bigint("price", { mode: 'number' }).notNull(), // Cost in coins
+  animationType: varchar("animation_type").notNull(), // fly, float, spin, etc.
+  isActive: boolean("is_active").default(true), // Can be purchased/used
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User's purchased emojis
+export const userEmojis = pgTable("user_emojis", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  emojiId: varchar("emoji_id").references(() => emojiItems.id).notNull(),
+  purchasedAt: timestamp("purchased_at").defaultNow(),
+}, (table) => [
+  // Prevent duplicate emoji purchases
+  index("unique_user_emoji").on(table.userId, table.emojiId),
+]);
+
+// Track emoji sends during games for real-time animation
+export const gameEmojiSends = pgTable("game_emoji_sends", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  gameId: uuid("game_id").references(() => games.id).notNull(),
+  senderId: varchar("sender_id").references(() => users.id).notNull(),
+  recipientId: varchar("recipient_id").references(() => users.id).notNull(),
+  emojiId: varchar("emoji_id").references(() => emojiItems.id).notNull(),
+  sentAt: timestamp("sent_at").defaultNow(),
+});
 
 export const friendRequests = pgTable("friend_requests", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -394,8 +426,8 @@ export const insertRoomSchema = createInsertSchema(rooms).pick({
   betAmount: true,
 }).extend({
   name: z.string().optional().default('Game Room'), // Auto-generate name if not provided
-  betAmount: z.number().refine((val) => [5000, 50000, 250000, 1000000].includes(val), {
-    message: "Bet amount must be 5000, 50000, 250000, or 1000000 coins",
+  betAmount: z.number().refine((val) => [5000, 50000, 250000, 1000000, 10000000].includes(val), {
+    message: "Bet amount must be 5000, 50000, 250000, 1000000, or 10000000 coins",
   }),
 });
 
@@ -459,6 +491,27 @@ export const insertUserPieceStyleSchema = createInsertSchema(userPieceStyles).pi
   userId: true,
   styleName: true,
   isActive: true,
+});
+
+export const insertEmojiItemSchema = createInsertSchema(emojiItems).pick({
+  id: true,
+  name: true,
+  description: true,
+  price: true,
+  animationType: true,
+  isActive: true,
+});
+
+export const insertUserEmojiSchema = createInsertSchema(userEmojis).pick({
+  userId: true,
+  emojiId: true,
+});
+
+export const insertGameEmojiSendSchema = createInsertSchema(gameEmojiSends).pick({
+  gameId: true,
+  senderId: true,
+  recipientId: true,
+  emojiId: true,
 });
 
 export const insertFriendRequestSchema = createInsertSchema(friendRequests).pick({
@@ -559,6 +612,13 @@ export type BasicFriendInfo = {
   lastName: string | null;
   profileImageUrl: string | null;
 };
+
+export type EmojiItem = typeof emojiItems.$inferSelect;
+export type UserEmoji = typeof userEmojis.$inferSelect;
+export type GameEmojiSend = typeof gameEmojiSends.$inferSelect;
+export type InsertEmojiItem = z.infer<typeof insertEmojiItemSchema>;
+export type InsertUserEmoji = z.infer<typeof insertUserEmojiSchema>;
+export type InsertGameEmojiSend = z.infer<typeof insertGameEmojiSendSchema>;
 
 export type InsertFriendRequest = z.infer<typeof insertFriendRequestSchema>;
 export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;

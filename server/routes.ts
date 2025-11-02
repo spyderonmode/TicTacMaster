@@ -21,7 +21,7 @@ interface WSConnection {
   lastSeen?: Date;
 }
 
-export async function registerRoutes(app: Express): Promise<void> {
+export async function registerRoutes(app: Express): Promise<Server> {
   // ✅ Apply CORS configuration
   const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -76,6 +76,14 @@ export async function registerRoutes(app: Express): Promise<void> {
     }));
   }
 
+  app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: Date.now() });
+  });
+
+  app.head('/api/health', (req, res) => {
+    res.status(200).end();
+  });
+
   // 🛡️ Register authentication and all other routes
   setupAuth(app);
 
@@ -95,13 +103,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     //console.log('ℹ️ Weekly reset status table already exists or error:', error.message);
   }
 
-  // Clean up friendship data inconsistencies
-  try {
-    await storage.cleanupFriendshipData();
-    //console.log('✅ Friendship data cleanup completed');
-  } catch (error) {
-    //console.log('ℹ️ Friendship data cleanup error:', error.message);
-  }
+  // Clean up friendship data inconsistencies (run async without blocking server startup)
+  storage.cleanupFriendshipData().catch(error => {
+    console.error('ℹ️ Friendship data cleanup error:', error);
+  });
 
   const connections = new Map<string, WSConnection>();
   const roomConnections = new Map<string, Set<string>>();
@@ -1347,7 +1352,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Coin gift validation schema
   const coinGiftSchema = z.object({
     recipientId: z.string().min(1, "Recipient ID is required"),
-    amount: z.number().int().min(1).max(100000, "Gift amount must be between 1 and 100,000 coins"),
+    amount: z.number().int().min(1, "Gift amount must be at least 1 coin"),
     message: z.string().max(200, "Message cannot exceed 200 characters").optional()
   });
 
@@ -1606,7 +1611,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: 'Cannot get head-to-head stats for same player' });
       }
 
-      const headToHead = await storage.getHeadToHeadStats(currentUserId, targetUserId);
+      const headToHead = await storage.getDetailedHeadToHeadStats(currentUserId, targetUserId);
       res.json(headToHead);
     } catch (error) {
       console.error('❌ Error fetching head-to-head stats:', error);
@@ -1694,6 +1699,90 @@ export async function registerRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Error fetching user achievements:", error);
       res.status(500).json({ message: "Failed to fetch user achievements" });
+    }
+  });
+
+  // ===== Emoji Routes =====
+  
+  // Get all available emoji items
+  app.get('/api/emojis', requireAuth, async (req: any, res) => {
+    try {
+      const emojis = await storage.getAllEmojiItems();
+      res.json(emojis);
+    } catch (error) {
+      console.error("Error fetching emojis:", error);
+      res.status(500).json({ message: "Failed to fetch emojis" });
+    }
+  });
+
+  // Get user's purchased emojis
+  app.get('/api/emojis/owned', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const ownedEmojis = await storage.getUserEmojis(userId);
+      res.json(ownedEmojis);
+    } catch (error) {
+      console.error("Error fetching owned emojis:", error);
+      res.status(500).json({ message: "Failed to fetch owned emojis" });
+    }
+  });
+
+  // Purchase an emoji
+  app.post('/api/emojis/purchase', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const { emojiId } = req.body;
+
+      if (!emojiId) {
+        return res.status(400).json({ message: "Emoji ID is required" });
+      }
+
+      const result = await storage.purchaseEmoji(userId, emojiId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error purchasing emoji:", error);
+      res.status(500).json({ message: "Failed to purchase emoji" });
+    }
+  });
+
+  // Send an emoji in a game
+  app.post('/api/emojis/send', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const { emojiId, gameId, recipientPlayerId } = req.body;
+
+      if (!emojiId || !gameId || !recipientPlayerId) {
+        return res.status(400).json({ message: "Emoji ID, game ID, and recipient player ID are required" });
+      }
+
+      // The API just validates - actual send happens via WebSocket
+      // Check if user owns the emoji
+      const hasEmoji = await storage.hasUserPurchasedEmoji(userId, emojiId);
+      if (!hasEmoji) {
+        return res.status(403).json({ message: "You do not own this emoji" });
+      }
+
+      res.json({ success: true, message: "Emoji will be sent via WebSocket" });
+    } catch (error) {
+      console.error("Error validating emoji send:", error);
+      res.status(500).json({ message: "Failed to validate emoji send" });
+    }
+  });
+
+  // Get emojis sent in a game
+  app.get('/api/games/:id/emojis', requireAuth, async (req: any, res) => {
+    try {
+      const gameId = req.params.id;
+      const emojiSends = await storage.getGameEmojiSends(gameId);
+      res.json(emojiSends);
+    } catch (error) {
+      console.error("Error fetching game emojis:", error);
+      res.status(500).json({ message: "Failed to fetch game emojis" });
     }
   });
 
@@ -3059,7 +3148,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           await storage.removeRoomParticipant(userRoomState.roomId, userId);
 
           // Notify other users in the room
-          const room = await storage.getRoom(userRoomState.roomId);
+          const room = await storage.getRoomById(userRoomState.roomId);
           if (room) {
             const participants = await storage.getRoomParticipants(room.id);
             const remainingParticipants = participants.filter((p: any) => p.userId !== userId);
@@ -5615,6 +5704,75 @@ export async function registerRoutes(app: Express): Promise<void> {
             }
             break;
 
+          case 'send_emoji':
+            // Handle emoji send and broadcast to room
+            const emojiConnection = connections.get(connectionId);
+            if (emojiConnection) {
+              try {
+                const { roomId: emojiRoomId, gameId: emojiGameId, recipientId, emojiId } = data;
+                const senderId = emojiConnection.userId;
+
+                // Validate emoji ownership
+                const hasEmoji = await storage.hasUserPurchasedEmoji(senderId, emojiId);
+                if (!hasEmoji) {
+                  if (emojiConnection.ws.readyState === WebSocket.OPEN) {
+                    emojiConnection.ws.send(JSON.stringify({
+                      type: 'emoji_error',
+                      error: 'You do not own this emoji'
+                    }));
+                  }
+                  break;
+                }
+
+                // Get emoji details
+                const emoji = await storage.getEmojiItemById(emojiId);
+                if (!emoji) {
+                  break;
+                }
+
+                // Record the emoji send in database
+                await storage.sendEmojiInGame(emojiGameId, senderId, recipientId, emojiId);
+
+                // Get sender info
+                const senderInfo = await storage.getUser(senderId);
+
+                // Broadcast emoji animation to all users in the room
+                const emojiRoomUsers = roomConnections.get(emojiRoomId);
+                if (emojiRoomUsers && emojiRoomUsers.size > 0) {
+                  const emojiMessage = JSON.stringify({
+                    type: 'emoji_sent',
+                    roomId: emojiRoomId,
+                    gameId: emojiGameId,
+                    senderId,
+                    recipientId,
+                    emoji,
+                    senderInfo: {
+                      userId: senderId,
+                      displayName: senderInfo?.displayName || senderInfo?.username || 'Player',
+                      profileImageUrl: senderInfo?.profileImageUrl
+                    },
+                    timestamp: Date.now()
+                  });
+
+                  emojiRoomUsers.forEach(connId => {
+                    const conn = connections.get(connId);
+                    if (conn && conn.ws.readyState === WebSocket.OPEN) {
+                      conn.ws.send(emojiMessage);
+                    }
+                  });
+                }
+              } catch (error) {
+                console.error('Error sending emoji:', error);
+                if (emojiConnection.ws.readyState === WebSocket.OPEN) {
+                  emojiConnection.ws.send(JSON.stringify({
+                    type: 'emoji_error',
+                    error: 'Failed to send emoji'
+                  }));
+                }
+              }
+            }
+            break;
+
           case 'create_room':
             // Handle room creation via WebSocket for better performance on slow connections
             const createConnection = connections.get(connectionId);
@@ -5866,6 +6024,50 @@ export async function registerRoutes(app: Express): Promise<void> {
                     }
                   }
                 });
+
+                // If there's an active game in the room, send it to the new joiner (especially spectators)
+                const activeGame = await storage.getActiveGameByRoomId(room.id);
+                if (activeGame && activeGame.status === 'active') {
+                  // Get player information with achievements and piece styles
+                  const [playerXInfo, playerOInfo] = await Promise.all([
+                    activeGame.playerXId ? storage.getUser(activeGame.playerXId) : Promise.resolve(null),
+                    activeGame.playerOId ? storage.getUser(activeGame.playerOId) : Promise.resolve(null)
+                  ]);
+
+                  const [playerXAchievements, playerOAchievements, playerXPieceStyle, playerOPieceStyle] = await Promise.all([
+                    playerXInfo ? storage.getUserAchievements(activeGame.playerXId!) : Promise.resolve([]),
+                    playerOInfo ? storage.getUserAchievements(activeGame.playerOId!) : Promise.resolve([]),
+                    playerXInfo ? storage.getActivePieceStyle(activeGame.playerXId!) : Promise.resolve(undefined),
+                    playerOInfo ? storage.getActivePieceStyle(activeGame.playerOId!) : Promise.resolve(undefined)
+                  ]);
+
+                  const gameWithPlayers = {
+                    ...activeGame,
+                    playerXInfo: playerXInfo ? {
+                      ...playerXInfo,
+                      achievements: playerXAchievements.slice(0, 3),
+                      activePieceStyle: playerXPieceStyle?.styleName || 'default'
+                    } : null,
+                    playerOInfo: playerOInfo ? {
+                      ...playerOInfo,
+                      achievements: playerOAchievements.slice(0, 3),
+                      activePieceStyle: playerOPieceStyle?.styleName || 'default'
+                    } : null,
+                    gameMode: 'online',
+                    serverTime: new Date().toISOString()
+                  };
+
+                  // Send game state to the new joiner
+                  if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                    joinConnection.ws.send(JSON.stringify({
+                      type: 'game_started',
+                      game: gameWithPlayers,
+                      roomId: room.id,
+                      room: room,
+                      spectatorJoin: true // Flag to indicate this is for a spectator joining mid-game
+                    }));
+                  }
+                }
 
                 //console.log(`🏠 User ${userId} joined room ${room.code} as ${role} via WebSocket`);
               } catch (error) {
@@ -6273,6 +6475,22 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: 'Play again request already exists' });
       }
 
+      // Check if user has sufficient coins for the bet amount
+      if (game.roomId) {
+        const room = await storage.getRoomById(game.roomId);
+        if (room) {
+          const betAmount = room.betAmount || 5000;
+          const requesterUser = await storage.getUser(userId);
+          
+          if (requesterUser && requesterUser.coins < betAmount) {
+            const displayName = requesterUser.displayName || requesterUser.firstName || requesterUser.username || 'Player';
+            return res.status(400).json({ 
+              error: `Cannot start play again. ${displayName} doesn't have enough coins. Required: ${betAmount.toLocaleString()} 🪙, Current: ${requesterUser.coins.toLocaleString()} 🪙` 
+            });
+          }
+        }
+      }
+
       const request = await storage.sendPlayAgainRequest(userId, requestedUserId, gameId);
 
       // Send real-time notification to the requested player
@@ -6312,13 +6530,61 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(404).json({ error: 'Play again request not found' });
       }
 
-      await storage.respondToPlayAgainRequest(requestId, response);
-
-      // Send real-time response to the requester and responder
+      // Get WebSocket connections early for error handling
       const requesterConnection = Array.from(connections.values())
         .find(conn => conn.userId === request.requesterId);
       const responderConnection = Array.from(connections.values())
         .find(conn => conn.userId === userId);
+
+      // If accepting, validate coins BEFORE marking request as accepted
+      if (response === 'accepted') {
+        // Get the original game's room ID with proper null handling
+        const originalGame = request.game;
+        const existingRoomId = originalGame?.roomId;
+
+        if (!existingRoomId) {
+          return res.status(400).json({ error: 'Original game has no room ID - cannot reuse room' });
+        }
+
+        // Get the existing room details
+        const existingRoom = await storage.getRoomById(existingRoomId);
+
+        if (!existingRoom) {
+          return res.status(400).json({ error: 'Original room not found' });
+        }
+
+        // Check if the acceptor has enough coins for the bet amount
+        const acceptorCoins = await storage.getUserCoins(userId);
+        const requiredBet = existingRoom.betAmount;
+        
+        if (acceptorCoins < requiredBet) {
+          const acceptorUser = await storage.getUser(userId);
+          const acceptorName = acceptorUser?.displayName || acceptorUser?.username || 'Player';
+          
+          // Send error to acceptor
+          if (responderConnection && responderConnection.ws.readyState === WebSocket.OPEN) {
+            responderConnection.ws.send(JSON.stringify({
+              type: 'play_again_error',
+              error: `Cannot accept play again. You don't have enough coins. Required: ${requiredBet.toLocaleString()} 🪙, Current: ${acceptorCoins.toLocaleString()} 🪙`
+            }));
+          }
+          
+          // Send error to requester
+          if (requesterConnection && requesterConnection.ws.readyState === WebSocket.OPEN) {
+            requesterConnection.ws.send(JSON.stringify({
+              type: 'play_again_error',
+              error: `Cannot start play again. ${acceptorName} doesn't have enough coins. Required: ${requiredBet.toLocaleString()} 🪙, Current: ${acceptorCoins.toLocaleString()} 🪙`
+            }));
+          }
+          
+          return res.status(400).json({ 
+            error: `Insufficient coins. You need ${requiredBet.toLocaleString()} coins but have ${acceptorCoins.toLocaleString()} coins.` 
+          });
+        }
+      }
+
+      // All validation passed - now mark request as responded
+      await storage.respondToPlayAgainRequest(requestId, response);
 
       // If rejected, send redirect to home to both players
       if (response === 'rejected') {
@@ -6346,20 +6612,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       // If accepted, reuse existing room and create new game
       if (response === 'accepted') {
         try {
-          // Get the original game's room ID with proper null handling
+          // Get the original game's room ID (already validated above)
           const originalGame = request.game;
-          const existingRoomId = originalGame?.roomId;
+          const existingRoomId = originalGame?.roomId!;
 
-          if (!existingRoomId) {
-            throw new Error('Original game has no room ID - cannot reuse room');
-          }
-
-          // Get the existing room details
+          // Re-fetch the existing room for the game_started payload
           const existingRoom = await storage.getRoomById(existingRoomId);
-
-          if (!existingRoom) {
-            throw new Error('Original room not found');
-          }
 
           // Collect all connection IDs for both players (handle multiple tabs/connections)
           const requesterConnIds = Array.from(connections.entries())
@@ -6402,6 +6660,23 @@ export async function registerRoutes(app: Express): Promise<void> {
 
           await new Promise(resolve => setTimeout(resolve, 1000));
 
+          // Clear old room participants to prevent stale data from previous games
+          await storage.clearRoomParticipants(existingRoomId);
+
+          // Add the current two players as participants
+          await Promise.all([
+            storage.addRoomParticipant({
+              roomId: existingRoomId,
+              userId: request.requesterId,
+              role: 'player'
+            }),
+            storage.addRoomParticipant({
+              roomId: existingRoomId,
+              userId: userId,
+              role: 'player'
+            })
+          ]);
+
           // Create new game regardless of WebSocket connection status
           // Update user room states first
           userRoomStates.set(request.requesterId, { roomId: existingRoomId, isInGame: false });
@@ -6442,10 +6717,12 @@ export async function registerRoutes(app: Express): Promise<void> {
             storage.getUser(newGame.playerOId!)
           ]);
 
-          // Get achievements for both players
-          const [playerXAchievements, playerOAchievements] = await Promise.all([
+          // Get achievements and piece styles for both players
+          const [playerXAchievements, playerOAchievements, playerXPieceStyle, playerOPieceStyle] = await Promise.all([
             playerXInfo ? storage.getUserAchievements(newGame.playerXId!) : Promise.resolve([]),
-            playerOInfo ? storage.getUserAchievements(newGame.playerOId!) : Promise.resolve([])
+            playerOInfo ? storage.getUserAchievements(newGame.playerOId!) : Promise.resolve([]),
+            playerXInfo ? storage.getActivePieceStyle(newGame.playerXId!) : Promise.resolve(undefined),
+            playerOInfo ? storage.getActivePieceStyle(newGame.playerOId!) : Promise.resolve(undefined)
           ]);
 
           // Create enhanced game object with player information (like other game_started events)
@@ -6453,11 +6730,13 @@ export async function registerRoutes(app: Express): Promise<void> {
             ...newGame,
             playerXInfo: playerXInfo ? {
               ...playerXInfo,
-              achievements: playerXAchievements.slice(0, 3)
+              achievements: playerXAchievements.slice(0, 3),
+              activePieceStyle: playerXPieceStyle?.styleName || 'default'
             } : null,
             playerOInfo: playerOInfo ? {
               ...playerOInfo,
-              achievements: playerOAchievements.slice(0, 3)
+              achievements: playerOAchievements.slice(0, 3),
+              activePieceStyle: playerOPieceStyle?.styleName || 'default'
             } : null,
             gameMode: 'online', // Explicitly set as online game
             serverTime: new Date().toISOString(),

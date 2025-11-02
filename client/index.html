@@ -2,12 +2,56 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    
+    <title>Tic Tac Toe - Play Online or Offline</title>
+    <meta name="description" content="Play Tic Tac Toe with friends online or challenge the AI. Works offline with cached gameplay!" />
+    
+    <meta name="theme-color" content="#3b82f6" />
+    
+    <meta property="og:title" content="Tic Tac Toe Game" />
+    <meta property="og:description" content="Play Tic Tac Toe with friends online or challenge the AI" />
+    <meta property="og:type" content="website" />
+    
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(registration => {
+              console.log('Service Worker registered successfully:', registration.scope);
+              
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                if (newWorker) {
+                  newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      console.log('New service worker available, showing update notification...');
+                      // Dispatch custom event to trigger React notification
+                      const event = new CustomEvent('serviceWorkerUpdateAvailable', { detail: newWorker });
+                      window.dispatchEvent(event);
+                    }
+                  });
+                }
+              });
+            })
+            .catch(error => {
+              console.warn('Service Worker registration failed:', error);
+            });
+        });
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
     <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
   </body>
 </html>

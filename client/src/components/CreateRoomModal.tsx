@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { Plus, Users, Lock, Unlock, Sparkles } from "lucide-react";
+import { Plus, Users, Lock, Unlock, Sparkles, Coins } from "lucide-react";
 
 interface CreateRoomModalProps {
   open: boolean;
@@ -219,10 +219,36 @@ export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, lea
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-700 border-slate-600">
-                  <SelectItem value="5000" data-testid="option-bet-5k" className="cursor-pointer">💵 5,000 coins</SelectItem>
-                  <SelectItem value="50000" data-testid="option-bet-50k" className="cursor-pointer">💰 50,000 coins</SelectItem>
-                  <SelectItem value="250000" data-testid="option-bet-250k" className="cursor-pointer">💎 250,000 coins</SelectItem>
-                  <SelectItem value="1000000" data-testid="option-bet-1m" className="cursor-pointer">👑 1,000,000 coins</SelectItem>
+                  <SelectItem value="5000" data-testid="option-bet-5k" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-amber-400" />
+                      <span>5k coins</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="50000" data-testid="option-bet-50k" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-amber-400" />
+                      <span>50k coins</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="250000" data-testid="option-bet-250k" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-amber-400" />
+                      <span>250k coins</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="1000000" data-testid="option-bet-1m" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-amber-400" />
+                      <span>1M coins</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="10000000" data-testid="option-bet-10m" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-amber-400" />
+                      <span>10M coins</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

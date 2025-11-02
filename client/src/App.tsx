@@ -15,6 +15,8 @@ import ResetPassword from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 import LoadingScreen from "@/components/LoadingScreen";
 import ShopPage from "@/pages/ShopPage";
+import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
+import { UpdateNotificationManager } from "@/components/UpdateNotificationManager";
 import { Component, useState, useEffect } from "react";
 
 // Error boundary to catch white screen crashes
@@ -251,7 +253,9 @@ function App() {
         <LanguageProvider>
           <ThemeProvider>
             <TooltipProvider>
+              <NetworkStatusIndicator />
               <Toaster />
+              <UpdateNotificationManager />
               <Router />
             </TooltipProvider>
           </ThemeProvider>
