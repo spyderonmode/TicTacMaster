@@ -1786,6 +1786,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Avatar Frame Routes =====
+  
+  // Get all available avatar frames
+  app.get('/api/avatar-frames', requireAuth, async (req: any, res) => {
+    try {
+      const frames = await storage.getAllAvatarFrameItems();
+      res.json(frames);
+    } catch (error) {
+      console.error("Error fetching avatar frames:", error);
+      res.status(500).json({ message: "Failed to fetch avatar frames" });
+    }
+  });
+
+  // Get user's purchased avatar frames
+  app.get('/api/avatar-frames/owned', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const ownedFrames = await storage.getUserAvatarFrames(userId);
+      res.json(ownedFrames);
+    } catch (error) {
+      console.error("Error fetching owned avatar frames:", error);
+      res.status(500).json({ message: "Failed to fetch owned avatar frames" });
+    }
+  });
+
+  // Get user's active avatar frame
+  app.get('/api/avatar-frames/active', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const activeFrameId = await storage.getActiveAvatarFrame(userId);
+      res.json({ activeFrameId });
+    } catch (error) {
+      console.error("Error fetching active avatar frame:", error);
+      res.status(500).json({ message: "Failed to fetch active avatar frame" });
+    }
+  });
+
+  // Purchase an avatar frame
+  app.post('/api/avatar-frames/purchase', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const { frameId } = req.body;
+
+      if (!frameId) {
+        return res.status(400).json({ message: "Frame ID is required" });
+      }
+
+      const result = await storage.purchaseAvatarFrame(userId, frameId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error purchasing avatar frame:", error);
+      res.status(500).json({ message: "Failed to purchase avatar frame" });
+    }
+  });
+
+  // Set active avatar frame
+  app.post('/api/avatar-frames/set-active', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const { frameId } = req.body;
+
+      const result = await storage.setActiveAvatarFrame(userId, frameId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error setting active avatar frame:", error);
+      res.status(500).json({ message: "Failed to set active avatar frame" });
+    }
+  });
+
+  // Get user's active avatar frame
+  app.get('/api/users/:userId/avatar-frame', async (req: any, res) => {
+    try {
+      const userId = req.params.userId;
+      const activeFrameId = await storage.getActiveAvatarFrame(userId);
+      res.json({ activeFrameId });
+    } catch (error) {
+      console.error("Error fetching user avatar frame:", error);
+      res.status(500).json({ message: "Failed to fetch avatar frame" });
+    }
+  });
+
   // Debug endpoint to manually trigger achievement recalculation
   app.post('/api/debug/recalculate-achievements', requireAuth, async (req: any, res) => {
     try {

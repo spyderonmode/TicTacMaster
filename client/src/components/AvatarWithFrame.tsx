@@ -71,6 +71,109 @@ export function AvatarWithFrame({
           </motion.div>
         );
       
+      case 'thundering':
+        return (
+          <motion.div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 25%, #60a5fa 50%, #1d4ed8 75%, #3b82f6 100%)',
+              backgroundSize: '200% 200%',
+            }}
+            animate={{
+              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+              boxShadow: [
+                '0 0 25px 3px rgba(59, 130, 246, 0.7), 0 0 40px 5px rgba(29, 78, 216, 0.5), inset 0 0 25px rgba(96, 165, 250, 0.4), 0 0 60px 8px rgba(147, 197, 253, 0.3)',
+                '0 0 35px 5px rgba(59, 130, 246, 0.9), 0 0 50px 7px rgba(29, 78, 216, 0.7), inset 0 0 30px rgba(96, 165, 250, 0.5), 0 0 70px 10px rgba(147, 197, 253, 0.4)',
+                '0 0 25px 3px rgba(59, 130, 246, 0.7), 0 0 40px 5px rgba(29, 78, 216, 0.5), inset 0 0 25px rgba(96, 165, 250, 0.4), 0 0 60px 8px rgba(147, 197, 253, 0.3)'
+              ],
+              rotate: [0, 360],
+              scale: [1, 1.02, 1]
+            }}
+            transition={{
+              backgroundPosition: { duration: 2.5, repeat: Infinity, ease: 'linear' },
+              boxShadow: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' },
+              rotate: { duration: 10, repeat: Infinity, ease: 'linear' },
+              scale: { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 via-blue-600 to-blue-800 p-[3px] relative overflow-hidden">
+              <motion.div 
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.8) 50%, transparent 70%)',
+                  backgroundSize: '200% 200%',
+                }}
+                animate={{
+                  backgroundPosition: ['-200% -200%', '200% 200%'],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: 'linear'
+                }}
+              />
+              <div className="w-full h-full rounded-full bg-gray-900 p-[2px] relative z-10">
+                <div className="w-full h-full rounded-full overflow-hidden relative">
+                  <motion.div
+                    className="absolute inset-0"
+                    style={{
+                      background: 'radial-gradient(circle at 30% 30%, rgba(96, 165, 250, 0.3) 0%, transparent 50%)',
+                    }}
+                    animate={{
+                      opacity: [0.3, 0.6, 0.3],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: 'easeInOut'
+                    }}
+                  />
+                  {src ? (
+                    <img 
+                      src={src} 
+                      alt={alt}
+                      className="w-full h-full rounded-full object-cover relative z-10"
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10">
+                      {fallbackText}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <motion.div
+              className="absolute -top-1 -right-1 w-4 h-4"
+              animate={{
+                scale: [0, 1.5, 0],
+                opacity: [0, 1, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatDelay: 0.5,
+              }}
+            >
+              <div className="w-full h-full bg-blue-400 rounded-full blur-sm" />
+            </motion.div>
+            <motion.div
+              className="absolute -bottom-1 -left-1 w-4 h-4"
+              animate={{
+                scale: [0, 1.5, 0],
+                opacity: [0, 1, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatDelay: 0.5,
+                delay: 1,
+              }}
+            >
+              <div className="w-full h-full bg-blue-300 rounded-full blur-sm" />
+            </motion.div>
+          </motion.div>
+        );
+      
       case 'ultimate_veteran':
         return (
           <motion.div

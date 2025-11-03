@@ -66,8 +66,9 @@ app.use((req, res, next) => {
   // Import storage for room cleanup
   const { storage } = await import("./storage");
   
-  // Initialize default emojis
+  // Initialize default emojis and avatar frames
   await storage.createDefaultEmojis();
+  await storage.createDefaultAvatarFrames();
   
   // Clean up old rooms immediately on startup - BUG FIXED: Now preserves game history
   //console.log("🧹 Running initial room cleanup...");

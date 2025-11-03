@@ -3,7 +3,7 @@ import { useId } from "react";
 
 interface AnimatedPieceProps {
   symbol: "X" | "O";
-  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends";
+  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus";
   className?: string;
   position?: number;
 }
@@ -81,6 +81,14 @@ export function AnimatedPiece({ symbol, style = "default", className = "", posit
       <BestFriendsX className={className} uniqueId={uniqueId} />
     ) : (
       <BestFriendsO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "lotus") {
+    return symbol === "X" ? (
+      <LotusX className={className} uniqueId={uniqueId} />
+    ) : (
+      <LotusO className={className} uniqueId={uniqueId} />
     );
   }
 
@@ -2484,281 +2492,499 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
         viewBox="0 0 100 100"
         className="w-full h-full"
         style={{ 
-          filter: "drop-shadow(0 4px 10px rgba(248, 113, 113, 0.4))",
+          filter: "drop-shadow(0 4px 10px rgba(244, 114, 182, 0.4))",
           transformStyle: "preserve-3d"
         }}
       >
         <defs>
           <linearGradient id={`bfoGrad1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: "rgb(254, 202, 202)", stopOpacity: 1 }} />
-            <stop offset="50%" style={{ stopColor: "rgb(252, 165, 165)", stopOpacity: 1 }} />
-            <stop offset="100%" style={{ stopColor: "rgb(248, 113, 113)", stopOpacity: 1 }} />
+            <stop offset="0%" style={{ stopColor: "rgb(244, 114, 182)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(236, 72, 153)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(219, 39, 119)", stopOpacity: 1 }} />
           </linearGradient>
-          <linearGradient id={`bfoGrad2-${uniqueId}`} x1="100%" y1="100%" x2="0%" y2="0%">
+          <linearGradient id={`bfoGrad2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" style={{ stopColor: "rgb(253, 224, 71)", stopOpacity: 1 }} />
             <stop offset="50%" style={{ stopColor: "rgb(250, 204, 21)", stopOpacity: 1 }} />
             <stop offset="100%" style={{ stopColor: "rgb(234, 179, 8)", stopOpacity: 1 }} />
           </linearGradient>
-          <radialGradient id={`circleGlow-${uniqueId}`}>
-            <stop offset="0%" style={{ stopColor: "rgb(255, 255, 255)", stopOpacity: 0.4 }} />
-            <stop offset="100%" style={{ stopColor: "rgb(248, 113, 113)", stopOpacity: 0 }} />
-          </radialGradient>
         </defs>
 
-        {/* Outer glow */}
-        <motion.circle
-          cx="50"
-          cy="50"
-          r="40"
-          fill={`url(#circleGlow-${uniqueId})`}
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.3, 0.5, 0.3]
-          }}
-          transition={{
-            duration: 2.5,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-
-        {/* Main circle formed by hands */}
-        <motion.circle
-          cx="50"
-          cy="50"
-          r="28"
-          fill="none"
-          stroke="rgb(248, 113, 113)"
-          strokeWidth="3"
-          opacity="0.2"
-          initial={{ pathLength: 0, rotate: -90 }}
-          animate={{ pathLength: 1, rotate: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          style={{ originX: "50%", originY: "50%" }}
-        />
-
-        {/* Top-left hand - Pink/Red */}
+        {/* First curved arm - Pink/Magenta forming top half of circle */}
         <motion.g
-          initial={{ x: -20, y: -20, scale: 0 }}
-          animate={{ x: 0, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
         >
-          <motion.g
+          {/* Curved arm path */}
+          <motion.path
+            d="M 50 22 Q 75 22, 78 50 Q 75 78, 50 78"
+            stroke={`url(#bfoGrad1-${uniqueId})`}
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.9"
             animate={{
-              rotateZ: [0, -8, 0, -5, 0],
-              y: [0, -2, 0]
+              strokeWidth: [14, 16, 14]
             }}
             transition={{
-              duration: 3.5,
+              duration: 3,
               repeat: Infinity,
               ease: "easeInOut"
             }}
-            style={{ originX: "32px", originY: "30px" }}
-          >
-            {/* Palm */}
-            <ellipse
-              cx="32"
-              cy="30"
-              rx="10"
-              ry="13"
-              fill={`url(#bfoGrad1-${uniqueId})`}
-              stroke="rgb(239, 68, 68)"
-              strokeWidth="1.5"
-              opacity="0.95"
-              transform="rotate(-30 32 30)"
-            />
-            
-            {/* Fingers curved around circle */}
-            <path
-              d="M 38 25 Q 42 24, 44 26 Q 44 28, 42 30 Q 40 30, 38 28 Z"
-              fill={`url(#bfoGrad1-${uniqueId})`}
-              stroke="rgb(239, 68, 68)"
-              strokeWidth="0.8"
-              opacity="0.9"
-            />
-            <path
-              d="M 40 30 Q 44 30, 46 32 Q 46 34, 44 36 Q 42 36, 40 34 Z"
-              fill={`url(#bfoGrad1-${uniqueId})`}
-              stroke="rgb(239, 68, 68)"
-              strokeWidth="0.8"
-              opacity="0.9"
-            />
-            <path
-              d="M 38 35 Q 42 36, 44 39 Q 44 41, 42 43 Q 40 42, 38 40 Z"
-              fill={`url(#bfoGrad1-${uniqueId})`}
-              stroke="rgb(239, 68, 68)"
-              strokeWidth="0.8"
-              opacity="0.9"
-            />
-
-            {/* Wrist */}
-            <ellipse
-              cx="24"
-              cy="28"
-              rx="4"
-              ry="8"
-              fill={`url(#bfoGrad1-${uniqueId})`}
-              stroke="rgb(239, 68, 68)"
-              strokeWidth="1"
-              opacity="0.85"
-              transform="rotate(-45 24 28)"
-            />
-          </motion.g>
-        </motion.g>
-
-        {/* Bottom-right hand - Yellow/Gold */}
-        <motion.g
-          initial={{ x: 20, y: 20, scale: 0 }}
-          animate={{ x: 0, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
-        >
+          />
+          
+          {/* Hand at top with fingers */}
           <motion.g
             animate={{
-              rotateZ: [0, 8, 0, 5, 0],
-              y: [0, 2, 0]
+              scale: [1, 1.1, 1],
+              rotate: [0, -5, 0]
             }}
             transition={{
-              duration: 3.5,
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            style={{ originX: "50px", originY: "22px" }}
+          >
+            <circle
+              cx="50"
+              cy="22"
+              r="8"
+              fill={`url(#bfoGrad1-${uniqueId})`}
+              stroke="rgb(219, 39, 119)"
+              strokeWidth="2"
+              opacity="0.95"
+            />
+            {/* Fingers */}
+            <path
+              d="M 50 14 L 50 10 M 46 16 L 44 14 M 54 16 L 56 14"
+              stroke="rgb(219, 39, 119)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.8"
+            />
+          </motion.g>
+
+          {/* Hand at bottom with fingers */}
+          <motion.g
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, 0]
+            }}
+            transition={{
+              duration: 3,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 0.7
+              delay: 0.3
             }}
-            style={{ originX: "68px", originY: "70px" }}
+            style={{ originX: "50px", originY: "78px" }}
           >
-            {/* Palm */}
-            <ellipse
-              cx="68"
-              cy="70"
-              rx="10"
-              ry="13"
-              fill={`url(#bfoGrad2-${uniqueId})`}
-              stroke="rgb(217, 119, 6)"
-              strokeWidth="1.5"
+            <circle
+              cx="50"
+              cy="78"
+              r="8"
+              fill={`url(#bfoGrad1-${uniqueId})`}
+              stroke="rgb(219, 39, 119)"
+              strokeWidth="2"
               opacity="0.95"
-              transform="rotate(150 68 70)"
             />
-            
-            {/* Fingers curved around circle */}
+            {/* Fingers */}
             <path
-              d="M 62 75 Q 58 76, 56 74 Q 56 72, 58 70 Q 60 70, 62 72 Z"
-              fill={`url(#bfoGrad2-${uniqueId})`}
-              stroke="rgb(217, 119, 6)"
-              strokeWidth="0.8"
-              opacity="0.9"
-            />
-            <path
-              d="M 60 70 Q 56 70, 54 68 Q 54 66, 56 64 Q 58 64, 60 66 Z"
-              fill={`url(#bfoGrad2-${uniqueId})`}
-              stroke="rgb(217, 119, 6)"
-              strokeWidth="0.8"
-              opacity="0.9"
-            />
-            <path
-              d="M 62 65 Q 58 64, 56 61 Q 56 59, 58 57 Q 60 58, 62 60 Z"
-              fill={`url(#bfoGrad2-${uniqueId})`}
-              stroke="rgb(217, 119, 6)"
-              strokeWidth="0.8"
-              opacity="0.9"
-            />
-
-            {/* Wrist */}
-            <ellipse
-              cx="76"
-              cy="72"
-              rx="4"
-              ry="8"
-              fill={`url(#bfoGrad2-${uniqueId})`}
-              stroke="rgb(217, 119, 6)"
-              strokeWidth="1"
-              opacity="0.85"
-              transform="rotate(135 76 72)"
+              d="M 50 86 L 50 90 M 46 84 L 44 86 M 54 84 L 56 86"
+              stroke="rgb(219, 39, 119)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.8"
             />
           </motion.g>
         </motion.g>
 
-        {/* Friendship symbols in center */}
+        {/* Second curved arm - Yellow/Gold forming bottom half of circle */}
+        <motion.g
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.15 }}
+        >
+          {/* Curved arm path */}
+          <motion.path
+            d="M 50 78 Q 25 78, 22 50 Q 25 22, 50 22"
+            stroke={`url(#bfoGrad2-${uniqueId})`}
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.9"
+            animate={{
+              strokeWidth: [14, 16, 14]
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.5
+            }}
+          />
+          
+          {/* Hand at bottom with fingers */}
+          <motion.g
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, 0]
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.5
+            }}
+            style={{ originX: "50px", originY: "78px" }}
+          >
+            <circle
+              cx="50"
+              cy="78"
+              r="8"
+              fill={`url(#bfoGrad2-${uniqueId})`}
+              stroke="rgb(217, 119, 6)"
+              strokeWidth="2"
+              opacity="0.95"
+            />
+            {/* Fingers */}
+            <path
+              d="M 50 86 L 50 90 M 46 84 L 44 86 M 54 84 L 56 86"
+              stroke="rgb(217, 119, 6)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.8"
+            />
+          </motion.g>
+
+          {/* Hand at top with fingers */}
+          <motion.g
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, -5, 0]
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.8
+            }}
+            style={{ originX: "50px", originY: "22px" }}
+          >
+            <circle
+              cx="50"
+              cy="22"
+              r="8"
+              fill={`url(#bfoGrad2-${uniqueId})`}
+              stroke="rgb(217, 119, 6)"
+              strokeWidth="2"
+              opacity="0.95"
+            />
+            {/* Fingers */}
+            <path
+              d="M 50 14 L 50 10 M 46 16 L 44 14 M 54 16 L 56 14"
+              stroke="rgb(217, 119, 6)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.8"
+            />
+          </motion.g>
+        </motion.g>
+
+        {/* Center heart where hands meet */}
         <motion.g
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
         >
-          {/* Small hearts floating */}
-          {[0, 1, 2, 3].map((i) => {
-            const angle = (i * 90) * (Math.PI / 180);
-            const x = 50 + Math.cos(angle) * 18;
-            const y = 50 + Math.sin(angle) * 18;
-            
-            return (
-              <motion.path
-                key={`heart-${i}`}
-                d={`M ${x} ${y + 3} Q ${x - 2.5} ${y}, ${x - 2.5} ${y - 1.5} Q ${x - 2.5} ${y - 3}, ${x - 1} ${y - 3} Q ${x} ${y - 3}, ${x} ${y - 2} Q ${x} ${y - 3}, ${x + 1} ${y - 3} Q ${x + 2.5} ${y - 3}, ${x + 2.5} ${y - 1.5} Q ${x + 2.5} ${y}, ${x} ${y + 3} Z`}
-                fill="rgb(244, 114, 182)"
-                stroke="rgb(236, 72, 153)"
-                strokeWidth="0.5"
-                animate={{
-                  scale: [1, 1.3, 1],
-                  opacity: [0.7, 1, 0.7]
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  delay: i * 0.5,
-                  ease: "easeInOut"
-                }}
-              />
-            );
-          })}
-
-          {/* "BFF" text in center */}
-          <motion.text
-            x="50"
-            y="53"
-            fontSize="12"
-            fill="rgb(236, 72, 153)"
-            fontFamily="Arial, sans-serif"
-            fontWeight="bold"
-            textAnchor="middle"
-            opacity="0.9"
+          <motion.path
+            d="M 50 55 Q 45 50, 45 47 Q 45 43, 48 43 Q 50 43, 50 45 Q 50 43, 52 43 Q 55 43, 55 47 Q 55 50, 50 55 Z"
+            fill="rgb(244, 114, 182)"
+            stroke="rgb(236, 72, 153)"
+            strokeWidth="1.5"
             animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.7, 1, 0.7]
+              scale: [1, 1.2, 1],
+              opacity: [0.9, 1, 0.9]
             }}
             transition={{
-              duration: 2.5,
+              duration: 2,
               repeat: Infinity,
               ease: "easeInOut"
             }}
-          >
-            BFF
-          </motion.text>
+          />
         </motion.g>
 
-        {/* Sparkles around the circle */}
-        {[0, 1, 2, 3, 4, 5].map((i) => {
-          const angle = (i * 60) * (Math.PI / 180);
-          const x = 50 + Math.cos(angle) * 35;
-          const y = 50 + Math.sin(angle) * 35;
+        {/* Friendship sparkles */}
+        {[0, 1, 2, 3].map((i) => {
+          const positions = [
+            { x: 50, y: 22 },
+            { x: 78, y: 50 },
+            { x: 50, y: 78 },
+            { x: 22, y: 50 }
+          ];
+          const pos = positions[i];
           
           return (
             <motion.circle
               key={`sparkle-${i}`}
-              cx={x}
-              cy={y}
-              r="2"
+              cx={pos.x}
+              cy={pos.y}
+              r="3"
               fill="rgb(251, 191, 36)"
               animate={{
-                scale: [0, 1, 0],
+                scale: [0, 1.5, 0],
                 opacity: [0, 1, 0]
               }}
               transition={{
                 duration: 2,
                 repeat: Infinity,
-                delay: i * 0.3,
+                delay: i * 0.5,
                 ease: "easeInOut"
               }}
             />
           );
         })}
+      </svg>
+    </motion.div>
+  );
+}
+
+function LotusX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotateY: -180 }}
+      animate={{ scale: 1, rotateY: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <linearGradient id={`lotusXGrad1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(236, 72, 153)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(219, 39, 119)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(190, 24, 93)", stopOpacity: 1 }} />
+          </linearGradient>
+          <linearGradient id={`lotusXGrad2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(251, 207, 232)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(236, 72, 153)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(219, 39, 119)", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`lotusXCenter-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(254, 240, 138)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(251, 191, 36)", stopOpacity: 1 }} />
+          </radialGradient>
+        </defs>
+
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.15 }}
+        >
+          <motion.path
+            d="M 20 20 L 80 80"
+            stroke={`url(#lotusXGrad1-${uniqueId})`}
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          />
+          <motion.path
+            d="M 80 20 L 20 80"
+            stroke={`url(#lotusXGrad2-${uniqueId})`}
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut", delay: 0.05 }}
+          />
+        </motion.g>
+
+        {[0, 1, 2, 3].map((i) => {
+          const angle = (i * 90 - 45) * Math.PI / 180;
+          const x = 50 + Math.cos(angle) * 35;
+          const y = 50 + Math.sin(angle) * 35;
+          
+          return (
+            <motion.g
+              key={`petal-${i}`}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ 
+                scale: [1, 1.15, 1, 1.08, 1],
+                opacity: [1, 0.85, 1, 0.9, 1]
+              }}
+              transition={{ 
+                delay: 0.2 + i * 0.03, 
+                duration: 3,
+                repeat: Infinity,
+                repeatDelay: i * 0.3,
+                ease: "easeInOut"
+              }}
+            >
+              <motion.ellipse
+                cx={x}
+                cy={y}
+                rx="8"
+                ry="14"
+                fill="rgba(251, 207, 232, 0.6)"
+                stroke="rgb(236, 72, 153)"
+                strokeWidth="1.5"
+                transform={`rotate(${i * 90 - 45} ${x} ${y})`}
+                animate={{
+                  rx: [8, 9, 8, 8.5, 8],
+                  ry: [14, 15.5, 14, 14.8, 14]
+                }}
+                transition={{
+                  duration: 3.5,
+                  repeat: Infinity,
+                  delay: i * 0.4,
+                  ease: "easeInOut"
+                }}
+              />
+            </motion.g>
+          );
+        })}
+
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="8"
+          fill={`url(#lotusXCenter-${uniqueId})`}
+          initial={{ scale: 0 }}
+          animate={{ 
+            scale: [1, 1.2, 1, 1.1, 1],
+            opacity: [1, 0.8, 1, 0.9, 1]
+          }}
+          transition={{ 
+            delay: 0.3, 
+            duration: 2.5,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      </svg>
+    </motion.div>
+  );
+}
+
+function LotusO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotateY: 180 }}
+      animate={{ scale: 1, rotateY: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <radialGradient id={`lotusOGrad-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(165, 243, 252)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(34, 211, 238)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(6, 182, 212)", stopOpacity: 1 }} />
+          </radialGradient>
+          <radialGradient id={`lotusOCenter-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(254, 240, 138)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(251, 191, 36)", stopOpacity: 1 }} />
+          </radialGradient>
+        </defs>
+
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="30"
+          stroke={`url(#lotusOGrad-${uniqueId})`}
+          strokeWidth="14"
+          fill="none"
+          initial={{ pathLength: 0, rotate: -90 }}
+          animate={{ pathLength: 1, rotate: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          style={{ originX: "50%", originY: "50%" }}
+        />
+
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+          const angle = (i * 45) * Math.PI / 180;
+          const x = 50 + Math.cos(angle) * 38;
+          const y = 50 + Math.sin(angle) * 38;
+          
+          return (
+            <motion.g
+              key={`petal-${i}`}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ 
+                scale: [1, 1.12, 1, 1.06, 1],
+                opacity: [1, 0.8, 1, 0.9, 1]
+              }}
+              transition={{ 
+                delay: 0.2 + i * 0.02, 
+                duration: 3.2,
+                repeat: Infinity,
+                repeatDelay: i * 0.2,
+                ease: "easeInOut"
+              }}
+            >
+              <motion.ellipse
+                cx={x}
+                cy={y}
+                rx="6"
+                ry="12"
+                fill="rgba(207, 250, 254, 0.6)"
+                stroke="rgb(34, 211, 238)"
+                strokeWidth="1.5"
+                transform={`rotate(${i * 45} ${x} ${y})`}
+                animate={{
+                  rx: [6, 7, 6, 6.5, 6],
+                  ry: [12, 13.5, 12, 12.8, 12]
+                }}
+                transition={{
+                  duration: 3.8,
+                  repeat: Infinity,
+                  delay: i * 0.25,
+                  ease: "easeInOut"
+                }}
+              />
+            </motion.g>
+          );
+        })}
+
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="8"
+          fill={`url(#lotusOCenter-${uniqueId})`}
+          initial={{ scale: 0 }}
+          animate={{ 
+            scale: [1, 1.2, 1, 1.1, 1],
+            opacity: [1, 0.8, 1, 0.9, 1]
+          }}
+          transition={{ 
+            delay: 0.3, 
+            duration: 2.5,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
       </svg>
     </motion.div>
   );

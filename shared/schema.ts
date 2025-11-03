@@ -167,6 +167,28 @@ export const userEmojis = pgTable("user_emojis", {
   index("unique_user_emoji").on(table.userId, table.emojiId),
 ]);
 
+// Avatar frames that can be purchased
+export const avatarFrameItems = pgTable("avatar_frame_items", {
+  id: varchar("id").primaryKey(), // thundering, level_100_master, ultimate_veteran, etc.
+  name: varchar("name").notNull(), // Display name
+  description: text("description").notNull(),
+  price: bigint("price", { mode: 'number' }).notNull(), // Cost in coins
+  isActive: boolean("is_active").default(true), // Can be purchased/used
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User's purchased avatar frames
+export const userAvatarFrames = pgTable("user_avatar_frames", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  frameId: varchar("frame_id").references(() => avatarFrameItems.id).notNull(),
+  purchasedAt: timestamp("purchased_at").defaultNow(),
+  isActive: boolean("is_active").default(false), // Whether this frame is currently selected
+}, (table) => [
+  // Prevent duplicate frame purchases
+  index("unique_user_frame").on(table.userId, table.frameId),
+]);
+
 // Track emoji sends during games for real-time animation
 export const gameEmojiSends = pgTable("game_emoji_sends", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -323,6 +345,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   achievements: many(achievements),
   unlockedThemes: many(userThemes),
   unlockedPieceStyles: many(userPieceStyles),
+  unlockedAvatarFrames: many(userAvatarFrames),
   sentFriendRequests: many(friendRequests, { relationName: "requester" }),
   receivedFriendRequests: many(friendRequests, { relationName: "requested" }),
   friendshipsAsUser1: many(friendships, { relationName: "user1" }),
@@ -380,6 +403,11 @@ export const userThemesRelations = relations(userThemes, ({ one }) => ({
 
 export const userPieceStylesRelations = relations(userPieceStyles, ({ one }) => ({
   user: one(users, { fields: [userPieceStyles.userId], references: [users.id] }),
+}));
+
+export const userAvatarFramesRelations = relations(userAvatarFrames, ({ one }) => ({
+  user: one(users, { fields: [userAvatarFrames.userId], references: [users.id] }),
+  frame: one(avatarFrameItems, { fields: [userAvatarFrames.frameId], references: [avatarFrameItems.id] }),
 }));
 
 export const friendRequestsRelations = relations(friendRequests, ({ one }) => ({
@@ -507,6 +535,20 @@ export const insertUserEmojiSchema = createInsertSchema(userEmojis).pick({
   emojiId: true,
 });
 
+export const insertAvatarFrameItemSchema = createInsertSchema(avatarFrameItems).pick({
+  id: true,
+  name: true,
+  description: true,
+  price: true,
+  isActive: true,
+});
+
+export const insertUserAvatarFrameSchema = createInsertSchema(userAvatarFrames).pick({
+  userId: true,
+  frameId: true,
+  isActive: true,
+});
+
 export const insertGameEmojiSendSchema = createInsertSchema(gameEmojiSends).pick({
   gameId: true,
   senderId: true,
@@ -619,6 +661,11 @@ export type GameEmojiSend = typeof gameEmojiSends.$inferSelect;
 export type InsertEmojiItem = z.infer<typeof insertEmojiItemSchema>;
 export type InsertUserEmoji = z.infer<typeof insertUserEmojiSchema>;
 export type InsertGameEmojiSend = z.infer<typeof insertGameEmojiSendSchema>;
+
+export type AvatarFrameItem = typeof avatarFrameItems.$inferSelect;
+export type UserAvatarFrame = typeof userAvatarFrames.$inferSelect;
+export type InsertAvatarFrameItem = z.infer<typeof insertAvatarFrameItemSchema>;
+export type InsertUserAvatarFrame = z.infer<typeof insertUserAvatarFrameSchema>;
 
 export type InsertFriendRequest = z.infer<typeof insertFriendRequestSchema>;
 export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;

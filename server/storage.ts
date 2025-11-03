@@ -11,6 +11,8 @@ import {
   emojiItems,
   userEmojis,
   gameEmojiSends,
+  avatarFrameItems,
+  userAvatarFrames,
   friendRequests,
   friendships,
   roomInvitations,
@@ -33,6 +35,8 @@ import {
   type EmojiItem,
   type UserEmoji,
   type GameEmojiSend,
+  type AvatarFrameItem,
+  type UserAvatarFrame,
   type FriendRequest,
   type Friendship,
   type RoomInvitation,
@@ -217,6 +221,15 @@ export interface IStorage {
   sendEmojiInGame(gameId: string, senderId: string, recipientId: string, emojiId: string): Promise<GameEmojiSend>;
   getGameEmojiSends(gameId: string): Promise<(GameEmojiSend & { emoji: EmojiItem; sender: User })[]>;
   createDefaultEmojis(): Promise<void>;
+  
+  getAllAvatarFrameItems(): Promise<AvatarFrameItem[]>;
+  getAvatarFrameItemById(id: string): Promise<AvatarFrameItem | undefined>;
+  getUserAvatarFrames(userId: string): Promise<(UserAvatarFrame & { frame: AvatarFrameItem })[]>;
+  getActiveAvatarFrame(userId: string): Promise<string | null>;
+  hasUserPurchasedAvatarFrame(userId: string, frameId: string): Promise<boolean>;
+  purchaseAvatarFrame(userId: string, frameId: string): Promise<{ success: boolean; message: string; frame?: UserAvatarFrame }>;
+  setActiveAvatarFrame(userId: string, frameId: string | null): Promise<{ success: boolean; message: string }>;
+  createDefaultAvatarFrames(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4041,6 +4054,257 @@ export class DatabaseStorage implements IStorage {
       console.log('✅ Default emojis initialized');
     } catch (error) {
       console.error('Error creating default emojis:', error);
+    }
+  }
+
+  // ===== Avatar Frame Methods =====
+  
+  async getAllAvatarFrameItems(): Promise<AvatarFrameItem[]> {
+    const items = await db
+      .select()
+      .from(avatarFrameItems)
+      .where(eq(avatarFrameItems.isActive, true))
+      .orderBy(avatarFrameItems.price);
+    return items;
+  }
+
+  async getAvatarFrameItemById(id: string): Promise<AvatarFrameItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(avatarFrameItems)
+      .where(eq(avatarFrameItems.id, id))
+      .limit(1);
+    return item;
+  }
+
+  async getUserAvatarFrames(userId: string): Promise<(UserAvatarFrame & { frame: AvatarFrameItem })[]> {
+    const frames = await db
+      .select({
+        id: userAvatarFrames.id,
+        userId: userAvatarFrames.userId,
+        frameId: userAvatarFrames.frameId,
+        purchasedAt: userAvatarFrames.purchasedAt,
+        isActive: userAvatarFrames.isActive,
+        frame: avatarFrameItems,
+      })
+      .from(userAvatarFrames)
+      .innerJoin(avatarFrameItems, eq(userAvatarFrames.frameId, avatarFrameItems.id))
+      .where(eq(userAvatarFrames.userId, userId));
+    
+    return frames.map(f => ({
+      id: f.id,
+      userId: f.userId,
+      frameId: f.frameId,
+      purchasedAt: f.purchasedAt,
+      isActive: f.isActive,
+      frame: f.frame,
+    }));
+  }
+
+  async getActiveAvatarFrame(userId: string): Promise<string | null> {
+    const [activeFrame] = await db
+      .select({ frameId: userAvatarFrames.frameId })
+      .from(userAvatarFrames)
+      .where(
+        and(
+          eq(userAvatarFrames.userId, userId),
+          eq(userAvatarFrames.isActive, true)
+        )
+      )
+      .limit(1);
+    return activeFrame?.frameId || null;
+  }
+
+  async hasUserPurchasedAvatarFrame(userId: string, frameId: string): Promise<boolean> {
+    const [result] = await db
+      .select({ id: userAvatarFrames.id })
+      .from(userAvatarFrames)
+      .where(
+        and(
+          eq(userAvatarFrames.userId, userId),
+          eq(userAvatarFrames.frameId, frameId)
+        )
+      )
+      .limit(1);
+    return !!result;
+  }
+
+  async purchaseAvatarFrame(userId: string, frameId: string): Promise<{ success: boolean; message: string; frame?: UserAvatarFrame }> {
+    try {
+      // Check if frame exists
+      const frame = await this.getAvatarFrameItemById(frameId);
+      if (!frame) {
+        return { success: false, message: 'Avatar frame not found' };
+      }
+
+      if (!frame.isActive) {
+        return { success: false, message: 'This avatar frame is not available for purchase' };
+      }
+
+      // Check if already purchased
+      const alreadyOwned = await this.hasUserPurchasedAvatarFrame(userId, frameId);
+      if (alreadyOwned) {
+        return { success: false, message: 'You already own this avatar frame' };
+      }
+
+      // Check user's coins
+      const currentCoins = await this.getUserCoins(userId);
+      if (currentCoins < frame.price) {
+        return { success: false, message: 'Insufficient coins' };
+      }
+
+      // Deduct coins and record purchase (transaction)
+      await db.transaction(async (tx) => {
+        // Deduct coins
+        const newBalance = currentCoins - frame.price;
+        await tx
+          .update(users)
+          .set({ coins: newBalance })
+          .where(eq(users.id, userId));
+
+        // Record coin transaction
+        await tx.insert(coinTransactions).values({
+          userId,
+          amount: -frame.price,
+          type: 'avatar_frame_purchase',
+          balanceBefore: currentCoins,
+          balanceAfter: newBalance,
+        });
+
+        // Add frame to user's collection
+        await tx.insert(userAvatarFrames).values({
+          userId,
+          frameId,
+          isActive: false,
+        });
+      });
+
+      const [purchasedFrame] = await db
+        .select()
+        .from(userAvatarFrames)
+        .where(
+          and(
+            eq(userAvatarFrames.userId, userId),
+            eq(userAvatarFrames.frameId, frameId)
+          )
+        )
+        .limit(1);
+
+      return {
+        success: true,
+        message: `Successfully purchased ${frame.name}!`,
+        frame: purchasedFrame,
+      };
+    } catch (error) {
+      console.error('Error purchasing avatar frame:', error);
+      return { success: false, message: 'Failed to purchase avatar frame' };
+    }
+  }
+
+  async setActiveAvatarFrame(userId: string, frameId: string | null): Promise<{ success: boolean; message: string }> {
+    try {
+      // If frameId is null, deactivate all frames
+      if (frameId === null) {
+        await db
+          .update(userAvatarFrames)
+          .set({ isActive: false })
+          .where(eq(userAvatarFrames.userId, userId));
+        return { success: true, message: 'Avatar frame removed' };
+      }
+
+      // Check if user owns the frame
+      const hasFrame = await this.hasUserPurchasedAvatarFrame(userId, frameId);
+      if (!hasFrame) {
+        return { success: false, message: 'You do not own this avatar frame' };
+      }
+
+      // Deactivate all frames for this user, then activate the selected one
+      await db.transaction(async (tx) => {
+        // Deactivate all frames
+        await tx
+          .update(userAvatarFrames)
+          .set({ isActive: false })
+          .where(eq(userAvatarFrames.userId, userId));
+
+        // Activate selected frame
+        await tx
+          .update(userAvatarFrames)
+          .set({ isActive: true })
+          .where(
+            and(
+              eq(userAvatarFrames.userId, userId),
+              eq(userAvatarFrames.frameId, frameId)
+            )
+          );
+      });
+
+      return { success: true, message: 'Avatar frame activated' };
+    } catch (error) {
+      console.error('Error setting active avatar frame:', error);
+      return { success: false, message: 'Failed to set active avatar frame' };
+    }
+  }
+
+  async createDefaultAvatarFrames(): Promise<void> {
+    const defaultFrames = [
+      {
+        id: 'thundering',
+        name: 'Thundering Storm',
+        description: 'Electrifying blue lightning effects with pulsing energy',
+        price: 50000000, // 50 million coins
+      },
+      {
+        id: 'level_100_master',
+        name: 'Level 100 Master',
+        description: 'Golden animated frame for achieving level 100',
+        price: 75000000, // 75 million coins
+      },
+      {
+        id: 'ultimate_veteran',
+        name: 'Ultimate Veteran',
+        description: 'Premium silver frame with prismatic effects',
+        price: 100000000, // 100 million coins
+      },
+      {
+        id: 'grandmaster',
+        name: 'Grandmaster',
+        description: 'Elegant purple frame with cosmic energy',
+        price: 150000000, // 150 million coins
+      },
+      {
+        id: 'champion',
+        name: 'Champion',
+        description: 'Fiery red and gold frame for true champions',
+        price: 200000000, // 200 million coins
+      },
+      {
+        id: 'legend',
+        name: 'Legend',
+        description: 'Ultimate rainbow prismatic frame for legends',
+        price: 500000000, // 500 million coins
+      },
+    ];
+
+    try {
+      // Insert or update frames
+      for (const frame of defaultFrames) {
+        const existing = await this.getAvatarFrameItemById(frame.id);
+        if (!existing) {
+          await db.insert(avatarFrameItems).values(frame);
+        } else {
+          // Update existing frame with new values
+          await db.update(avatarFrameItems)
+            .set({
+              name: frame.name,
+              description: frame.description,
+              price: frame.price,
+            })
+            .where(eq(avatarFrameItems.id, frame.id));
+        }
+      }
+      console.log('✅ Default avatar frames initialized');
+    } catch (error) {
+      console.error('Error creating default avatar frames:', error);
     }
   }
 }

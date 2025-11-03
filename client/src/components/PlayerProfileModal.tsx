@@ -86,6 +86,11 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
         enabled: open && !!playerId && !!currentUserId && playerId !== currentUserId,
     });
 
+    const { data: avatarFrameData } = useQuery<{ activeFrameId: string | null }>({
+        queryKey: ['/api/users', playerId, 'avatar-frame'],
+        enabled: open && !!playerId,
+    });
+
     const isOwnProfile = playerId === currentUserId;
     const winRate = profile ? Math.round((profile.wins / Math.max(profile.totalGames, 1)) * 100) : 0;
 
@@ -237,7 +242,7 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
                                         src={profile.profileImageUrl}
                                         alt={`${profile.displayName}'s profile`}
                                         size="lg"
-                                        borderType={profile.selectedAchievementBorder}
+                                        borderType={avatarFrameData?.activeFrameId || profile.selectedAchievementBorder || null}
                                         fallbackText={profile.displayName.charAt(0).toUpperCase()}
                                     />
                                     <div className="absolute -top-2 -right-1 w-5 h-5 bg-green-500 border-2 border-yellow-500 rounded-full"></div>

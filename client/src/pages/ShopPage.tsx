@@ -33,6 +33,14 @@ interface EmojiItem {
   isActive: boolean;
 }
 
+interface AvatarFrameItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  isActive: boolean;
+}
+
 const PIECE_STYLES = [
   {
     id: "default",
@@ -104,6 +112,30 @@ const PIECE_STYLES = [
     price: 350000000, // 350 million coins
     isDefault: false,
   },
+  {
+    id: "lotus",
+    name: "Lotus Peace",
+    description: "Serene 3D lotus flower design - the ultimate piece of peace and tranquility",
+    price: 400000000, // 400 million coins
+    isDefault: false,
+  },
+];
+
+const AVATAR_FRAMES = [
+  {
+    id: "default",
+    name: "Default Frame",
+    description: "Standard avatar border",
+    price: 0,
+    isDefault: true,
+  },
+  {
+    id: "thundering",
+    name: "Thundering Strike",
+    description: "Epic 3D electric blue frame with lightning effects and rotating gradients",
+    price: 1000000000, // 1000 million coins
+    isDefault: false,
+  },
 ];
 
 export default function ShopPage() {
@@ -112,12 +144,13 @@ export default function ShopPage() {
   const [, setLocation] = useLocation();
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
+  const [selectedFrame, setSelectedFrame] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pieces");
   const { user } = useAuth();
   
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseDetails, setPurchaseDetails] = useState<{
-    type: "piece" | "emoji";
+    type: "piece" | "emoji" | "frame";
     name: string;
     description: string;
     id?: string;
@@ -230,6 +263,73 @@ export default function ShopPage() {
     },
   });
 
+  // Fetch all available avatar frames
+  const { data: avatarFrames = [] } = useQuery<AvatarFrameItem[]>({
+    queryKey: ['/api/avatar-frames'],
+  });
+
+  // Fetch user's owned avatar frames
+  const { data: ownedFramesData = [] } = useQuery<Array<{ frameId: string; frame: AvatarFrameItem; isActive: boolean }>>({
+    queryKey: ['/api/avatar-frames/owned'],
+  });
+
+  // Purchase avatar frame mutation
+  const purchaseFrameMutation = useMutation({
+    mutationFn: async (frameId: string) => {
+      return await apiRequest('/api/avatar-frames/purchase', {
+        method: 'POST',
+        body: { frameId },
+      });
+    },
+    onSuccess: (_data: any, frameId: string) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/avatar-frames/owned'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.userId] });
+      setSelectedFrame(null);
+      
+      const frame = avatarFrames.find(f => f.id === frameId);
+      if (frame) {
+        setPurchaseDetails({
+          type: "frame",
+          name: frame.name,
+          description: frame.description,
+          id: frame.id,
+        });
+        setShowPurchaseModal(true);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Purchase Failed',
+        description: error.message || 'Failed to purchase avatar frame',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Set active avatar frame mutation
+  const setActiveFrameMutation = useMutation({
+    mutationFn: async (frameId: string | null) => {
+      return await apiRequest('/api/avatar-frames/set-active', {
+        method: 'POST',
+        body: { frameId },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/avatar-frames/owned'] });
+      toast({
+        title: 'Frame Activated!',
+        description: 'Your avatar frame has been changed.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to Change Frame',
+        description: error.message || 'Could not change avatar frame',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const userCoins = userData?.coins || 0;
   const ownedStyles = pieceStylesData?.pieceStyles?.map((s) => s.styleName) || [];
   const activeStyle = pieceStylesData?.activeStyle || "default";
@@ -240,6 +340,15 @@ export default function ShopPage() {
 
   const isEmojiOwned = (emojiId: string) => {
     return ownedEmojisData.some(owned => owned.emojiId === emojiId);
+  };
+
+  const isFrameOwned = (frameId: string) => {
+    return ownedFramesData.some(owned => owned.frameId === frameId);
+  };
+
+  const getActiveFrame = () => {
+    const active = ownedFramesData.find(owned => owned.isActive);
+    return active?.frameId || null;
   };
 
   const handlePurchase = (styleId: string, price: number) => {
@@ -284,7 +393,7 @@ export default function ShopPage() {
             Game Shop
             <Sparkles className="w-8 h-8 text-yellow-400" />
           </h1>
-          <p className="text-slate-300 text-lg" data-testid="text-shop-subtitle">Customize your game with piece styles and emojis!</p>
+          <p className="text-slate-300 text-lg" data-testid="text-shop-subtitle">Customize your game with piece styles, emojis, and avatar frames!</p>
           
           <div className="mt-4 inline-flex items-center gap-2 bg-slate-800/50 px-6 py-3 rounded-lg border border-yellow-500/30">
             <Coins className="w-6 h-6 text-yellow-400" />
@@ -294,7 +403,7 @@ export default function ShopPage() {
         </div>
 
         <Tabs defaultValue="pieces" className="w-full" onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-3 mb-8">
             <TabsTrigger value="pieces" className="text-lg" data-testid="tab-pieces">
               <Zap className="w-4 h-4 mr-2" />
               Piece Styles
@@ -302,6 +411,10 @@ export default function ShopPage() {
             <TabsTrigger value="emojis" className="text-lg" data-testid="tab-emojis">
               <Gift className="w-4 h-4 mr-2" />
               Emojis
+            </TabsTrigger>
+            <TabsTrigger value="frames" className="text-lg" data-testid="tab-frames">
+              <Stars className="w-4 h-4 mr-2" />
+              Avatar Frames
             </TabsTrigger>
           </TabsList>
 
@@ -493,6 +606,142 @@ export default function ShopPage() {
                               : 'bg-gray-700 cursor-not-allowed'
                           }`}
                           data-testid={`button-purchase-${emoji.id}`}
+                        >
+                          {isPurchasing ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Purchasing...
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingCart className="w-4 h-4 mr-2" />
+                              {affordable ? 'Purchase' : 'Insufficient Coins'}
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="frames">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {AVATAR_FRAMES.map((frame) => {
+                const owned = isFrameOwned(frame.id);
+                const isActive = getActiveFrame() === frame.id;
+                const affordable = userCoins >= frame.price;
+                const isPurchasing = purchaseFrameMutation.isPending && selectedFrame === frame.id;
+
+                return (
+                  <Card 
+                    key={frame.id}
+                    className={`relative overflow-hidden transition-all duration-300 ${
+                      isActive 
+                        ? 'bg-green-900/30 border-green-500/50 shadow-lg shadow-green-500/30' 
+                        : owned
+                        ? 'bg-slate-800/50 border-blue-500/30' 
+                        : affordable
+                        ? 'bg-slate-800/50 border-purple-500/30 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20'
+                        : 'bg-slate-800/30 border-slate-700/30 opacity-60'
+                    }`}
+                    data-testid={`card-frame-${frame.id}`}
+                  >
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-white flex items-center gap-2">
+                            <Stars className="w-5 h-5 text-yellow-400" />
+                            {frame.name}
+                          </CardTitle>
+                          <CardDescription className="text-slate-400 mt-2">
+                            {frame.description}
+                          </CardDescription>
+                        </div>
+                        {isActive && (
+                          <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                            <Check className="w-3 h-3 mr-1" />
+                            Active
+                          </Badge>
+                        )}
+                        {owned && !isActive && (
+                          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/50">
+                            Owned
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-center py-4">
+                        {user && (
+                          <div className="w-24 h-24">
+                            <img 
+                              src={user.profileImageUrl || undefined}
+                              alt="Preview"
+                              className={`w-full h-full rounded-full object-cover ${
+                                frame.id !== 'default' ? 'border-4 border-blue-500 animate-pulse' : 'border-2 border-gray-600'
+                              }`}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {!frame.isDefault && (
+                        <div className="flex items-center justify-center gap-2 text-yellow-400 text-xl font-bold">
+                          <Coins className="w-6 h-6" />
+                          <span data-testid={`text-price-${frame.id}`}>
+                            {frame.price.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </CardContent>
+
+                    <CardFooter>
+                      {frame.isDefault ? (
+                        <Button 
+                          variant="outline" 
+                          className="w-full border-gray-600"
+                          disabled
+                          data-testid={`button-default-${frame.id}`}
+                        >
+                          Default Frame
+                        </Button>
+                      ) : owned ? (
+                        isActive ? (
+                          <Button
+                            onClick={() => setActiveFrameMutation.mutate(null)}
+                            variant="outline"
+                            className="w-full border-red-500 text-red-400 hover:bg-red-500/10"
+                            data-testid={`button-deactivate-${frame.id}`}
+                          >
+                            Remove Frame
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => setActiveFrameMutation.mutate(frame.id)}
+                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            data-testid={`button-activate-${frame.id}`}
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Activate Frame
+                          </Button>
+                        )
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            setSelectedFrame(frame.id);
+                            purchaseFrameMutation.mutate(frame.id);
+                          }}
+                          disabled={!affordable || isPurchasing}
+                          className={`w-full ${
+                            affordable 
+                              ? 'bg-purple-600 hover:bg-purple-700' 
+                              : 'bg-gray-700 cursor-not-allowed'
+                          }`}
+                          data-testid={`button-purchase-${frame.id}`}
                         >
                           {isPurchasing ? (
                             <>

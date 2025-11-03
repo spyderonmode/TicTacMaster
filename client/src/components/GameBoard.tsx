@@ -382,6 +382,17 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     enabled: !!user,
   });
 
+  // Fetch avatar frames for both players
+  const { data: playerXAvatarFrame } = useQuery<{ activeFrameId: string | null }>({
+    queryKey: ['/api/users', game?.playerXId, 'avatar-frame'],
+    enabled: !!game?.playerXId,
+  });
+
+  const { data: playerOAvatarFrame } = useQuery<{ activeFrameId: string | null }>({
+    queryKey: ['/api/users', game?.playerOId, 'avatar-frame'],
+    enabled: !!game?.playerOId,
+  });
+
   // Emoji send mutation
   const sendEmojiMutation = useMutation({
     mutationFn: async ({ emojiId, recipientSymbol }: { emojiId: string; recipientSymbol: string }) => {
@@ -1240,7 +1251,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   ? (symbol === 'X' 
                       ? (game?.playerXInfo?.activePieceStyle || 'default') 
                       : (game?.playerOInfo?.activePieceStyle || 'default'))
-                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriend"))
+                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus"))
                     ? currentUserPieceStyle
                     : "default"
               }
@@ -1250,7 +1261,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                       (symbol === 'O' && game?.playerOInfo?.activePieceStyle && game?.playerOInfo?.activePieceStyle !== 'default'))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
-                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriend"))
+                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus"))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
               }
@@ -1314,7 +1325,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                     src={game.playerXInfo.profileImageUrl || game.playerXInfo.profilePicture}
                     alt="Player X"
                     size="md"
-                    borderType={getSelectedAchievementBorder(game.playerXInfo)}
+                    borderType={playerXAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerXInfo)}
                     fallbackText={game.playerXInfo.firstName?.charAt(0) || game.playerXInfo.displayName?.charAt(0) || game.playerXInfo.username?.charAt(0) || 'X'}
                   />
                 </div>
@@ -1504,7 +1515,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                     src={game.playerOInfo.profileImageUrl || game.playerOInfo.profilePicture}
                     alt="Player O"
                     size="md"
-                    borderType={getSelectedAchievementBorder(game.playerOInfo)}
+                    borderType={playerOAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerOInfo)}
                     fallbackText={game.playerOInfo.firstName?.charAt(0) || game.playerOInfo.displayName?.charAt(0) || game.playerOInfo.username?.charAt(0) || 'O'}
                   />
                 </div>

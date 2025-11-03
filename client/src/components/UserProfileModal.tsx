@@ -56,6 +56,7 @@ export function UserProfileModal({
     const [stats, setStats] = useState<PlayerStats | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [activeAvatarFrame, setActiveAvatarFrame] = useState<string | null>(null);
 
     const profileImage = profileImageUrl || profilePicture;
     const WINS_PER_LEVEL = 50; 
@@ -63,6 +64,7 @@ export function UserProfileModal({
     useEffect(() => {
         if (open && userId) {
             fetchOnlineStats();
+            fetchActiveAvatarFrame();
         }
     }, [open, userId]);
 
@@ -96,6 +98,22 @@ export function UserProfileModal({
         }
     };
 
+    const fetchActiveAvatarFrame = async () => {
+        try {
+            const response = await fetch(`/api/users/${userId}/avatar-frame`, {
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                setActiveAvatarFrame(data.activeFrameId);
+            }
+        } catch (err) {
+            console.error('Error fetching active avatar frame:', err);
+        }
+    };
+
     const getWinRate = (s: PlayerStats) => {
         if (s.totalGames === 0) return 0;
         return Math.round((s.wins / s.totalGames) * 100);
@@ -123,7 +141,7 @@ export function UserProfileModal({
                                 src={profileImage}
                                 alt={displayName}
                                 size="md"
-                                borderType={selectedAchievementBorder ?? stats?.selectedAchievementBorder ?? null}
+                                borderType={activeAvatarFrame || selectedAchievementBorder || stats?.selectedAchievementBorder || null}
                                 fallbackText={displayName.charAt(0).toUpperCase()}
                             />
                         </div>
