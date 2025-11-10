@@ -4,7 +4,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { ChatProvider } from "@/contexts/ChatContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
@@ -169,9 +168,7 @@ function Router() {
         <Route path="/">
           {isAuthenticated && user ? (
             (user as any).isEmailVerified ? (
-              <ChatProvider currentUser={user}>
-                <Home />
-              </ChatProvider>
+              <Home />
             ) : <Auth />
           ) : (
             <Auth />
@@ -212,11 +209,7 @@ function Router() {
     </Switch>
   );
 
-  return (
-    <ChatProvider currentUser={user}>
-      {content}
-    </ChatProvider>
-  );
+  return content;
 }
 
 function App() {

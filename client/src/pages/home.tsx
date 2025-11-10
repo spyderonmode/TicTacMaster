@@ -29,6 +29,7 @@ import MonthlyRankPopup from "@/components/MonthlyRankPopup";
 import { GiftReceivedNotification } from "@/components/GiftReceivedNotification";
 import { ErrorModal } from "@/components/ErrorModal";
 import { ConnectingOverlay } from "@/components/ConnectingOverlay";
+import { QuickChat } from "@/components/QuickChat";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,6 +86,14 @@ export default function Home() {
   const [showGameRules, setShowGameRules] = useState(false);
   const headerSidebarRef = useRef<HTMLDivElement>(null);
   const gameBoardRef = useRef<HTMLDivElement>(null);
+
+  const playAgainRequestRef = useRef<any>(null);
+  const showPlayAgainRequestRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    playAgainRequestRef.current = playAgainRequest;
+    showPlayAgainRequestRef.current = showPlayAgainRequest;
+  }, [playAgainRequest, showPlayAgainRequest]);
 
   const { data: userStats } = useQuery({
     queryKey: ["/api/users", (user as any)?.userId, "online-stats"],
@@ -467,24 +476,24 @@ export default function Home() {
         const requestData = event.detail;
         console.log('🔄 Play again request received:', requestData);
 
-        // Store the request data and show the dialog
-        setPlayAgainRequest({
+        const newRequest = {
           id: requestData.requestId,
           requesterId: requestData.requesterId,
+          requestedId: requestData.requestedId,
           gameId: requestData.gameId,
-          requester: {
-            id: requestData.requesterId,
-            // Note: We'll need to fetch requester details or include them in the message
-            displayName: 'Player', // Placeholder - should come from server
-            firstName: 'Player',
-            username: 'player'
-          },
-          game: {
-            id: requestData.gameId,
-            gameMode: 'online'
-          }
-        });
-        setShowPlayAgainRequest(true);
+          status: requestData.status || 'pending',
+          requestedAt: requestData.requestedAt || new Date().toISOString(),
+          requester: requestData.requester,
+          game: requestData.game
+        };
+
+        if (!showPlayAgainRequestRef.current) {
+          setPlayAgainRequest(newRequest);
+          setShowPlayAgainRequest(true);
+          console.log('✅ Play again request dialog opened');
+        } else {
+          console.log('⚠️ Play again request already showing, ignoring duplicate');
+        }
       } catch (error) {
         console.error('❌ Error handling play again request:', error);
       }
@@ -552,6 +561,48 @@ export default function Home() {
     };
 
     window.addEventListener('play_again_countdown', handlePlayAgainCountdown);
+
+    // Handle play again error
+    const handlePlayAgainError = (event: any) => {
+      try {
+        const errorData = event.detail;
+        console.log('❌ Play again error:', errorData.error);
+
+        setShowPlayAgainRequest(false);
+        setPlayAgainRequest(null);
+
+        toast({
+          variant: "destructive",
+          title: "Cannot Play Again",
+          description: errorData.error || "Unable to start play again. Please try again.",
+          duration: 5000,
+        });
+      } catch (error) {
+        console.error('❌ Error handling play again error:', error);
+      }
+    };
+
+    window.addEventListener('play_again_error', handlePlayAgainError as EventListener);
+
+    // Handle play again response (for the requester)
+    const handlePlayAgainResponse = (event: any) => {
+      try {
+        const responseData = event.detail;
+        console.log('🔄 Play again response received:', responseData);
+
+        if (responseData.response === 'rejected') {
+          setShowGameOver(false);
+          toast({
+            description: "Your play again request was declined",
+            duration: 3000,
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error handling play again response:', error);
+      }
+    };
+
+    window.addEventListener('play_again_response_received', handlePlayAgainResponse as EventListener);
 
     // Handle room reconnection events
     const handleRoomReconnection = (event: any) => {
@@ -635,14 +686,15 @@ export default function Home() {
         if (message.game && message.roomId) {
           console.log('🎮 Processing game_started from play again - closing dialogs and setting game state');
 
-          // Close any existing dialogs and countdown
+          // Close any existing dialogs (but NOT countdown - let it finish naturally)
           setShowPlayAgainRequest(false);
           setPlayAgainRequest(null);
           setShowGameOver(false);
           setGameResult(null);
           setIsMatchmaking(false);
           setShowMatchmaking(false);
-          setShowCountdown(false);
+          // NOTE: Don't hide countdown here - it will hide automatically when it reaches 0
+          // or when the game becomes active (handled by separate useEffect)
 
           // Force close matchmaking modal
           window.dispatchEvent(new CustomEvent('force_close_matchmaking', {
@@ -692,6 +744,8 @@ export default function Home() {
       window.removeEventListener('play_again_request_received', handlePlayAgainRequest);
       window.removeEventListener('play_again_rejected_received', handlePlayAgainRejected);
       window.removeEventListener('play_again_countdown', handlePlayAgainCountdown);
+      window.removeEventListener('play_again_error', handlePlayAgainError as EventListener);
+      window.removeEventListener('play_again_response_received', handlePlayAgainResponse as EventListener);
       window.removeEventListener('reconnection_room_join', handleRoomReconnection);
       window.removeEventListener('game_reconnection', handleGameReconnection);
       window.removeEventListener('navigate_to_ai_mode', handleNavigateToAI);
@@ -746,10 +800,10 @@ export default function Home() {
           if (lastMessage.game && lastMessage.roomId) {
             console.log('🎮 Processing game_started - closing matchmaking modal and setting game state');
 
-            // CRITICAL FIX: Force close matchmaking modal and countdown immediately when game starts
+            // CRITICAL FIX: Force close matchmaking modal when game starts
+            // Note: Don't hide countdown here - let it finish displaying naturally
             setIsMatchmaking(false);
             setShowMatchmaking(false);
-            setShowCountdown(false);
             handleMatchmakingClose();
 
             // Dispatch global event to force close any stuck modals
@@ -1769,7 +1823,7 @@ export default function Home() {
           // IMMEDIATELY show countdown before clearing game state
           setCountdownNumber(2);
           setShowCountdown(true);
-          
+
           // Then clear game state
           setCurrentGame(null);
           setShowGameOver(false);
@@ -1794,7 +1848,7 @@ export default function Home() {
             if (response.ok) {
               const newGame = await response.json();
               // Server will broadcast game_started to all participants
-              
+
               // Reset creating state after game is created
               setIsCreatingGame(false);
             } else {
@@ -1834,7 +1888,7 @@ export default function Home() {
             // This ensures both players get the exact same game state at the same time
 
             // Sound effects removed as requested
-            
+
             // Reset creating state after a short delay (server will send game_started)
             setTimeout(() => {
               setIsCreatingGame(false);
@@ -1897,7 +1951,7 @@ export default function Home() {
 
         setCurrentGame(newGame);
         // Sound effects removed as requested
-        
+
         // Reset creating state after game is created (after countdown completes)
         setIsCreatingGame(false);
       };
@@ -1911,13 +1965,8 @@ export default function Home() {
   return (
     <>
     <div className="relative min-h-screen bg-slate-900 text-white">
-      {/* Animated Background Graphics */}
+      {/* Background Graphics (animations removed for performance) */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        {/* Gradient Orbs */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/4 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-
         {/* Dot Pattern Overlay */}
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0)',
@@ -2214,6 +2263,9 @@ export default function Home() {
         </div>
       </nav>
 
+      {/* Quick Chat Bar - Between Header and Game Board */}
+      <QuickChat />
+
       {/* Main Content with relative positioning */}
       <div className="relative z-0 overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
@@ -2483,7 +2535,7 @@ export default function Home() {
       {/* End of Main Content Wrapper */}
 
     </div>
-    
+
     {/* Modals - Rendered outside main container to avoid z-index stacking context issues */}
       <CreateRoomModal 
         open={showCreateRoom}

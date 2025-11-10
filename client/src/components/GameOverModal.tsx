@@ -5,7 +5,6 @@ import { ShareButton } from './ShareButton';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ConfettiExplosion } from './ConfettiExplosion';
 import { formatNumber } from "@/lib/utils";
 
 interface GameOverModalProps {
@@ -28,7 +27,6 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isRequestingSent, setIsRequestingSent] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
 
   // ... (Your useMutation and useEffect hooks remain unchanged)
   const playAgainRequestMutation = useMutation({
@@ -76,16 +74,6 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
       window.removeEventListener('matchmaking_message_received', handleMessage);
     };
   }, []);
-
-  useEffect(() => {
-    if (open && result?.condition !== 'draw') {
-      setShowConfetti(true);
-      const timer = setTimeout(() => setShowConfetti(false), 2500);
-      return () => clearTimeout(timer);
-    } else {
-      setShowConfetti(false);
-    }
-  }, [open, result?.condition]);
 
   const getOpponentId = () => {
     if (!currentUser || !result?.game) return null;
@@ -270,9 +258,6 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
 
   return (
     <>
-      {/* Confetti for wins only */}
-      {!isDraw && <ConfettiExplosion active={showConfetti} duration={2000} particleCount={20} />}
-      
       {/* Premium Modal Overlay with Backdrop Blur */}
       <div
         style={{
@@ -762,7 +747,7 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                 Home
               </button>
 
-              {!isSpectator && (
+              {!isSpectator && isOnlineGameWithOpponent() && (
                 <button
                   onClick={() => {
                     if (!isCreatingGame && !playAgainRequestMutation.isPending && !isRequestingSent) {
@@ -808,19 +793,10 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                       '0 3px 10px rgba(59, 130, 246, 0.3)';
                   }}
                 >
-                  {isOnlineGameWithOpponent() ? (
-                    <>
-                      <Send style={{ width: '16px', height: '16px' }} />
-                      {isRequestingSent ? 'Request Sent' :
-                        playAgainRequestMutation.isPending ? 'Sending...' :
-                        'Request Play Again'}
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw style={{ width: '16px', height: '16px' }} />
-                      {t('playAgain')}
-                    </>
-                  )}
+                  <Send style={{ width: '16px', height: '16px' }} />
+                  {isRequestingSent ? 'Request Sent' :
+                    playAgainRequestMutation.isPending ? 'Sending...' :
+                    'Request Play Again'}
                 </button>
               )}
             </div>

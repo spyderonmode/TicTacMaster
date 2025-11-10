@@ -51,6 +51,9 @@ export function ErrorModal({ open, onClose, title, message, type = 'error' }: Er
           data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] 
           data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] 
           fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+          
+          /* High z-index to appear above matchmaking modal (which uses z-9999) */
+          !z-[10000]
         "
       >
         <DialogHeader className="text-center space-y-4">

@@ -94,6 +94,7 @@ export function useWebSocket() {
             detail: message
           });
           window.dispatchEvent(chatEvent);
+          return;
         }
 
         // Handle gift received notifications
@@ -102,6 +103,7 @@ export function useWebSocket() {
             detail: message
           });
           window.dispatchEvent(giftEvent);
+          return;
         }
 
         // Handle room invitation messages
@@ -110,6 +112,23 @@ export function useWebSocket() {
             detail: message.invitation
           });
           window.dispatchEvent(invitationEvent);
+          return;
+        }
+
+        // Handle room invitation accepted notification (for inviter)
+        if (message.type === 'room_invitation_accepted') {
+          window.dispatchEvent(new CustomEvent('room_invitation_accepted', {
+            detail: message
+          }));
+          return;
+        }
+
+        // Handle room invitation rejected notification (for inviter)
+        if (message.type === 'room_invitation_rejected') {
+          window.dispatchEvent(new CustomEvent('room_invitation_rejected', {
+            detail: message
+          }));
+          return;
         }
 
         // Handle regular game over - dispatch custom event for proper modal display
@@ -224,20 +243,22 @@ export function useWebSocket() {
           }));
         }
 
-        // Handle play again requests
+        // Handle play again request messages
         if (message.type === 'play_again_request') {
-          // Dispatching play again request event
-          window.dispatchEvent(new CustomEvent('play_again_request_received', {
+          const playAgainEvent = new CustomEvent('play_again_request_received', {
             detail: message
-          }));
+          });
+          window.dispatchEvent(playAgainEvent);
+          return;
         }
 
-        // Handle play again rejection - redirect to home
+        // Handle play again rejected messages
         if (message.type === 'play_again_rejected') {
-          // Dispatching play again rejected event to redirect to AI table
-          window.dispatchEvent(new CustomEvent('play_again_rejected_received', {
+          const playAgainRejectedEvent = new CustomEvent('play_again_rejected_received', {
             detail: message
-          }));
+          });
+          window.dispatchEvent(playAgainRejectedEvent);
+          return;
         }
 
         // Handle play again countdown
@@ -245,6 +266,24 @@ export function useWebSocket() {
           window.dispatchEvent(new CustomEvent('play_again_countdown', {
             detail: message
           }));
+          return;
+        }
+
+        // Handle play again response - requester needs to know if accepted/rejected
+        if (message.type === 'play_again_response') {
+          window.dispatchEvent(new CustomEvent('play_again_response_received', {
+            detail: message
+          }));
+          return;
+        }
+
+        // Handle play again error
+        if (message.type === 'play_again_error') {
+          const playAgainErrorEvent = new CustomEvent('play_again_error', {
+            detail: message
+          });
+          window.dispatchEvent(playAgainErrorEvent);
+          return;
         }
 
         // Handle online status updates for friends list
@@ -395,7 +434,7 @@ export function useWebSocket() {
         const delay = Math.min(baseDelay + jitter, 5000);
 
         console.log(`⏳ Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempts.current})`);
-        
+
         // Clear any existing reconnection timeout
         if (reconnectTimeout.current) {
           clearTimeout(reconnectTimeout.current);
@@ -440,7 +479,7 @@ export function useWebSocket() {
     return () => {
       window.removeEventListener('send_websocket_ping', handleSendPing as EventListener);
       clearInterval(pingInterval); // Clean up heartbeat interval
-      
+
       // Clear reconnection timeout on cleanup
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
@@ -552,183 +591,47 @@ export function useWebSocket() {
             ws.current?.send(JSON.stringify(authMessage));
           };
 
+          // CRITICAL FIX: Simplified reconnection message handler to avoid duplication
+          // All message processing should go through setLastMessage and be handled in home.tsx
           ws.current.onmessage = (event) => {
             try {
               const message = JSON.parse(event.data);
 
-              if (message.type === 'chat_message_received') {
-                const chatEvent = new CustomEvent('chat_message_received', {
-                  detail: message
-                });
-                window.dispatchEvent(chatEvent);
-              }
-
-              if (message.type === 'room_invitation') {
-                const invitationEvent = new CustomEvent('room_invitation_received', {
-                  detail: message.invitation
-                });
-                window.dispatchEvent(invitationEvent);
-              }
-
-              if (message.type === 'player_left_win') {
-                console.log('🏆 WebSocket: Player left win message received:', message);
-
-                const playerLeftWinEvent = new CustomEvent('player_left_win', {
-                  detail: message
-                });
-                window.dispatchEvent(playerLeftWinEvent);
-
-                return;
-              }
+              // Only handle critical messages that need immediate action during reconnection
+              // All other messages will be processed via lastMessage in home.tsx
 
               if (message.type === 'game_abandoned') {
+                // Game abandoned needs immediate UI notification
                 const toastMessage = message.message || "Game ended because a player left the room.";
-
-                // Create notification using safe DOM methods to prevent XSS
                 const notificationDiv = document.createElement('div');
-
                 const containerDiv = document.createElement('div');
                 containerDiv.style.cssText = `
-                  position: fixed;
-                  top: 20px;
-                  right: 20px;
-                  background: #ef4444;
-                  color: white;
-                  padding: 16px;
-                  border-radius: 8px;
-                  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                  z-index: 9999;
-                  max-width: 400px;
-                  font-family: system-ui, -apple-system, sans-serif;
+                  position: fixed; top: 20px; right: 20px; background: #ef4444;
+                  color: white; padding: 16px; border-radius: 8px;
+                  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 9999;
+                  max-width: 400px; font-family: system-ui, -apple-system, sans-serif;
                 `;
-
                 const titleDiv = document.createElement('div');
                 titleDiv.style.cssText = 'font-weight: 600; margin-bottom: 4px;';
-                titleDiv.textContent = 'Game Ended'; // Safe: uses textContent
-
+                titleDiv.textContent = 'Game Ended';
                 const messageDiv = document.createElement('div');
                 messageDiv.style.cssText = 'font-size: 14px; opacity: 0.9;';
-                messageDiv.textContent = toastMessage; // Safe: uses textContent instead of innerHTML
-
+                messageDiv.textContent = toastMessage;
                 containerDiv.appendChild(titleDiv);
                 containerDiv.appendChild(messageDiv);
                 notificationDiv.appendChild(containerDiv);
                 document.body.appendChild(notificationDiv);
-
                 setTimeout(() => {
-                  if (notificationDiv.parentNode) {
-                    document.body.removeChild(notificationDiv);
-                  }
+                  if (notificationDiv.parentNode) document.body.removeChild(notificationDiv);
                 }, 5000);
-
                 localStorage.removeItem('currentGameState');
                 sessionStorage.removeItem('currentGameState');
-
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 2000);
-
+                setTimeout(() => { window.location.href = '/'; }, 2000);
                 return;
               }
 
-              if (message.type === 'spectator_left') {
-                localStorage.removeItem('currentGameState');
-                sessionStorage.removeItem('currentGameState');
-                localStorage.removeItem('currentRoomState');
-                sessionStorage.removeItem('currentRoomState');
-
-                const spectatorTransitionEvent = new CustomEvent('spectator_transition_to_ai', {
-                  detail: {
-                    message: message.message || 'You have left the room',
-                    targetMode: 'ai'
-                  }
-                });
-
-                window.dispatchEvent(spectatorTransitionEvent);
-
-                return;
-              }
-
-              if (message.type === 'reconnection_room_join') {
-                window.dispatchEvent(new CustomEvent('reconnection_room_join', {
-                  detail: message
-                }));
-              }
-
-              if (message.type === 'game_reconnection') {
-                window.dispatchEvent(new CustomEvent('game_reconnection', {
-                  detail: message
-                }));
-              }
-
-              if (message.type === 'online_users_update' || message.type === 'user_offline') {
-                window.dispatchEvent(new CustomEvent('online_status_update', {
-                  detail: message
-                }));
-              }
-
-              const messageWithTimestamp = {
-                ...message,
-                timestamp: Date.now()
-              };
-
-              if (['match_found', 'matchmaking_success', 'matchmaking_response', 'game_started'].includes(message.type)) {
-                console.log('🎮 WebSocket: Received matchmaking message:', message.type, messageWithTimestamp);
-
-                const matchmakingEvent = new CustomEvent('matchmaking_message_received', {
-                  detail: messageWithTimestamp
-                });
-                window.dispatchEvent(matchmakingEvent);
-              }
-
-              // Handle room creation success
-              if (message.type === 'create_room_success') {
-                const roomCreatedEvent = new CustomEvent('create_room_success', {
-                  detail: message
-                });
-                window.dispatchEvent(roomCreatedEvent);
-              }
-
-              // Handle room creation error
-              if (message.type === 'create_room_error') {
-                const roomErrorEvent = new CustomEvent('create_room_error', {
-                  detail: message
-                });
-                window.dispatchEvent(roomErrorEvent);
-              }
-
-              // Handle room join success
-              if (message.type === 'join_room_success') {
-                const joinRoomSuccessEvent = new CustomEvent('join_room_success', {
-                  detail: message
-                });
-                window.dispatchEvent(joinRoomSuccessEvent);
-              }
-
-              // Handle room join error
-              if (message.type === 'join_room_error') {
-                const joinRoomErrorEvent = new CustomEvent('join_room_error', {
-                  detail: message
-                });
-                window.dispatchEvent(joinRoomErrorEvent);
-              }
-
-              // Handle game start success
-              if (message.type === 'start_game_success') {
-                const startGameSuccessEvent = new CustomEvent('start_game_success', {
-                  detail: message
-                });
-                window.dispatchEvent(startGameSuccessEvent);
-              }
-
-              // Handle game start error
-              if (message.type === 'start_game_error') {
-                const startGameErrorEvent = new CustomEvent('start_game_error', {
-                  detail: message
-                });
-                window.dispatchEvent(startGameErrorEvent);
-              }
-
+              // All other messages go through setLastMessage for unified handling
+              const messageWithTimestamp = { ...message, timestamp: Date.now() };
               setLastMessage(messageWithTimestamp);
             } catch (error) {
               console.error('Failed to parse WebSocket message:', error);

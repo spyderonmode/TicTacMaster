@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
 import { useId } from "react";
+import "./AnimatedPieces.css";
 
 interface AnimatedPieceProps {
   symbol: "X" | "O";
-  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus";
+  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip";
   className?: string;
   position?: number;
 }
@@ -92,21 +93,28 @@ export function AnimatedPiece({ symbol, style = "default", className = "", posit
     );
   }
 
+  if (style === "holi") {
+    return symbol === "X" ? (
+      <HoliX className={className} uniqueId={uniqueId} />
+    ) : (
+      <HoliO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "tulip") {
+    return symbol === "X" ? (
+      <TulipX className={className} uniqueId={uniqueId} />
+    ) : (
+      <TulipO className={className} uniqueId={uniqueId} />
+    );
+  }
+
   return <span className={className}>{symbol}</span>;
 }
 
 function ThunderX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
   return (
-    <motion.div
-      className={`relative ${className}`}
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      style={{ 
-        transformStyle: "preserve-3d",
-        perspective: "1000px"
-      }}
-    >
+    <div className={`animated-piece-container ${className}`}>
       <svg
         viewBox="0 0 100 100"
         className="w-full h-full"
@@ -187,18 +195,7 @@ function ThunderX({ className = "", uniqueId }: { className?: string; uniqueId: 
           transition={{ duration: 0.3, ease: "easeOut", delay: 0.05 }}
         />
 
-        <motion.g
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ 
-            opacity: [0, 1, 1, 1, 0],
-            scale: [0, 1.5, 1.5, 1.5, 0]
-          }}
-          transition={{
-            duration: 0.6,
-            times: [0, 0.2, 0.4, 0.6, 1],
-            ease: "easeOut"
-          }}
-        >
+        <g className="spark-burst-1">
           <path
             d="M 35 12 L 40 22 L 50 20 L 45 30 L 55 37 L 43 37 L 40 47 L 35 37 L 23 38 L 30 30 L 25 20 Z"
             fill="rgba(135, 206, 250, 0.8)"
@@ -207,21 +204,9 @@ function ThunderX({ className = "", uniqueId }: { className?: string; uniqueId: 
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-        </motion.g>
+        </g>
 
-        <motion.g
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ 
-            opacity: [0, 1, 1, 1, 0],
-            scale: [0, 1.5, 1.5, 1.5, 0]
-          }}
-          transition={{
-            duration: 0.6,
-            times: [0, 0.2, 0.4, 0.6, 1],
-            ease: "easeOut",
-            delay: 0.1
-          }}
-        >
+        <g className="spark-burst-2">
           <path
             d="M 65 55 L 70 65 L 80 63 L 75 73 L 85 80 L 73 80 L 70 90 L 65 80 L 53 81 L 60 73 L 55 63 Z"
             fill="rgba(147, 197, 253, 0.8)"
@@ -230,13 +215,9 @@ function ThunderX({ className = "", uniqueId }: { className?: string; uniqueId: 
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-        </motion.g>
+        </g>
 
-        <motion.g
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.25, duration: 0.3 }}
-        >
+        <g className="lightning-bolt">
           <path
             d="M 38 12 L 43 22 L 52 23 L 48 32 L 50 40"
             stroke="rgba(135, 206, 250, 0.9)"
@@ -254,24 +235,15 @@ function ThunderX({ className = "", uniqueId }: { className?: string; uniqueId: 
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-        </motion.g>
+        </g>
       </svg>
-    </motion.div>
+    </div>
   );
 }
 
 function ThunderO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
   return (
-    <motion.div
-      className={`relative ${className}`}
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      style={{ 
-        transformStyle: "preserve-3d",
-        perspective: "1000px"
-      }}
-    >
+    <div className={`animated-piece-container ${className}`}>
       <svg
         viewBox="0 0 100 100"
         className="w-full h-full"
@@ -325,18 +297,7 @@ function ThunderO({ className = "", uniqueId }: { className?: string; uniqueId: 
           style={{ originX: "50%", originY: "50%" }}
         />
 
-        <motion.g
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ 
-            opacity: [0, 1, 1, 1, 0],
-            scale: [0, 2, 2, 2, 0]
-          }}
-          transition={{
-            duration: 0.8,
-            times: [0, 0.2, 0.5, 0.7, 1],
-            ease: "easeOut"
-          }}
-        >
+        <g className="ring-expansion">
           <circle
             cx="50"
             cy="50"
@@ -346,13 +307,9 @@ function ThunderO({ className = "", uniqueId }: { className?: string; uniqueId: 
             strokeWidth="3"
             opacity="0.4"
           />
-        </motion.g>
+        </g>
 
-        <motion.g
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.25, duration: 0.3 }}
-        >
+        <g className="lightning-bolt">
           <path
             d="M 28 12 L 33 22 L 42 23 L 38 32 L 40 40"
             stroke="rgba(248, 113, 113, 0.9)"
@@ -379,9 +336,9 @@ function ThunderO({ className = "", uniqueId }: { className?: string; uniqueId: 
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-        </motion.g>
+        </g>
       </svg>
-    </motion.div>
+    </div>
   );
 }
 
@@ -2985,6 +2942,778 @@ function LotusO({ className = "", uniqueId }: { className?: string; uniqueId: st
             ease: "easeInOut"
           }}
         />
+      </svg>
+    </motion.div>
+  );
+}
+
+function HoliX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ 
+        scale: 1,
+        opacity: 1,
+        y: [0, -3, 0, -2, 0],
+      }}
+      transition={{ 
+        scale: { type: "spring", stiffness: 300, damping: 20 },
+        opacity: { duration: 0.3 },
+        y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" }
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+      >
+        {/* Main X shape with multiple color layers */}
+        <motion.g
+          animate={{
+            scale: [1, 1.05, 1],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          <motion.path
+            d="M 20 20 L 80 80"
+            stroke="rgb(236, 72, 153)"
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+            animate={{
+              strokeWidth: [14, 16, 14],
+              opacity: [0.9, 1, 0.9],
+            }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.path
+            d="M 80 20 L 20 80"
+            stroke="rgb(250, 204, 21)"
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+            animate={{
+              strokeWidth: [14, 16, 14],
+              opacity: [0.9, 1, 0.9],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              delay: 0.3,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.path
+            d="M 20 20 L 80 80"
+            stroke="rgb(59, 130, 246)"
+            strokeWidth="8"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.7"
+            animate={{
+              strokeWidth: [8, 10, 8],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              delay: 0.5,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.path
+            d="M 80 20 L 20 80"
+            stroke="rgb(34, 197, 94)"
+            strokeWidth="8"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.7"
+            animate={{
+              strokeWidth: [8, 10, 8],
+            }}
+            transition={{
+              duration: 1.7,
+              repeat: Infinity,
+              delay: 0.6,
+              ease: "easeInOut"
+            }}
+          />
+        </motion.g>
+
+        {/* Floating color particles */}
+        {[...Array(12)].map((_, i) => {
+          const angle = (i * 360) / 12;
+          const radius = 38;
+          const x = 50 + radius * Math.cos((angle * Math.PI) / 180);
+          const y = 50 + radius * Math.sin((angle * Math.PI) / 180);
+          const colors = ["rgb(236, 72, 153)", "rgb(250, 204, 21)", "rgb(34, 197, 94)", "rgb(59, 130, 246)", "rgb(168, 85, 247)"];
+          const color = colors[i % colors.length];
+          
+          return (
+            <motion.circle
+              key={`particle-${i}`}
+              cx={x}
+              cy={y}
+              r="3"
+              fill={color}
+              animate={{
+                scale: [0.6, 1.3, 0.6],
+                opacity: [0.5, 1, 0.5],
+                y: [y, y - 4, y + 2, y],
+              }}
+              transition={{
+                duration: 2.2,
+                repeat: Infinity,
+                delay: i * 0.15,
+                ease: "easeInOut"
+              }}
+            />
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+function HoliO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ 
+        scale: 1,
+        opacity: 1,
+        x: [0, 2, 0, -2, 0],
+      }}
+      transition={{ 
+        scale: { type: "spring", stiffness: 300, damping: 20 },
+        opacity: { duration: 0.3 },
+        x: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+      >
+        {/* Main O shape with multiple color layers */}
+        <motion.g
+          animate={{
+            scale: [1, 1.04, 1],
+          }}
+          transition={{
+            duration: 2.2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="28"
+            stroke="rgb(250, 204, 21)"
+            strokeWidth="12"
+            fill="none"
+            strokeLinecap="round"
+            animate={{
+              strokeWidth: [12, 14, 12],
+              opacity: [0.9, 1, 0.9],
+            }}
+            transition={{
+              duration: 1.9,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="28"
+            stroke="rgb(236, 72, 153)"
+            strokeWidth="10"
+            fill="none"
+            strokeLinecap="round"
+            animate={{
+              strokeWidth: [10, 12, 10],
+              opacity: [0.85, 1, 0.85],
+            }}
+            transition={{
+              duration: 2.1,
+              repeat: Infinity,
+              delay: 0.2,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="28"
+            stroke="rgb(59, 130, 246)"
+            strokeWidth="7"
+            fill="none"
+            strokeLinecap="round"
+            opacity="0.7"
+            animate={{
+              strokeWidth: [7, 9, 7],
+            }}
+            transition={{
+              duration: 1.6,
+              repeat: Infinity,
+              delay: 0.4,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="28"
+            stroke="rgb(34, 197, 94)"
+            strokeWidth="7"
+            fill="none"
+            strokeLinecap="round"
+            opacity="0.7"
+            animate={{
+              strokeWidth: [7, 9, 7],
+            }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+              delay: 0.5,
+              ease: "easeInOut"
+            }}
+          />
+        </motion.g>
+
+        {/* Bouncing color particles */}
+        {[...Array(12)].map((_, i) => {
+          const angle = (i * 360) / 12;
+          const radius = 40;
+          const x = 50 + radius * Math.cos((angle * Math.PI) / 180);
+          const y = 50 + radius * Math.sin((angle * Math.PI) / 180);
+          const colors = ["rgb(250, 204, 21)", "rgb(34, 197, 94)", "rgb(59, 130, 246)", "rgb(168, 85, 247)", "rgb(236, 72, 153)"];
+          const color = colors[i % colors.length];
+          
+          return (
+            <motion.circle
+              key={`o-particle-${i}`}
+              cx={x}
+              cy={y}
+              r="3"
+              fill={color}
+              animate={{
+                scale: [0.7, 1.4, 0.7],
+                opacity: [0.6, 1, 0.6],
+                x: [x, x + 2, x - 2, x],
+              }}
+              transition={{
+                duration: 2.4,
+                repeat: Infinity,
+                delay: i * 0.12,
+                ease: "easeInOut"
+              }}
+            />
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  const tulipColors = [
+    { petal: "rgb(244, 114, 182)", shade: "rgb(236, 72, 153)", name: "pink" },
+    { petal: "rgb(239, 68, 68)", shade: "rgb(220, 38, 38)", name: "red" },
+    { petal: "rgb(192, 132, 252)", shade: "rgb(168, 85, 247)", name: "purple" },
+    { petal: "rgb(251, 191, 36)", shade: "rgb(245, 158, 11)", name: "yellow" },
+  ];
+
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ 
+        scale: 1,
+        opacity: 1
+      }}
+      transition={{ 
+        scale: { type: "spring", stiffness: 260, damping: 20 },
+        opacity: { duration: 0.5 }
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+      >
+        <defs>
+          {tulipColors.map((color, idx) => (
+            <linearGradient key={`tulipGrad-${idx}`} id={`tulipPetal${idx}-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style={{ stopColor: color.petal, stopOpacity: 1 }} />
+              <stop offset="100%" style={{ stopColor: color.shade, stopOpacity: 1 }} />
+            </linearGradient>
+          ))}
+          <linearGradient id={`tulipStem-${uniqueId}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(134, 239, 172)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(34, 197, 94)", stopOpacity: 1 }} />
+          </linearGradient>
+        </defs>
+
+        {/* X shape - First diagonal made entirely of tulips */}
+        {[...Array(11)].map((_, i) => {
+          const progress = i / 10;
+          const x = 18 + (64 * progress);
+          const y = 18 + (64 * progress);
+          const colorIdx = i % 4;
+          const size = i === 5 ? 1.2 : 1;
+          
+          return (
+            <motion.g 
+              key={`tulip-d1-${i}`}
+              initial={{ scale: 0 }}
+              animate={{ 
+                scale: size,
+                x: [0, 1.5, -1.5, 0],
+                y: [0, -2, 0, -1, 0]
+              }}
+              transition={{ 
+                scale: { delay: i * 0.03, type: "spring", stiffness: 300 },
+                x: { duration: 3 + i * 0.15, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 },
+                y: { duration: 2.8 + i * 0.12, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }
+              }}
+            >
+              {/* Left petal */}
+              <motion.path
+                d={`M ${x - 4.5 * size} ${y} Q ${x - 7 * size} ${y - 4 * size}, ${x - 5 * size} ${y - 8 * size} Q ${x - 2.5 * size} ${y - 9 * size}, ${x - 1.5 * size} ${y - 2 * size} Z`}
+                fill={`url(#tulipPetal${colorIdx}-${uniqueId})`}
+                stroke={tulipColors[colorIdx].shade}
+                strokeWidth="0.5"
+                animate={{
+                  scale: [1, 1.08, 1]
+                }}
+                transition={{
+                  duration: 2.5 + i * 0.1,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.1
+                }}
+                style={{ transformOrigin: `${x}px ${y}px` }}
+              />
+              {/* Center petal */}
+              <motion.path
+                d={`M ${x - 1 * size} ${y - 1 * size} Q ${x - 0.5 * size} ${y - 10 * size}, ${x + 0.5 * size} ${y - 11 * size} Q ${x + 2 * size} ${y - 9.5 * size}, ${x + 1 * size} ${y - 1 * size} Z`}
+                fill={`url(#tulipPetal${colorIdx}-${uniqueId})`}
+                stroke={tulipColors[colorIdx].shade}
+                strokeWidth="0.5"
+                animate={{
+                  scale: [1, 1.06, 1]
+                }}
+                transition={{
+                  duration: 2.5 + i * 0.1,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.1 + 0.05
+                }}
+                style={{ transformOrigin: `${x}px ${y}px` }}
+              />
+              {/* Right petal */}
+              <motion.path
+                d={`M ${x + 1.5 * size} ${y - 2 * size} Q ${x + 2.5 * size} ${y - 9 * size}, ${x + 5 * size} ${y - 8 * size} Q ${x + 7 * size} ${y - 4 * size}, ${x + 4.5 * size} ${y} Z`}
+                fill={`url(#tulipPetal${colorIdx}-${uniqueId})`}
+                stroke={tulipColors[colorIdx].shade}
+                strokeWidth="0.5"
+                animate={{
+                  scale: [1, 1.08, 1]
+                }}
+                transition={{
+                  duration: 2.5 + i * 0.1,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.1 + 0.02
+                }}
+                style={{ transformOrigin: `${x}px ${y}px` }}
+              />
+              {/* Small stem */}
+              <motion.line
+                x1={x}
+                y1={y}
+                x2={x}
+                y2={y + 4 * size}
+                stroke={`url(#tulipStem-${uniqueId})`}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                animate={{
+                  opacity: [0.7, 0.9, 0.7]
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.08
+                }}
+              />
+            </motion.g>
+          );
+        })}
+
+        {/* X shape - Second diagonal made entirely of tulips */}
+        {[...Array(11)].map((_, i) => {
+          const progress = i / 10;
+          const x = 82 - (64 * progress);
+          const y = 18 + (64 * progress);
+          const colorIdx = (i + 2) % 4;
+          const size = i === 5 ? 1.2 : 1;
+          
+          return (
+            <motion.g 
+              key={`tulip-d2-${i}`}
+              initial={{ scale: 0 }}
+              animate={{ 
+                scale: size,
+                x: [0, -1.5, 1.5, 0],
+                y: [0, -1.5, 0, -2, 0]
+              }}
+              transition={{ 
+                scale: { delay: i * 0.03 + 0.1, type: "spring", stiffness: 300 },
+                x: { duration: 3.2 + i * 0.15, repeat: Infinity, ease: "easeInOut", delay: i * 0.12 },
+                y: { duration: 2.9 + i * 0.12, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }
+              }}
+            >
+              {/* Left petal */}
+              <motion.path
+                d={`M ${x - 4.5 * size} ${y} Q ${x - 7 * size} ${y - 4 * size}, ${x - 5 * size} ${y - 8 * size} Q ${x - 2.5 * size} ${y - 9 * size}, ${x - 1.5 * size} ${y - 2 * size} Z`}
+                fill={`url(#tulipPetal${colorIdx}-${uniqueId})`}
+                stroke={tulipColors[colorIdx].shade}
+                strokeWidth="0.5"
+                animate={{
+                  scale: [1, 1.08, 1]
+                }}
+                transition={{
+                  duration: 2.6 + i * 0.1,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.12
+                }}
+                style={{ transformOrigin: `${x}px ${y}px` }}
+              />
+              {/* Center petal */}
+              <motion.path
+                d={`M ${x - 1 * size} ${y - 1 * size} Q ${x - 0.5 * size} ${y - 10 * size}, ${x + 0.5 * size} ${y - 11 * size} Q ${x + 2 * size} ${y - 9.5 * size}, ${x + 1 * size} ${y - 1 * size} Z`}
+                fill={`url(#tulipPetal${colorIdx}-${uniqueId})`}
+                stroke={tulipColors[colorIdx].shade}
+                strokeWidth="0.5"
+                animate={{
+                  scale: [1, 1.06, 1]
+                }}
+                transition={{
+                  duration: 2.6 + i * 0.1,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.12 + 0.05
+                }}
+                style={{ transformOrigin: `${x}px ${y}px` }}
+              />
+              {/* Right petal */}
+              <motion.path
+                d={`M ${x + 1.5 * size} ${y - 2 * size} Q ${x + 2.5 * size} ${y - 9 * size}, ${x + 5 * size} ${y - 8 * size} Q ${x + 7 * size} ${y - 4 * size}, ${x + 4.5 * size} ${y} Z`}
+                fill={`url(#tulipPetal${colorIdx}-${uniqueId})`}
+                stroke={tulipColors[colorIdx].shade}
+                strokeWidth="0.5"
+                animate={{
+                  scale: [1, 1.08, 1]
+                }}
+                transition={{
+                  duration: 2.6 + i * 0.1,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.12 + 0.02
+                }}
+                style={{ transformOrigin: `${x}px ${y}px` }}
+              />
+              {/* Small stem */}
+              <motion.line
+                x1={x}
+                y1={y}
+                x2={x}
+                y2={y + 4 * size}
+                stroke={`url(#tulipStem-${uniqueId})`}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                animate={{
+                  opacity: [0.7, 0.9, 0.7]
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.08
+                }}
+              />
+            </motion.g>
+          );
+        })}
+
+        {/* Gentle floating petals in background */}
+        {[...Array(6)].map((_, i) => {
+          const positions = [
+            { x: 25, y: 10 },
+            { x: 75, y: 12 },
+            { x: 12, y: 50 },
+            { x: 88, y: 50 },
+            { x: 25, y: 88 },
+            { x: 75, y: 90 }
+          ];
+          const pos = positions[i];
+          const colorIdx = i % 4;
+          
+          return (
+            <motion.ellipse
+              key={`float-petal-${i}`}
+              cx={pos.x}
+              cy={pos.y}
+              rx="1.5"
+              ry="2.5"
+              fill={tulipColors[colorIdx].petal}
+              opacity="0.4"
+              animate={{
+                y: [pos.y, pos.y + 3, pos.y],
+                opacity: [0.3, 0.5, 0.3],
+                rotate: [0, 10, -10, 0]
+              }}
+              transition={{
+                duration: 3.5 + i * 0.3,
+                repeat: Infinity,
+                delay: i * 0.3,
+                ease: "easeInOut"
+              }}
+              style={{ transformOrigin: `${pos.x}px ${pos.y}px` }}
+            />
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  const tulipColors = [
+    { petal: "rgb(244, 114, 182)", shade: "rgb(236, 72, 153)", name: "pink" },
+    { petal: "rgb(239, 68, 68)", shade: "rgb(220, 38, 38)", name: "red" },
+    { petal: "rgb(192, 132, 252)", shade: "rgb(168, 85, 247)", name: "purple" },
+    { petal: "rgb(251, 191, 36)", shade: "rgb(245, 158, 11)", name: "yellow" },
+  ];
+
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ 
+        scale: 1,
+        opacity: 1
+      }}
+      transition={{ 
+        scale: { type: "spring", stiffness: 260, damping: 20 },
+        opacity: { duration: 0.5 }
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+      >
+        <defs>
+          {tulipColors.map((color, idx) => (
+            <linearGradient key={`tulipOGrad-${idx}`} id={`tulipOPetal${idx}-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style={{ stopColor: color.petal, stopOpacity: 1 }} />
+              <stop offset="100%" style={{ stopColor: color.shade, stopOpacity: 1 }} />
+            </linearGradient>
+          ))}
+          <linearGradient id={`tulipOStem-${uniqueId}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(134, 239, 172)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(34, 197, 94)", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`tulipOCenter-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(254, 240, 138)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(253, 224, 71)", stopOpacity: 1 }} />
+          </radialGradient>
+        </defs>
+
+        {/* O shape made entirely of tulips arranged in a circle */}
+        {[...Array(16)].map((_, i) => {
+          const angle = (i * 360) / 16 - 90;
+          const radius = 30;
+          const x = 50 + radius * Math.cos((angle * Math.PI) / 180);
+          const y = 50 + radius * Math.sin((angle * Math.PI) / 180);
+          const colorIdx = i % 4;
+          const size = 1;
+          const petalAngle = angle + 90;
+          
+          return (
+            <motion.g 
+              key={`tulip-o-${i}`}
+              initial={{ scale: 0 }}
+              animate={{ 
+                scale: size,
+                x: [0, Math.cos((angle * Math.PI) / 180) * 1.5, 0],
+                y: [0, Math.sin((angle * Math.PI) / 180) * 1.5, 0]
+              }}
+              transition={{ 
+                scale: { delay: i * 0.02, type: "spring", stiffness: 300 },
+                x: { duration: 2.5 + i * 0.08, repeat: Infinity, ease: "easeInOut", delay: i * 0.06 },
+                y: { duration: 2.5 + i * 0.08, repeat: Infinity, ease: "easeInOut", delay: i * 0.06 }
+              }}
+              style={{ transformOrigin: `${x}px ${y}px` }}
+            >
+              {/* Rotate tulip to point outward from center */}
+              <g transform={`rotate(${petalAngle} ${x} ${y})`}>
+                {/* Left petal */}
+                <motion.path
+                  d={`M ${x - 4 * size} ${y} Q ${x - 6.5 * size} ${y - 3.5 * size}, ${x - 4.5 * size} ${y - 7.5 * size} Q ${x - 2 * size} ${y - 8.5 * size}, ${x - 1.2 * size} ${y - 1.5 * size} Z`}
+                  fill={`url(#tulipOPetal${colorIdx}-${uniqueId})`}
+                  stroke={tulipColors[colorIdx].shade}
+                  strokeWidth="0.4"
+                  animate={{
+                    scale: [1, 1.08, 1]
+                  }}
+                  transition={{
+                    duration: 2.3 + i * 0.08,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.08
+                  }}
+                  style={{ transformOrigin: `${x}px ${y}px` }}
+                />
+                {/* Center petal */}
+                <motion.path
+                  d={`M ${x - 0.8 * size} ${y - 0.8 * size} Q ${x - 0.4 * size} ${y - 9 * size}, ${x + 0.4 * size} ${y - 10 * size} Q ${x + 1.8 * size} ${y - 8.5 * size}, ${x + 0.8 * size} ${y - 0.8 * size} Z`}
+                  fill={`url(#tulipOPetal${colorIdx}-${uniqueId})`}
+                  stroke={tulipColors[colorIdx].shade}
+                  strokeWidth="0.4"
+                  animate={{
+                    scale: [1, 1.06, 1]
+                  }}
+                  transition={{
+                    duration: 2.3 + i * 0.08,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.08 + 0.04
+                  }}
+                  style={{ transformOrigin: `${x}px ${y}px` }}
+                />
+                {/* Right petal */}
+                <motion.path
+                  d={`M ${x + 1.2 * size} ${y - 1.5 * size} Q ${x + 2 * size} ${y - 8.5 * size}, ${x + 4.5 * size} ${y - 7.5 * size} Q ${x + 6.5 * size} ${y - 3.5 * size}, ${x + 4 * size} ${y} Z`}
+                  fill={`url(#tulipOPetal${colorIdx}-${uniqueId})`}
+                  stroke={tulipColors[colorIdx].shade}
+                  strokeWidth="0.4"
+                  animate={{
+                    scale: [1, 1.08, 1]
+                  }}
+                  transition={{
+                    duration: 2.3 + i * 0.08,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.08 + 0.02
+                  }}
+                  style={{ transformOrigin: `${x}px ${y}px` }}
+                />
+                {/* Small stem */}
+                <motion.line
+                  x1={x}
+                  y1={y}
+                  x2={x}
+                  y2={y + 3.5 * size}
+                  stroke={`url(#tulipOStem-${uniqueId})`}
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  animate={{
+                    opacity: [0.7, 0.9, 0.7]
+                  }}
+                  transition={{
+                    duration: 2.3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.06
+                  }}
+                />
+              </g>
+            </motion.g>
+          );
+        })}
+
+        {/* Beautiful yellow center */}
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="14"
+          fill={`url(#tulipOCenter-${uniqueId})`}
+          stroke="rgb(234, 179, 8)"
+          strokeWidth="1"
+          initial={{ scale: 0 }}
+          animate={{
+            scale: [1, 1.05, 1],
+            opacity: [0.95, 1, 0.95],
+          }}
+          transition={{
+            scale: { delay: 0.3, duration: 2.8, repeat: Infinity, ease: "easeInOut" },
+            opacity: { delay: 0.3, duration: 2.8, repeat: Infinity, ease: "easeInOut" }
+          }}
+        />
+
+        {/* Inner glow */}
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="9"
+          fill="rgb(254, 249, 195)"
+          opacity="0.8"
+          initial={{ scale: 0 }}
+          animate={{
+            scale: [0.96, 1.08, 0.96],
+            opacity: [0.7, 0.9, 0.7],
+          }}
+          transition={{
+            delay: 0.32,
+            scale: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
+            opacity: { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+          }}
+        />
+
+        {/* Gentle floating petals in background */}
+        {[...Array(6)].map((_, i) => {
+          const angle = (i * 360) / 6;
+          const radius = 42;
+          const x = 50 + radius * Math.cos((angle * Math.PI) / 180);
+          const y = 50 + radius * Math.sin((angle * Math.PI) / 180);
+          const colorIdx = i % 4;
+          
+          return (
+            <motion.ellipse
+              key={`float-petal-${i}`}
+              cx={x}
+              cy={y}
+              rx="1.5"
+              ry="2.5"
+              fill={tulipColors[colorIdx].petal}
+              opacity="0.4"
+              animate={{
+                y: [y, y + 2, y],
+                opacity: [0.3, 0.5, 0.3],
+                rotate: [0, 8, -8, 0]
+              }}
+              transition={{
+                duration: 3.2 + i * 0.25,
+                repeat: Infinity,
+                delay: i * 0.2,
+                ease: "easeInOut"
+              }}
+              style={{ transformOrigin: `${x}px ${y}px` }}
+            />
+          );
+        })}
       </svg>
     </motion.div>
   );

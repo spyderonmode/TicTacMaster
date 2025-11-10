@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Users, UserPlus, UserCheck, UserX, Trophy, TrendingUp, Calendar, Loader2, MessageCircle, Send, Eye, Coins } from 'lucide-react';
+import { Users, UserPlus, UserCheck, UserX, Trophy, TrendingUp, Calendar, Loader2, Eye, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { User } from '@shared/schema';
@@ -49,10 +49,6 @@ export function Friends() {
   const [isOpen, setIsOpen] = useState(false);
   const [searchName, setSearchName] = useState('');
   const [selectedFriend, setSelectedFriend] = useState<BasicFriendInfo | null>(null);
-  const [selectedChatFriend, setSelectedChatFriend] = useState<BasicFriendInfo | null>(null);
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState<Map<string, any[]>>(new Map());
-  const [unreadMessages, setUnreadMessages] = useState<Map<string, number>>(new Map());
   const [profileUser, setProfileUser] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedGiftFriend, setSelectedGiftFriend] = useState<BasicFriendInfo | null>(null);
@@ -64,18 +60,21 @@ export function Friends() {
   const { data: friends = [], isLoading: friendsLoading } = useQuery<BasicFriendInfo[]>({
     queryKey: ['/api/friends'],
     enabled: isOpen,
+    staleTime: 30000, // Cache friends list for 30 seconds
   });
 
   // Fetch current user data for coin balance
   const { data: currentUserData } = useQuery({
     queryKey: ['/api/users', user?.userId],
     enabled: isOpen && !!user?.userId,
+    staleTime: 60000, // Cache for 60 seconds to avoid refetching
   });
 
   // Fetch friend requests
   const { data: friendRequests = [], isLoading: requestsLoading } = useQuery<FriendRequest[]>({
     queryKey: ['/api/friends/requests'],
     enabled: isOpen,
+    staleTime: 30000, // Cache friend requests for 30 seconds
   });
 
   // Fetch head-to-head stats for selected friend
@@ -89,7 +88,8 @@ export function Friends() {
   const { data: onlineUsersData } = useQuery<{ total: number; users: any[] }>({
     queryKey: ['/api/users/online'],
     enabled: isOpen,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 60000, // Refresh every 60 seconds (reduced from 30)
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   // Send friend request mutation
@@ -151,131 +151,6 @@ export function Friends() {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Chat functionality
-  const sendMessageMutation = useMutation({
-    mutationFn: async ({ targetUserId, message }: { targetUserId: string; message: string }) => {
-      return await apiRequest('/api/chat/send', { method: 'POST', body: { targetUserId, message } });
-    },
-    onSuccess: (data, variables) => {
-      if (selectedChatFriend) {
-        // Add the sent message to chat history for this user
-        const newMessage = {
-          fromMe: true,
-          message: chatMessage,
-          timestamp: new Date().toLocaleTimeString(),
-          userId: variables.targetUserId
-        };
-        
-        setChatHistory(prev => {
-          const newHistory = new Map(prev);
-          const userMessages = newHistory.get(selectedChatFriend.id) || [];
-          newHistory.set(selectedChatFriend.id, [...userMessages, newMessage]);
-          return newHistory;
-        });
-      }
-      setChatMessage("");
-    },
-    onError: (error: any) => {
-      console.error('Chat message error:', error);
-      showUserFriendlyError(error, toast);
-    },
-  });
-
-  // Handle incoming chat messages
-  useEffect(() => {
-    const handleChatMessage = (event: CustomEvent) => {
-      const data = event.detail;
-      
-      if (data.type === 'chat_message_received') {
-        const incomingMessage = {
-          fromMe: false,
-          message: data.message.message,
-          timestamp: new Date(data.message.timestamp).toLocaleTimeString(),
-          userId: data.message.senderId,
-          senderName: data.message.senderName
-        };
-        
-        // Always add to chat history for this sender, regardless of dialog state
-        setChatHistory(prev => {
-          const newHistory = new Map(prev);
-          const userMessages = newHistory.get(data.message.senderId) || [];
-          newHistory.set(data.message.senderId, [...userMessages, incomingMessage]);
-          return newHistory;
-        });
-        
-        // Update unread count if Friends modal is not open or friend not selected
-        if (!isOpen || !selectedChatFriend || selectedChatFriend.id !== data.message.senderId) {
-          setUnreadMessages(prev => {
-            const newUnread = new Map(prev);
-            const currentUnread = newUnread.get(data.message.senderId) || 0;
-            newUnread.set(data.message.senderId, currentUnread + 1);
-            return newUnread;
-          });
-        }
-      }
-    };
-
-    const handleOnlineStatusUpdate = (event: CustomEvent) => {
-      const data = event.detail;
-      
-      // Refresh online users data when users come online/offline
-      if (data.type === 'online_users_update' || data.type === 'user_offline') {
-        queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
-      }
-      
-      // Clear chat history for users who go offline
-      if (data.type === 'user_offline' && data.userId) {
-        setChatHistory(prev => {
-          const newHistory = new Map(prev);
-          newHistory.delete(data.userId);
-          return newHistory;
-        });
-        
-        // Clear unread messages for the offline user
-        setUnreadMessages(prev => {
-          const newUnread = new Map(prev);
-          newUnread.delete(data.userId);
-          return newUnread;
-        });
-        
-        // Close chat dialog if currently chatting with the offline user
-        if (selectedChatFriend && selectedChatFriend.id === data.userId) {
-          setSelectedChatFriend(null);
-        }
-        
-        console.log(`💬 Friends: Cleared chat history for offline user: ${data.userId}`);
-      }
-    };
-
-    // Always listen for events to maintain chat history
-    window.addEventListener('chat_message_received', handleChatMessage as EventListener);
-    window.addEventListener('online_status_update', handleOnlineStatusUpdate as EventListener);
-    
-    return () => {
-      window.removeEventListener('chat_message_received', handleChatMessage as EventListener);
-      window.removeEventListener('online_status_update', handleOnlineStatusUpdate as EventListener);
-    };
-  }, [selectedChatFriend, queryClient]);
-
-  const handleSendMessage = () => {
-    if (!chatMessage.trim() || !selectedChatFriend) return;
-    
-    sendMessageMutation.mutate({ 
-      targetUserId: selectedChatFriend.id, 
-      message: chatMessage.trim() 
-    });
-  };
-
-  const startChatWithFriend = (friend: BasicFriendInfo) => {
-    setSelectedChatFriend(friend);
-    // Clear unread messages for this friend
-    setUnreadMessages(prev => {
-      const newUnread = new Map(prev);
-      newUnread.delete(friend.id);
-      return newUnread;
-    });
-  };
-
   const handleViewProfile = (friend: BasicFriendInfo) => {
     setProfileUser({
       userId: friend.id,
@@ -287,9 +162,6 @@ export function Friends() {
     });
     setShowProfileModal(true);
   };
-
-  // Get current chat messages for selected friend
-  const currentChatMessages = selectedChatFriend ? chatHistory.get(selectedChatFriend.id) || [] : [];
 
   // Helper function to check if a friend is online
   const isUserOnline = (friendId: string) => {
@@ -423,23 +295,6 @@ export function Friends() {
                         data-testid={`button-view-profile-${friend.id}`}
                       >
                         <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startChatWithFriend(friend);
-                        }}
-                        className="relative text-xs px-2 py-1"
-                        data-testid={`button-chat-${friend.id}`}
-                      >
-                        <MessageCircle className="h-3 w-3" />
-                        {unreadMessages.get(friend.id) && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                            {unreadMessages.get(friend.id)}
-                          </span>
-                        )}
                       </Button>
                       <Button
                         variant="outline"
@@ -680,77 +535,6 @@ export function Friends() {
           </Dialog>
         )}
 
-        {/* Chat modal */}
-        {selectedChatFriend && (
-          <Dialog open={!!selectedChatFriend} onOpenChange={() => setSelectedChatFriend(null)}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelectedChatFriend(null)}
-                  >
-                    ← {t('back')}
-                  </Button>
-                  <div className="flex items-center gap-3">
-                    {selectedChatFriend.profileImageUrl ? (
-                      <img
-                        src={selectedChatFriend.profileImageUrl}
-                        alt={selectedChatFriend.displayName || `${selectedChatFriend.firstName} ${selectedChatFriend.lastName || ''}`.trim()}
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
-                        {selectedChatFriend.firstName?.[0] || '?'}{selectedChatFriend.lastName?.[0] || ''}
-                      </div>
-                    )}
-                    <span className="font-medium">
-                      {t('chatWith')} {selectedChatFriend.displayName || `${selectedChatFriend.firstName} ${selectedChatFriend.lastName || ''}`.trim()}
-                    </span>
-                  </div>
-                </DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <ScrollArea className="h-[300px] w-full">
-                  <div className="space-y-2">
-                    {currentChatMessages.length > 0 ? (
-                      currentChatMessages.map((msg, index) => (
-                        <div key={index} className={`p-2 rounded-lg ${msg.fromMe ? 'bg-blue-100 dark:bg-blue-900 ml-4' : 'bg-gray-100 dark:bg-gray-800 mr-4'}`}>
-                          <div className="text-sm font-medium">{msg.fromMe ? t('you') : selectedChatFriend.displayName || selectedChatFriend.firstName || selectedChatFriend.username}</div>
-                          <div className="text-sm">{msg.message}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{msg.timestamp}</div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        {t('noMessages')}
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-                
-                <div className="flex gap-2">
-                  <Input
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder={t('typeMessage')}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={handleSendMessage}
-                    disabled={!chatMessage.trim() || sendMessageMutation.isPending}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-
         {/* Coin Gift Modal */}
         <CoinGiftModal
           open={showCoinGiftModal}
@@ -759,7 +543,7 @@ export function Friends() {
             setSelectedGiftFriend(null);
           }}
           friend={selectedGiftFriend}
-          currentUserCoins={currentUserData?.coins || 0}
+          currentUserCoins={(currentUserData as any)?.coins || 0}
         />
       </DialogContent>
     </Dialog>

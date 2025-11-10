@@ -1,6 +1,6 @@
 // Cache version - this will automatically update when sw.js content changes
 // You can also manually increment the number below to force a cache update
-const CACHE_VERSION = '9.1';
+const CACHE_VERSION = '11.7';
 const CACHE_NAME = `tictactoe-v${CACHE_VERSION}`;
 const RUNTIME_CACHE = `tictactoe-runtime-v${CACHE_VERSION}`;
 

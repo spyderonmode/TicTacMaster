@@ -32,7 +32,7 @@ const themes = {
     backgroundColor: 'bg-slate-900',
     textColor: 'text-white',
     borderColor: 'border-slate-700',
-    winningCellStyle: 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-400/50'
+    winningCellStyle: 'bg-gradient-to-br from-yellow-400 to-orange-500'
   },
   neon: {
     name: 'Neon',
@@ -45,7 +45,7 @@ const themes = {
     backgroundColor: 'bg-black',
     textColor: 'text-cyan-300',
     borderColor: 'border-cyan-500',
-    winningCellStyle: 'bg-gradient-to-br from-cyan-400 to-pink-500 shadow-lg shadow-cyan-400/50 border-cyan-300'
+    winningCellStyle: 'bg-gradient-to-br from-cyan-400 to-pink-500 border-cyan-300'
   },
   autumn: {
     name: 'Autumn',
@@ -58,7 +58,7 @@ const themes = {
     backgroundColor: 'bg-gradient-to-br from-orange-50 to-amber-50',
     textColor: 'text-orange-900',
     borderColor: 'border-orange-300',
-    winningCellStyle: 'bg-gradient-to-br from-red-200 to-orange-200 shadow-md shadow-red-200/50 border-red-300'
+    winningCellStyle: 'bg-gradient-to-br from-red-200 to-orange-200 border-red-300'
   },
   minimalist: {
     name: 'Minimalist',
@@ -84,7 +84,7 @@ const themes = {
     backgroundColor: 'bg-green-950',
     textColor: 'text-green-100',
     borderColor: 'border-green-700',
-    winningCellStyle: 'bg-gradient-to-br from-emerald-400 to-amber-500 shadow-lg shadow-emerald-400/50'
+    winningCellStyle: 'bg-gradient-to-br from-emerald-400 to-amber-500'
   },
   space: {
     name: 'Space',
@@ -97,7 +97,7 @@ const themes = {
     backgroundColor: 'bg-indigo-950',
     textColor: 'text-purple-100',
     borderColor: 'border-purple-600',
-    winningCellStyle: 'bg-gradient-to-br from-blue-400 to-purple-500 shadow-lg shadow-blue-400/50'
+    winningCellStyle: 'bg-gradient-to-br from-blue-400 to-purple-500'
   },
   halloween: {
     name: 'Halloween',
@@ -110,7 +110,7 @@ const themes = {
     backgroundColor: 'bg-gradient-to-br from-orange-900 to-black',
     textColor: 'text-orange-100',
     borderColor: 'border-orange-500',
-    winningCellStyle: 'bg-gradient-to-br from-orange-400 to-purple-500 shadow-lg shadow-orange-400/50 border-orange-300'
+    winningCellStyle: 'bg-gradient-to-br from-orange-400 to-purple-500 border-orange-300'
   },
   christmas: {
     name: 'Christmas',
@@ -123,7 +123,7 @@ const themes = {
     backgroundColor: 'bg-gradient-to-br from-red-900 to-green-900',
     textColor: 'text-red-100',
     borderColor: 'border-red-400',
-    winningCellStyle: 'bg-gradient-to-br from-red-400 to-green-400 shadow-lg shadow-red-400/50 border-red-300'
+    winningCellStyle: 'bg-gradient-to-br from-red-400 to-green-400 border-red-300'
   },
   summer: {
     name: 'Summer',
@@ -136,7 +136,7 @@ const themes = {
     backgroundColor: 'bg-gradient-to-br from-yellow-100 to-blue-100',
     textColor: 'text-yellow-900',
     borderColor: 'border-yellow-400',
-    winningCellStyle: 'bg-gradient-to-br from-yellow-400 to-blue-400 shadow-lg shadow-yellow-400/50 border-yellow-300'
+    winningCellStyle: 'bg-gradient-to-br from-yellow-400 to-blue-400 border-yellow-300'
   },
   level_100_frame: {
     name: 'Level 100 Master',
@@ -149,7 +149,7 @@ const themes = {
     backgroundColor: 'bg-gradient-to-br from-amber-900 to-yellow-800',
     textColor: 'text-amber-100',
     borderColor: 'border-amber-500',
-    winningCellStyle: 'bg-gradient-to-br from-amber-400 to-yellow-400 shadow-2xl shadow-amber-400/60 border-amber-300 animate-pulse'
+    winningCellStyle: 'bg-gradient-to-br from-amber-400 to-yellow-400 border-amber-300 animate-pulse'
   }
 };
 

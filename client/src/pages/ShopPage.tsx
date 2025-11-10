@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users } from "lucide-react";
+import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users, Palette } from "lucide-react";
 import { AnimatedPiece } from "@/components/AnimatedPieces";
 import { PurchaseSuccessModal } from "@/components/PurchaseSuccessModal";
+import { AvatarWithFrame } from "@/components/AvatarWithFrame";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useLocation } from "wouter";
@@ -53,21 +54,21 @@ const PIECE_STYLES = [
     id: "thunder",
     name: "Thunder Strike",
     description: "Electrifying X and O with lightning effects",
-    price: 20000000, // 20 million coins
+    price: 200000000, // 200 million coins
     isDefault: false,
   },
   {
     id: "fire",
     name: "Inferno Blaze",
     description: "Blazing X and O with realistic fire effects",
-    price: 35000000, // 35 million coins
+    price: 150000000, // 150 million coins
     isDefault: false,
   },
   {
     id: "hammer",
     name: "Hammer Strike",
     description: "A hammer smashes down to reveal your piece",
-    price: 50000000, // 50 million coins
+    price: 200000000, // 50 million coins
     isDefault: false,
   },
   {
@@ -119,6 +120,20 @@ const PIECE_STYLES = [
     price: 400000000, // 400 million coins
     isDefault: false,
   },
+  {
+    id: "holi",
+    name: "Holi Festival",
+    description: "Vibrant 3D multicolor Holi festival design with rich rainbow effects",
+    price: 300000000, // 300 million coins
+    isDefault: false,
+  },
+  {
+    id: "tulip",
+    name: "Tulip Garden",
+    description: "Soft 3D tulip petals design with gentle floating animations - pure elegance",
+    price: 200000000, // 2000 million coins
+    isDefault: false,
+  },
 ];
 
 const AVATAR_FRAMES = [
@@ -134,6 +149,20 @@ const AVATAR_FRAMES = [
     name: "Thundering Strike",
     description: "Epic 3D electric blue frame with lightning effects and rotating gradients",
     price: 1000000000, // 1000 million coins
+    isDefault: false,
+  },
+  {
+    id: "firestorm",
+    name: "Fire Storm",
+    description: "Blazing 3D fire frame with intense flames erupting outside the border",
+    price: 1000000000, // 1000 million coins
+    isDefault: false,
+  },
+  {
+    id: 'lovers_3d',
+    name: 'Lovers Heart 3D',
+    description: 'Romantic 3D hearts floating around your avatar - for lovers only!',
+    price: 1000000000, // 1 billion coins
     isDefault: false,
   },
 ];
@@ -449,6 +478,7 @@ export default function ShopPage() {
                       {style.id === "greenleaf" && <Sprout className="w-5 h-5 text-green-500" />}
                       {style.id === "cat" && <Cat className="w-5 h-5 text-blue-400" />}
                       {style.id === "bestfriends" && <Users className="w-5 h-5 text-purple-400" />}
+                      {style.id === "holi" && <Palette className="w-5 h-5 text-pink-500" />}
                       {style.name}
                     </span>
                     {isActive && (
@@ -473,14 +503,14 @@ export default function ShopPage() {
                     <div className="w-20 h-20 flex items-center justify-center">
                       <AnimatedPiece 
                         symbol="X" 
-                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends"} 
+                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi"} 
                         className={style.id === "default" ? "text-5xl text-blue-400 font-bold" : "text-blue-400"}
                       />
                     </div>
                     <div className="w-20 h-20 flex items-center justify-center">
                       <AnimatedPiece 
                         symbol="O" 
-                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends"} 
+                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi"} 
                         className={style.id === "default" ? "text-5xl text-red-400 font-bold" : "text-red-400"}
                       />
                     </div>
@@ -677,15 +707,13 @@ export default function ShopPage() {
                     <CardContent className="space-y-4">
                       <div className="flex justify-center py-4">
                         {user && (
-                          <div className="w-24 h-24">
-                            <img 
-                              src={user.profileImageUrl || undefined}
-                              alt="Preview"
-                              className={`w-full h-full rounded-full object-cover ${
-                                frame.id !== 'default' ? 'border-4 border-blue-500 animate-pulse' : 'border-2 border-gray-600'
-                              }`}
-                            />
-                          </div>
+                          <AvatarWithFrame
+                            src={userData?.profileImageUrl || user.profileImageUrl || undefined}
+                            alt="Preview"
+                            size="lg"
+                            borderType={frame.id}
+                            fallbackText={user.username?.[0]?.toUpperCase() || user.displayName?.[0]?.toUpperCase() || '?'}
+                          />
                         )}
                       </div>
 

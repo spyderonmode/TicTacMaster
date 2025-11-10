@@ -227,16 +227,66 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
     refetchInterval: modalOpen ? 30000 : false,
   });
 
-  const { data: timeUntilEnd } = useQuery<TimeLeft>({
+  const { data: serverTimeUntilEnd } = useQuery<TimeLeft>({
     queryKey: ['/api/leaderboard/time-left'],
     queryFn: async () => {
       const response = await fetch('/api/leaderboard/time-left');
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     },
-    refetchInterval: modalOpen ? 1000 : false,
+    refetchInterval: modalOpen ? 10000 : false, // Changed from 1000ms to 10000ms (10 seconds)
     staleTime: 0,
   });
+
+  // Client-side countdown state (updates every second without server polling)
+  const [timeUntilEnd, setTimeUntilEnd] = useState<TimeLeft | undefined>(serverTimeUntilEnd);
+
+  // Sync local countdown with server data when it arrives
+  useEffect(() => {
+    if (serverTimeUntilEnd) {
+      setTimeUntilEnd(serverTimeUntilEnd);
+    }
+  }, [serverTimeUntilEnd]);
+
+  // Client-side countdown timer (runs every second)
+  useEffect(() => {
+    if (!modalOpen || !timeUntilEnd) return;
+
+    const interval = setInterval(() => {
+      setTimeUntilEnd(prev => {
+        if (!prev) return prev;
+
+        let { days, hours, minutes, seconds } = prev;
+        
+        // Decrement seconds
+        seconds--;
+        
+        if (seconds < 0) {
+          seconds = 59;
+          minutes--;
+        }
+        
+        if (minutes < 0) {
+          minutes = 59;
+          hours--;
+        }
+        
+        if (hours < 0) {
+          hours = 23;
+          days--;
+        }
+        
+        // Don't go below zero
+        if (days < 0) {
+          return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+        }
+        
+        return { days, hours, minutes, seconds };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [modalOpen, timeUntilEnd]);
 
   const top3 = weeklyLeaderboard?.slice(0, 3) || [];
   const remainingPlayers = weeklyLeaderboard?.slice(3) || [];
@@ -252,6 +302,46 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
     { position: 8, coins: 5000000 },
     { position: 9, coins: 5000000 },
     { position: 10, coins: 5000000 },
+    { position: 11, coins: 1000000 },
+    { position: 12, coins: 1000000 },
+    { position: 13, coins: 1000000 },
+    { position: 14, coins: 1000000 },
+    { position: 15, coins: 1000000 },
+    { position: 16, coins: 1000000 },
+    { position: 17, coins: 1000000 },
+    { position: 18, coins: 1000000 },
+    { position: 19, coins: 1000000 },
+    { position: 20, coins: 1000000 },
+    { position: 21, coins: 1000000 },
+    { position: 22, coins: 1000000 },
+    { position: 23, coins: 1000000 },
+    { position: 24, coins: 1000000 },
+    { position: 25, coins: 1000000 },
+    { position: 26, coins: 1000000 },
+    { position: 27, coins: 1000000 },
+    { position: 28, coins: 1000000 },
+    { position: 29, coins: 1000000 },
+    { position: 30, coins: 1000000 },
+    { position: 31, coins: 1000000 },
+    { position: 32, coins: 1000000 },
+    { position: 33, coins: 1000000 },
+    { position: 34, coins: 1000000 },
+    { position: 35, coins: 1000000 },
+    { position: 36, coins: 1000000 },
+    { position: 37, coins: 1000000 },
+    { position: 38, coins: 1000000 },
+    { position: 39, coins: 1000000 },
+    { position: 40, coins: 1000000 },
+    { position: 41, coins: 1000000 },
+    { position: 42, coins: 1000000 },
+    { position: 43, coins: 1000000 },
+    { position: 44, coins: 1000000 },
+    { position: 45, coins: 1000000 },
+    { position: 46, coins: 1000000 },
+    { position: 47, coins: 1000000 },
+    { position: 48, coins: 1000000 },
+    { position: 49, coins: 1000000 },
+    { position: 50, coins: 1000000 },
   ];
 
   useEffect(() => {
@@ -501,7 +591,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
             </Button>
           </DialogHeader>
           <DialogDescription className="text-gray-400">
-            {t('Check out the rewards for the top 10 winners this week.') || 'Check out the rewards for the top 10 winners this week.'}
+            {t('Check out the rewards for the top 50 winners this week.') || 'Check out the rewards for the top 10 winners this week.'}
           </DialogDescription>
           <RewardsList rewardData={rewardData} timeUntilEnd={timeUntilEnd} />
         </DialogContent>

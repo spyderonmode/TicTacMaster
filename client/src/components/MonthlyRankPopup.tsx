@@ -70,6 +70,7 @@ const WeeklyRankPopup = ({
   };
 
   const isTop10 = rankData.finalRank <= 10;
+  const isTop50 = rankData.finalRank <= 50;
   const isTop3 = rankData.finalRank <= 3;
 
   const getRankIcon = (rank: number) => {
@@ -105,6 +106,12 @@ const WeeklyRankPopup = ({
         title: "⭐ TOP 10 FINISHER! ⭐",
         message: `Outstanding! You finished in ${rankData.finalRank}${getOrdinalSuffix(rankData.finalRank)} place!`,
         subMessage: "You've earned your spot among the week's best players!"
+      };
+    } else if (isTop50) {
+      return {
+        title: "🎯 TOP 50 FINISHER! 🎯",
+        message: `You finished in ${rankData.finalRank}${getOrdinalSuffix(rankData.finalRank)} place this week.`,
+        subMessage: "Great effort! Keep playing to climb higher next week!"
       };
     } else {
       return {
@@ -204,7 +211,7 @@ const WeeklyRankPopup = ({
               </motion.div>
 
               {/* Reward Section */}
-              {isTop10 && rankData.rewardReceived && (
+              {isTop50 && rankData.rewardReceived && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -254,7 +261,7 @@ const WeeklyRankPopup = ({
               </div>
 
               {/* Motivational Message */}
-              {!isTop10 && (
+              {!isTop50 && (
                 <div className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 p-3 rounded-lg border border-blue-300 dark:border-blue-700">
                   <div className="flex items-center justify-center space-x-2 mb-2">
                     <Target className="w-5 h-5 text-blue-600" />

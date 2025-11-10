@@ -4254,6 +4254,12 @@ export class DatabaseStorage implements IStorage {
         price: 50000000, // 50 million coins
       },
       {
+        id: 'firestorm',
+        name: 'Fire Storm',
+        description: 'Blazing 3D fire frame with intense flames erupting outside the border',
+        price: 1000000000, // 1 billion coins
+      },
+      {
         id: 'level_100_master',
         name: 'Level 100 Master',
         description: 'Golden animated frame for achieving level 100',
@@ -4282,6 +4288,12 @@ export class DatabaseStorage implements IStorage {
         name: 'Legend',
         description: 'Ultimate rainbow prismatic frame for legends',
         price: 500000000, // 500 million coins
+      },
+      {
+        id: 'lovers_3d',
+        name: 'Lovers Heart 3D',
+        description: 'Romantic 3D hearts floating around your avatar - for lovers only!',
+        price: 1000000000, // 1 billion coins
       },
     ];
 

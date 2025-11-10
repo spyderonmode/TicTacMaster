@@ -110,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const connections = new Map<string, WSConnection>();
   const roomConnections = new Map<string, Set<string>>();
-  const matchmakingQueue: string[] = []; // Queue of user IDs waiting for matches
+  const matchmakingQueue: Array<{userId: string, betAmount: number}> = []; // Queue of users waiting for matches with their bet amounts
   const onlineUsers = new Map<string, { userId: string; username: string; displayName: string; roomId?: string; lastSeen: Date }>();
   const userRoomStates = new Map<string, { roomId: string; gameId?: string; isInGame: boolean }>();
   const matchmakingTimers = new Map<string, NodeJS.Timeout>(); // Track user timers for bot matches
@@ -361,7 +361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         removedUsers++;
 
         // Clean up matchmaking data for offline users
-        const queueIndex = matchmakingQueue.indexOf(userId);
+        const queueIndex = matchmakingQueue.findIndex(entry => entry.userId === userId);
         if (queueIndex > -1) {
           matchmakingQueue.splice(queueIndex, 1);
           //console.log(`🧹 Removed ${user.displayName} from matchmaking queue (offline)`);
@@ -2817,8 +2817,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Not authorized to respond to this invitation' });
       }
 
+      // Check if user has enough coins before accepting invitation
+      if (response === 'accepted') {
+        // Get room details to check bet amount
+        const room = await storage.getRoomById(invitation.roomId);
+        if (!room) {
+          return res.status(404).json({ error: 'Room not found' });
+        }
+
+        const requiredCoins = room.betAmount || 100;
+        const userCoins = await storage.getUserCoins(userId);
+
+        if (userCoins < requiredCoins) {
+          return res.status(403).json({ 
+            error: 'Insufficient coins',
+            message: `You need ${requiredCoins.toLocaleString()} coins to join this room. You have ${userCoins.toLocaleString()} coins. Win AI games to earn more coins!`,
+            requiredCoins: requiredCoins,
+            currentCoins: userCoins
+          });
+        }
+      }
+
       // Respond to invitation
       await storage.respondToRoomInvitation(invitationId, response);
+
+      // Get user info for notifications
+      const responderInfo = await storage.getUser(userId);
 
       if (response === 'accepted') {
         // Add user to room as participant
@@ -2829,7 +2853,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Send WebSocket notification to room about new participant
-        const userInfo = await storage.getUser(userId);
         const roomConnections_invite = roomConnections.get(invitation.roomId);
         if (roomConnections_invite) {
           roomConnections_invite.forEach(connectionId => {
@@ -2839,9 +2862,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 type: 'user_joined_room',
                 userId: userId,
                 userInfo: {
-                  displayName: userInfo?.displayName || userInfo?.username,
-                  username: userInfo?.username,
-                  profileImageUrl: userInfo?.profileImageUrl
+                  displayName: responderInfo?.displayName || responderInfo?.username,
+                  username: responderInfo?.username,
+                  profileImageUrl: responderInfo?.profileImageUrl
                 },
                 roomId: invitation.roomId
               }));
@@ -2862,8 +2885,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
 
+        // Send notification to inviter that invitation was accepted
+        const inviterConnections = Array.from(connections.entries())
+          .filter(([_, connection]) => connection.userId === invitation.inviterId);
+        
+        inviterConnections.forEach(([_, connection]) => {
+          if (connection.ws.readyState === WebSocket.OPEN) {
+            connection.ws.send(JSON.stringify({
+              type: 'room_invitation_accepted',
+              invitationId: invitationId,
+              roomId: invitation.roomId,
+              acceptedBy: {
+                userId: userId,
+                displayName: responderInfo?.displayName || responderInfo?.username,
+                username: responderInfo?.username
+              }
+            }));
+          }
+        });
+
         res.json({ success: true, message: 'Invitation accepted', room: invitation.room });
       } else {
+        // Send notification to inviter that invitation was rejected
+        const inviterConnections = Array.from(connections.entries())
+          .filter(([_, connection]) => connection.userId === invitation.inviterId);
+        
+        inviterConnections.forEach(([_, connection]) => {
+          if (connection.ws.readyState === WebSocket.OPEN) {
+            connection.ws.send(JSON.stringify({
+              type: 'room_invitation_rejected',
+              invitationId: invitationId,
+              roomId: invitation.roomId,
+              rejectedBy: {
+                userId: userId,
+                displayName: responderInfo?.displayName || responderInfo?.username,
+                username: responderInfo?.username
+              }
+            }));
+          }
+        });
+
         res.json({ success: true, message: 'Invitation rejected' });
       }
     } catch (error) {
@@ -3173,15 +3234,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/matchmaking/join', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.user.userId;
+      const betAmount = req.body.betAmount || 1000000; // Default to 1M if not specified
 
-      // Check if user has enough coins for online play (1000 coins required)
+      // Validate bet amount (only allow 5k or 1M for quick match)
+      if (betAmount !== 5000 && betAmount !== 1000000) {
+        return res.status(400).json({ 
+          error: 'Invalid bet amount',
+          message: 'Quick match only supports 5k or 1M coin bets.'
+        });
+      }
+
+      // Check if user has enough coins for the selected bet
       try {
         const userCoins = await storage.getUserCoins(userId);
-        if (userCoins < 1000) {
+        if (userCoins < betAmount) {
           return res.status(403).json({ 
             error: 'Insufficient coins',
-            message: `You need 1000 coins to play online. You have ${userCoins} coins. Win AI games to earn coins!`,
-            requiredCoins: 1000,
+            message: `You need ${betAmount.toLocaleString()} coins to play with this bet. You have ${userCoins.toLocaleString()} coins. Win AI games to earn coins!`,
+            requiredCoins: betAmount,
             currentCoins: userCoins
           });
         }
@@ -3191,11 +3261,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if user is already in queue (duplicate prevention)
-      if (matchmakingQueue.includes(userId)) {
+      const existingEntry = matchmakingQueue.find(entry => entry.userId === userId);
+      if (existingEntry) {
+        const queueIndex = matchmakingQueue.findIndex(entry => entry.userId === userId);
         return res.json({ 
           status: 'waiting', 
           message: 'Already in matchmaking queue',
-          queuePosition: matchmakingQueue.indexOf(userId) + 1,
+          queuePosition: queueIndex + 1,
           queueLength: matchmakingQueue.length
         });
       }
@@ -3275,15 +3347,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       //console.log(`✅ User ${userId} starting matchmaking - cleared room states`);
       userRoomStates.delete(userId);
 
-      // Add to queue
-      matchmakingQueue.push(userId);
+      // Add to queue with bet amount
+      matchmakingQueue.push({userId, betAmount});
       // User joined matchmaking queue
 
       // Set 25-second timer for AI bot matchmaking
       const botTimer = setTimeout(async () => {
         try {
           // Double-check if user is still in queue and hasn't been matched with real player
-          const currentQueueIndex = matchmakingQueue.indexOf(userId);
+          const currentQueueIndex = matchmakingQueue.findIndex(entry => entry.userId === userId);
           if (currentQueueIndex === -1) {
             //console.log(`🤖 User ${userId} no longer in queue - likely matched with real player. Skipping bot match.`);
             matchmakingTimers.delete(userId);
@@ -3293,6 +3365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Matching user with AI bot after timeout
 
           // Remove user from queue and clear timer
+          const userEntry = matchmakingQueue[currentQueueIndex];
           matchmakingQueue.splice(currentQueueIndex, 1);
           matchmakingTimers.delete(userId);
 
@@ -3300,12 +3373,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const bot = getRandomAvailableBot();
           // Bot selected for matchmaking
 
-          // Create room for user vs bot
+          // Create room for user vs bot with bet amount
           const room = await storage.createRoom({
             name: `${bot.displayName} Match`,
             isPrivate: false,
             maxPlayers: 2,
             ownerId: userId,
+            betAmount: userEntry.betAmount,
           });
 
           // Add user as participant
@@ -3453,54 +3527,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store timer for cleanup
       matchmakingTimers.set(userId, botTimer);
 
-      // Check if we can make a match (need 2 players) - WITH RACE CONDITION PROTECTION
+      // Check if we can make a match (need 2 players with same bet) - WITH RACE CONDITION PROTECTION
       if (!isMatchmakingLocked && matchmakingQueue.length >= 2) {
-        // Lock matchmaking to prevent race conditions
-        isMatchmakingLocked = true;
+        // Try to find two players with matching bet amounts
+        let player1Entry = null;
+        let player2Entry = null;
+        let player1Index = -1;
+        let player2Index = -1;
 
-        // Double-check queue length after acquiring lock
-        if (matchmakingQueue.length < 2) {
-          isMatchmakingLocked = false;
-          return res.json({ 
-            status: 'waiting', 
-            message: 'Searching for opponent...',
-            queuePosition: matchmakingQueue.indexOf(userId) + 1,
-            queueLength: matchmakingQueue.length
+        // Find a pair of players with the same bet amount
+        for (let i = 0; i < matchmakingQueue.length; i++) {
+          for (let j = i + 1; j < matchmakingQueue.length; j++) {
+            if (matchmakingQueue[i].betAmount === matchmakingQueue[j].betAmount) {
+              player1Entry = matchmakingQueue[i];
+              player2Entry = matchmakingQueue[j];
+              player1Index = i;
+              player2Index = j;
+              break;
+            }
+          }
+          if (player1Entry && player2Entry) break;
+        }
+
+        // If we found a match, proceed
+        if (player1Entry && player2Entry) {
+          // Lock matchmaking to prevent race conditions
+          isMatchmakingLocked = true;
+
+          const player1Id = player1Entry.userId;
+          const player2Id = player2Entry.userId;
+          const matchBetAmount = player1Entry.betAmount;
+
+          // Ensure we don't pair the same user twice
+          if (player1Id === player2Id) {
+            isMatchmakingLocked = false;
+            console.error('🚫 Race condition detected: Same user in queue twice');
+            return res.status(500).json({ error: 'Queue error, please try again' });
+          }
+
+          // Clear timers for both players since they matched with real players
+          if (matchmakingTimers.has(player1Id)) {
+            clearTimeout(matchmakingTimers.get(player1Id)!);
+            matchmakingTimers.delete(player1Id);
+          }
+          if (matchmakingTimers.has(player2Id)) {
+            clearTimeout(matchmakingTimers.get(player2Id)!);
+            matchmakingTimers.delete(player2Id);
+          }
+          
+          // Remove both players from queue (remove higher index first to avoid index shift)
+          if (player1Index > player2Index) {
+            matchmakingQueue.splice(player1Index, 1);
+            matchmakingQueue.splice(player2Index, 1);
+          } else {
+            matchmakingQueue.splice(player2Index, 1);
+            matchmakingQueue.splice(player1Index, 1);
+          }
+
+          //console.log(`🎯 Match found! Pairing ${player1Id} vs ${player2Id} with bet ${matchBetAmount}`);
+
+          // Create room for matched players with bet amount
+          const room = await storage.createRoom({
+            name: `Match ${Date.now()}`,
+            isPrivate: false,
+            maxPlayers: 2,
+            ownerId: player1Id,
+            betAmount: matchBetAmount,
           });
-        }
-
-        // Get first two players safely
-        const player1Id = matchmakingQueue[0];
-        const player2Id = matchmakingQueue[1];
-
-        // Ensure we don't pair the same user twice
-        if (player1Id === player2Id) {
-          isMatchmakingLocked = false;
-          console.error('🚫 Race condition detected: Same user in queue twice');
-          return res.status(500).json({ error: 'Queue error, please try again' });
-        }
-
-        // Clear timers for both players since they matched with real players
-        if (matchmakingTimers.has(player1Id)) {
-          clearTimeout(matchmakingTimers.get(player1Id)!);
-          matchmakingTimers.delete(player1Id);
-        }
-        if (matchmakingTimers.has(player2Id)) {
-          clearTimeout(matchmakingTimers.get(player2Id)!);
-          matchmakingTimers.delete(player2Id);
-        }
-        // Remove both players from queue atomically
-        matchmakingQueue.splice(0, 2);
-
-        //console.log(`🎯 Match found! Pairing ${player1Id} vs ${player2Id}`);
-
-        // Create room for matched players
-        const room = await storage.createRoom({
-          name: `Match ${Date.now()}`,
-          isPrivate: false,
-          maxPlayers: 2,
-          ownerId: player1Id,
-        });
 
         // Add both players as participants
         await storage.addRoomParticipant({
@@ -3755,11 +3848,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Return matched status to the player who just joined (this is the API response)
         res.json({ status: 'matched', room: room });
+        } else {
+          // No matching bet found, return waiting status
+          const queueIndex = matchmakingQueue.findIndex(entry => entry.userId === userId);
+          res.json({ 
+            status: 'waiting', 
+            message: 'Waiting for another player...',
+            queuePosition: queueIndex + 1,
+            queueLength: matchmakingQueue.length
+          });
+        }
       } else {
+        // No match found (queue < 2 or no matching lock), return waiting
+        const queueIndex = matchmakingQueue.findIndex(entry => entry.userId === userId);
         res.json({ 
           status: 'waiting', 
           message: 'Waiting for another player...',
-          queuePosition: matchmakingQueue.indexOf(userId) + 1,
+          queuePosition: queueIndex + 1,
           queueLength: matchmakingQueue.length
         });
       }
@@ -3783,7 +3888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         //console.log(`🤖 Cleared bot timer for user ${userId}`);
       }
 
-      const index = matchmakingQueue.indexOf(userId);
+      const index = matchmakingQueue.findIndex(entry => entry.userId === userId);
       if (index > -1) {
         matchmakingQueue.splice(index, 1);
         //console.log(`🎯 User ${userId} left matchmaking queue. Queue size: ${matchmakingQueue.length}`);
@@ -6516,7 +6621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
 
               // Also remove user from matchmaking queue if they were in it
-              const matchmakingIndex = matchmakingQueue.indexOf(connection.userId);
+              const matchmakingIndex = matchmakingQueue.findIndex(entry => entry.userId === connection.userId);
               if (matchmakingIndex > -1) {
                 matchmakingQueue.splice(matchmakingIndex, 1);
                 //console.log(`🧹 Removed user ${connection.userId} from matchmaking queue`);
@@ -6584,18 +6689,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const request = await storage.sendPlayAgainRequest(userId, requestedUserId, gameId);
 
-      // Send real-time notification to the requested player
-      const requestedConnection = Array.from(connections.values())
-        .find(conn => conn.userId === requestedUserId);
+      // Fetch requester's full details to send with the notification
+      const requesterUser = await storage.getUser(userId);
 
-      if (requestedConnection && requestedConnection.ws.readyState === WebSocket.OPEN) {
-        requestedConnection.ws.send(JSON.stringify({
-          type: 'play_again_request',
-          requestId: request.id,
-          requesterId: userId,
-          gameId,
-        }));
+      // Send real-time notification to ALL active connections for the requested player
+      // This ensures the user receives the request even if they have multiple tabs open or reconnected
+      const requestPayload = {
+        type: 'play_again_request',
+        requestId: request.id,
+        requesterId: userId,
+        requestedId: requestedUserId,
+        gameId,
+        status: 'pending',
+        requestedAt: new Date().toISOString(),
+        requester: {
+          id: userId,
+          displayName: requesterUser?.displayName || '',
+          firstName: requesterUser?.firstName || '',
+          lastName: requesterUser?.lastName || '',
+          username: requesterUser?.username || '',
+          profileImageUrl: requesterUser?.profileImageUrl || undefined,
+        },
+        game: {
+          id: gameId,
+          gameMode: game.gameMode || 'online',
+        }
+      };
+
+      let notificationsSent = 0;
+      for (const connection of connections.values()) {
+        if (connection.userId === requestedUserId && connection.ws.readyState === WebSocket.OPEN) {
+          try {
+            connection.ws.send(JSON.stringify(requestPayload));
+            notificationsSent++;
+          } catch (error) {
+            console.error(`❌ Failed to send play again request to connection:`, error);
+          }
+        }
       }
+
+      //console.log(`📬 Sent play again request to ${notificationsSent} active connections for user ${requestedUserId}`);
 
       res.json({ success: true, requestId: request.id });
     } catch (error) {
@@ -6688,20 +6821,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
           }
         });
-      } else {
-        // Send response notification for accepted requests
-        if (requesterConnection && requesterConnection.ws.readyState === WebSocket.OPEN) {
-          requesterConnection.ws.send(JSON.stringify({
-            type: 'play_again_response',
-            requestId,
-            response,
-            responderId: userId,
-          }));
-        }
+        
+        // Send success response for rejected requests immediately
+        return res.json({ success: true });
       }
 
-      // If accepted, reuse existing room and create new game
-      if (response === 'accepted') {
+      // Send response notification for accepted requests
+      if (requesterConnection && requesterConnection.ws.readyState === WebSocket.OPEN) {
+        requesterConnection.ws.send(JSON.stringify({
+          type: 'play_again_response',
+          requestId,
+          response,
+          responderId: userId,
+        }));
+      }
+
+      // Send success response immediately BEFORE starting countdown
+      res.json({ success: true });
+
+      // Run countdown and game creation asynchronously (don't block HTTP response)
+      setImmediate(async () => {
         try {
           // Get the original game's room ID (already validated above)
           const originalGame = request.game;
@@ -6847,11 +6986,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           //console.log(`🎮 Play again accepted: Created new game ${newGame.id} in room ${existingRoomId} after 5-second countdown`);
         } catch (error) {
           console.error('Error creating new game for play again:', error);
-          // Still send success response even if game creation fails
+          // Game creation failed but response was already sent
         }
-      }
-
-      res.json({ success: true });
+      }); // Close setImmediate
     } catch (error) {
       console.error('Error responding to play again request:', error);
       res.status(500).json({ error: 'Failed to respond to play again request' });

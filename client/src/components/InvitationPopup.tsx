@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { UserPlus, X, Check, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { ErrorModal } from "@/components/ErrorModal";
 
 interface InvitationPopupProps {
   onRoomJoin: (room: any) => void;
@@ -17,6 +18,12 @@ interface InvitationPopupProps {
 export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
   const { t } = useTranslation();
   const [visibleInvitation, setVisibleInvitation] = useState<any>(null);
+  const [errorModal, setErrorModal] = useState<{ open: boolean; title: string; message: string; type: 'error' | 'coins' | 'warning' }>({ 
+    open: false, 
+    title: '', 
+    message: '',
+    type: 'error'
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
@@ -29,6 +36,20 @@ export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
     refetchOnWindowFocus: false,
     refetchOnMount: true,
   });
+
+  // Listen for WebSocket room invitation events
+  useEffect(() => {
+    const handleRoomInvitation = (event: any) => {
+      console.log('🔔 Room invitation received via WebSocket:', event.detail);
+      // Immediately refetch invitations to show the new invitation
+      queryClient.invalidateQueries({ queryKey: ['/api/room-invitations'] });
+    };
+
+    window.addEventListener('room_invitation_received', handleRoomInvitation as EventListener);
+    return () => {
+      window.removeEventListener('room_invitation_received', handleRoomInvitation as EventListener);
+    };
+  }, [queryClient]);
 
   // Show the first pending invitation as a popup
   useEffect(() => {
@@ -64,12 +85,24 @@ export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/room-invitations'] });
       setVisibleInvitation(null);
     },
-    onError: (error) => {
-      toast({
-        title: t('error'),
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      // Check if it's an insufficient coins error
+      if (error.status === 403 && error.data?.error === 'Insufficient coins') {
+        setErrorModal({
+          open: true,
+          title: 'Insufficient Coins',
+          message: error.data.message || error.message,
+          type: 'coins'
+        });
+      } else {
+        // For other errors, show a generic error modal
+        setErrorModal({
+          open: true,
+          title: t('error'),
+          message: error.message,
+          type: 'error'
+        });
+      }
     },
   });
 
@@ -98,8 +131,17 @@ export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
   if (!visibleInvitation) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
+    <>
+      <ErrorModal
+        open={errorModal.open}
+        onClose={() => setErrorModal({ ...errorModal, open: false })}
+        title={errorModal.title}
+        message={errorModal.message}
+        type={errorModal.type}
+      />
+      
+      <AnimatePresence>
+        <motion.div
         initial={{ opacity: 0, scale: 0.8, y: 50 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.8, y: 50 }}
@@ -160,5 +202,6 @@ export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
         </Card>
       </motion.div>
     </AnimatePresence>
+    </>
   );
 }

@@ -380,6 +380,215 @@
   animation: shimmer 2s ease-in-out infinite;
 }
 
+/* Optimized Achievement Border Animations - Hardware Accelerated */
+@keyframes ultimate-veteran-border {
+  0%, 100% { 
+    border-color: #ff6347;
+    opacity: 1;
+  }
+  25% { 
+    border-color: #ff1493;
+    opacity: 0.9;
+  }
+  50% { 
+    border-color: #ff6600;
+    opacity: 1;
+  }
+  75% { 
+    border-color: #ffa500;
+    opacity: 0.95;
+  }
+}
+
+@keyframes grandmaster-border {
+  0%, 100% { 
+    border-color: #818cf8;
+    opacity: 1;
+  }
+  25% { 
+    border-color: #9ca3af;
+    opacity: 0.92;
+  }
+  50% { 
+    border-color: #8b5cf6;
+    opacity: 1;
+  }
+  75% { 
+    border-color: #f59e0b;
+    opacity: 0.94;
+  }
+}
+
+@keyframes champion-border {
+  0%, 100% { 
+    border-color: #8a2be2;
+    opacity: 1;
+  }
+  25% { 
+    border-color: #00bfff;
+    opacity: 0.93;
+  }
+  50% { 
+    border-color: #ffd700;
+    opacity: 1;
+  }
+  75% { 
+    border-color: #ff69b4;
+    opacity: 0.95;
+  }
+}
+
+@keyframes legend-border {
+  0%, 100% { 
+    border-color: #ff4500;
+    opacity: 1;
+  }
+  33% { 
+    border-color: #ff0000;
+    opacity: 0.94;
+  }
+  66% { 
+    border-color: #ff8800;
+    opacity: 1;
+  }
+}
+
+@keyframes level-100-border {
+  0%, 100% { 
+    border-color: #fbbf24;
+    opacity: 1;
+    transform: scale(1);
+  }
+  33% { 
+    border-color: #fcd34d;
+    opacity: 0.91;
+    transform: scale(1.02);
+  }
+  66% { 
+    border-color: #f59e0b;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.achievement-ultimate-veteran {
+  animation: ultimate-veteran-border 3s ease-in-out infinite;
+}
+
+.achievement-grandmaster {
+  animation: grandmaster-border 3.5s ease-in-out infinite;
+}
+
+.achievement-champion {
+  animation: champion-border 4s ease-in-out infinite;
+}
+
+.achievement-legend {
+  animation: legend-border 2.5s ease-in-out infinite;
+}
+
+.achievement-level-100 {
+  animation: level-100-border 2.5s ease-in-out infinite;
+}
+
+/* Optimized Avatar Frame Animations - Hardware Accelerated */
+@keyframes avatar-level-100-master {
+  0%, 100% {
+    background-position: 0% 50%;
+    box-shadow: 0 0 20px 2px rgba(251, 191, 36, 0.6), 0 0 30px 4px rgba(245, 158, 11, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.3);
+    transform: rotate(0deg);
+  }
+  33% {
+    background-position: 100% 50%;
+    box-shadow: 0 0 30px 4px rgba(251, 191, 36, 0.8), 0 0 40px 6px rgba(245, 158, 11, 0.5), inset 0 0 25px rgba(251, 191, 36, 0.4);
+  }
+  66% {
+    background-position: 0% 50%;
+    box-shadow: 0 0 20px 2px rgba(251, 191, 36, 0.6), 0 0 30px 4px rgba(245, 158, 11, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.3);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes avatar-thundering {
+  0%, 100% {
+    background-position: 0% 50%;
+    transform: rotate(0deg);
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes avatar-ultimate-veteran {
+  0%, 100% {
+    box-shadow: 0 0 15px 3px rgba(255, 69, 0, 0.6), 0 0 25px 5px rgba(255, 102, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px 5px rgba(255, 69, 0, 0.9), 0 0 35px 7px rgba(255, 102, 0, 0.6);
+  }
+}
+
+@keyframes avatar-grandmaster {
+  0%, 100% {
+    box-shadow: 0 0 12px 2px rgba(129, 140, 248, 0.6), 0 0 20px 3px rgba(165, 180, 252, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 18px 3px rgba(129, 140, 248, 0.8), 0 0 25px 4px rgba(165, 180, 252, 0.5);
+  }
+}
+
+@keyframes avatar-champion {
+  0%, 100% {
+    box-shadow: 0 0 12px 2px rgba(138, 43, 226, 0.6), 0 0 20px 3px rgba(153, 50, 204, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 18px 3px rgba(138, 43, 226, 0.8), 0 0 25px 4px rgba(153, 50, 204, 0.5);
+  }
+}
+
+@keyframes avatar-legend {
+  0%, 100% {
+    box-shadow: 0 0 10px 2px rgba(255, 69, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 15px 3px rgba(255, 69, 0, 0.8);
+  }
+}
+
+.avatar-level-100-master {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 25%, #d97706 50%, #f59e0b 75%, #fbbf24 100%);
+  background-size: 200% 200%;
+  animation: avatar-level-100-master 3s linear infinite;
+}
+
+.avatar-thundering {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 25%, #60a5fa 50%, #1d4ed8 75%, #3b82f6 100%);
+  background-size: 200% 200%;
+  animation: avatar-thundering 10s linear infinite;
+}
+
+.avatar-ultimate-veteran {
+  animation: avatar-ultimate-veteran 2s ease-in-out infinite;
+}
+
+.avatar-grandmaster {
+  animation: avatar-grandmaster 2s ease-in-out infinite;
+}
+
+.avatar-champion {
+  animation: avatar-champion 2s ease-in-out infinite;
+}
+
+.avatar-legend {
+  animation: avatar-legend 1.2s ease-in-out infinite;
+}
+
 /* Player Profile Modal Styling */
 .player-profile-modal {
   z-index: 9998 !important;

@@ -32,27 +32,7 @@ export function AvatarWithFrame({
       case 'level_100_master':
       case 'level100Master':
         return (
-          <motion.div
-            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
-            style={{
-              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 25%, #d97706 50%, #f59e0b 75%, #fbbf24 100%)',
-              backgroundSize: '200% 200%',
-            }}
-            animate={{
-              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-              boxShadow: [
-                '0 0 20px 2px rgba(251, 191, 36, 0.6), 0 0 30px 4px rgba(245, 158, 11, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.3)',
-                '0 0 30px 4px rgba(251, 191, 36, 0.8), 0 0 40px 6px rgba(245, 158, 11, 0.5), inset 0 0 25px rgba(251, 191, 36, 0.4)',
-                '0 0 20px 2px rgba(251, 191, 36, 0.6), 0 0 30px 4px rgba(245, 158, 11, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.3)'
-              ],
-              rotate: [0, 360]
-            }}
-            transition={{
-              backgroundPosition: { duration: 3, repeat: Infinity, ease: 'linear' },
-              boxShadow: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
-              rotate: { duration: 8, repeat: Infinity, ease: 'linear' }
-            }}
-          >
+          <div className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]} avatar-level-100-master`}>
             <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 via-yellow-600 to-amber-700 p-[2px] relative">
               <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
                 {src ? (
@@ -68,48 +48,44 @@ export function AvatarWithFrame({
                 )}
               </div>
             </div>
-          </motion.div>
+          </div>
         );
-      
+
       case 'thundering':
         return (
-          <motion.div
-            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
-            style={{
-              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 25%, #60a5fa 50%, #1d4ed8 75%, #3b82f6 100%)',
-              backgroundSize: '200% 200%',
-            }}
-            animate={{
-              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-              boxShadow: [
-                '0 0 25px 3px rgba(59, 130, 246, 0.7), 0 0 40px 5px rgba(29, 78, 216, 0.5), inset 0 0 25px rgba(96, 165, 250, 0.4), 0 0 60px 8px rgba(147, 197, 253, 0.3)',
-                '0 0 35px 5px rgba(59, 130, 246, 0.9), 0 0 50px 7px rgba(29, 78, 216, 0.7), inset 0 0 30px rgba(96, 165, 250, 0.5), 0 0 70px 10px rgba(147, 197, 253, 0.4)',
-                '0 0 25px 3px rgba(59, 130, 246, 0.7), 0 0 40px 5px rgba(29, 78, 216, 0.5), inset 0 0 25px rgba(96, 165, 250, 0.4), 0 0 60px 8px rgba(147, 197, 253, 0.3)'
-              ],
-              rotate: [0, 360],
-              scale: [1, 1.02, 1]
-            }}
-            transition={{
-              backgroundPosition: { duration: 2.5, repeat: Infinity, ease: 'linear' },
-              boxShadow: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' },
-              rotate: { duration: 10, repeat: Infinity, ease: 'linear' },
-              scale: { duration: 2, repeat: Infinity, ease: 'easeInOut' }
-            }}
-          >
+          <div className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]} avatar-thundering`}>
             <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 via-blue-600 to-blue-800 p-[3px] relative overflow-hidden">
               <motion.div 
                 className="absolute inset-0 rounded-full"
                 style={{
-                  background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.8) 50%, transparent 70%)',
+                  background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.9) 50%, transparent 70%)',
                   backgroundSize: '200% 200%',
                 }}
                 animate={{
                   backgroundPosition: ['-200% -200%', '200% 200%'],
+                  opacity: [0, 1, 0]
                 }}
                 transition={{
-                  duration: 3,
+                  duration: 1.5,
                   repeat: Infinity,
                   ease: 'linear'
+                }}
+              />
+              <motion.div 
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, transparent 40%, rgba(147, 197, 253, 0.8) 50%, transparent 60%)',
+                  backgroundSize: '200% 200%',
+                }}
+                animate={{
+                  backgroundPosition: ['200% 200%', '-200% -200%'],
+                  opacity: [0, 0.8, 0]
+                }}
+                transition={{
+                  duration: 1.8,
+                  repeat: Infinity,
+                  ease: 'linear',
+                  delay: 0.5
                 }}
               />
               <div className="w-full h-full rounded-full bg-gray-900 p-[2px] relative z-10">
@@ -117,13 +93,13 @@ export function AvatarWithFrame({
                   <motion.div
                     className="absolute inset-0"
                     style={{
-                      background: 'radial-gradient(circle at 30% 30%, rgba(96, 165, 250, 0.3) 0%, transparent 50%)',
+                      background: 'radial-gradient(circle at 30% 30%, rgba(96, 165, 250, 0.4) 0%, transparent 50%)',
                     }}
                     animate={{
-                      opacity: [0.3, 0.6, 0.3],
+                      opacity: [0.2, 0.7, 0.2],
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 1.5,
                       repeat: Infinity,
                       ease: 'easeInOut'
                     }}
@@ -142,55 +118,129 @@ export function AvatarWithFrame({
                 </div>
               </div>
             </div>
-            <motion.div
-              className="absolute -top-1 -right-1 w-4 h-4"
-              animate={{
-                scale: [0, 1.5, 0],
-                opacity: [0, 1, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                repeatDelay: 0.5,
-              }}
-            >
-              <div className="w-full h-full bg-blue-400 rounded-full blur-sm" />
-            </motion.div>
-            <motion.div
-              className="absolute -bottom-1 -left-1 w-4 h-4"
-              animate={{
-                scale: [0, 1.5, 0],
-                opacity: [0, 1, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                repeatDelay: 0.5,
-                delay: 1,
-              }}
-            >
-              <div className="w-full h-full bg-blue-300 rounded-full blur-sm" />
-            </motion.div>
-          </motion.div>
+          </div>
         );
-      
+
+      case 'firestorm':
+        return (
+          <div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 20%, #ea580c 40%, #f97316 60%, #fb923c 80%, #fdba74 100%)',
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-orange-600 via-red-600 to-amber-500 p-[4px] relative overflow-visible">
+
+              {/* Fire particles all around the border */}
+              {[...Array(16)].map((_, i) => {
+                const angle = (i * 360) / 16;
+                const radius = size === 'sm' ? 18 : size === 'md' ? 26 : 38;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+
+                return (
+                  <motion.div
+                    key={i}
+                    className="absolute w-1 h-1 rounded-full z-0"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      background: 'radial-gradient(circle, #fef3c7, #fbbf24)',
+                      boxShadow: '0 0 4px #fbbf24, 0 0 8px #fb923c',
+                    }}
+                    animate={{
+                      x: [x * 0.85, x * 1.05, x * 0.9, x * 1.1, x * 0.88],
+                      y: [y * 0.85, y * 1.05, y * 0.9, y * 1.1, y * 0.88],
+                      opacity: [0.5, 1, 0.7, 0.9, 0.6],
+                      scale: [0.5, 1.2, 0.8, 1.3, 0.6],
+                    }}
+                    transition={{
+                      duration: 2 + (i % 4) * 0.3,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.1,
+                    }}
+                  />
+                );
+              })}
+
+              {/* Additional animated fire particles */}
+              {[...Array(12)].map((_, i) => {
+                const angle = (i * 360) / 12 + 15;
+                const radius = size === 'sm' ? 20 : size === 'md' ? 28 : 40;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+
+                return (
+                  <motion.div
+                    key={`outer-${i}`}
+                    className="absolute w-0.5 h-0.5 rounded-full z-0"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      background: 'radial-gradient(circle, #fb923c, #ea580c)',
+                      boxShadow: '0 0 3px #fb923c',
+                    }}
+                    animate={{
+                      x: [x * 0.9, x * 1.15, x * 0.95, x * 1.08],
+                      y: [y * 0.9, y * 1.15, y * 0.95, y * 1.08],
+                      opacity: [0.3, 0.8, 0.5, 0.7],
+                      scale: [0.4, 1, 0.6, 0.9],
+                    }}
+                    transition={{
+                      duration: 1.8 + (i % 3) * 0.2,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.15,
+                    }}
+                  />
+                );
+              })}
+
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-[3px] relative z-10">
+                <div className="w-full h-full rounded-full overflow-hidden relative">
+                  {src ? (
+                    <motion.img 
+                      src={src} 
+                      alt={alt}
+                      className="w-full h-full rounded-full object-cover relative z-10"
+                      animate={{
+                        scale: [1, 1.05, 1]
+                      }}
+                      transition={{
+                        duration: 0.7,
+                        repeat: Infinity,
+                        ease: 'easeInOut'
+                      }}
+                    />
+                  ) : (
+                    <motion.div 
+                      className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10"
+                      animate={{
+                        scale: [1, 1.05, 1]
+                      }}
+                      transition={{
+                        duration: 0.7,
+                        repeat: Infinity,
+                        ease: 'easeInOut'
+                      }}
+                    >
+                      {fallbackText}
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       case 'ultimate_veteran':
         return (
-          <motion.div
-            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+          <div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]} avatar-ultimate-veteran`}
             style={{
               background: 'linear-gradient(135deg, #ff6347 0%, #ff4500 50%, #ff8c00 100%)',
             }}
-            animate={{
-              boxShadow: [
-                '0 0 15px 2px rgba(255, 99, 71, 0.6), 0 0 25px 3px rgba(255, 69, 0, 0.4)',
-                '0 0 20px 3px rgba(255, 99, 71, 0.8), 0 0 30px 4px rgba(255, 69, 0, 0.5)',
-                '0 0 15px 2px rgba(255, 99, 71, 0.6), 0 0 25px 3px rgba(255, 69, 0, 0.4)'
-              ]
-            }}
-            transition={{
-              boxShadow: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
-            }}
           >
             <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
               {src ? (
@@ -205,26 +255,16 @@ export function AvatarWithFrame({
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         );
-      
+
       case 'grandmaster':
         return (
-          <motion.div
-            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+          <div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]} avatar-grandmaster`}
             style={{
               background: 'linear-gradient(135deg, #818cf8 0%, #a5b4fc 50%, #c7d2fe 100%)',
             }}
-            animate={{
-              boxShadow: [
-                '0 0 12px 2px rgba(129, 140, 248, 0.6), 0 0 20px 3px rgba(165, 180, 252, 0.4)',
-                '0 0 18px 3px rgba(129, 140, 248, 0.8), 0 0 25px 4px rgba(165, 180, 252, 0.5)',
-                '0 0 12px 2px rgba(129, 140, 248, 0.6), 0 0 20px 3px rgba(165, 180, 252, 0.4)'
-              ]
-            }}
-            transition={{
-              boxShadow: { duration: 2, repeat: Infinity, ease: 'easeInOut' }
-            }}
           >
             <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
               {src ? (
@@ -239,26 +279,16 @@ export function AvatarWithFrame({
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         );
-      
+
       case 'champion':
         return (
-          <motion.div
-            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+          <div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]} avatar-champion`}
             style={{
               background: 'linear-gradient(135deg, #8a2be2 0%, #9932cc 50%, #ba55d3 100%)',
             }}
-            animate={{
-              boxShadow: [
-                '0 0 12px 2px rgba(138, 43, 226, 0.6), 0 0 20px 3px rgba(153, 50, 204, 0.4)',
-                '0 0 18px 3px rgba(138, 43, 226, 0.8), 0 0 25px 4px rgba(153, 50, 204, 0.5)',
-                '0 0 12px 2px rgba(138, 43, 226, 0.6), 0 0 20px 3px rgba(153, 50, 204, 0.4)'
-              ]
-            }}
-            transition={{
-              boxShadow: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
-            }}
           >
             <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
               {src ? (
@@ -273,26 +303,16 @@ export function AvatarWithFrame({
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         );
-      
+
       case 'legend':
         return (
-          <motion.div
-            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+          <div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]} avatar-legend`}
             style={{
               background: 'linear-gradient(135deg, #ff4500 0%, #ff6600 50%, #ff8800 100%)',
             }}
-            animate={{
-              boxShadow: [
-                '0 0 10px 2px rgba(255, 69, 0, 0.6)',
-                '0 0 15px 3px rgba(255, 69, 0, 0.8)',
-                '0 0 10px 2px rgba(255, 69, 0, 0.6)'
-              ]
-            }}
-            transition={{
-              boxShadow: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
-            }}
           >
             <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
               {src ? (
@@ -307,9 +327,114 @@ export function AvatarWithFrame({
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         );
-      
+
+      case 'lovers_3d':
+        return (
+          <div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #ec4899 0%, #f472b6 50%, #fbcfe8 100%)',
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-pink-500 via-rose-500 to-red-500 p-[3px] relative overflow-visible">
+
+              {/* 3D Floating hearts around the avatar */}
+              {[...Array(18)].map((_, i) => {
+                const angle = (i * 360) / 18;
+                const radius = size === 'sm' ? 22 : size === 'md' ? 30 : 42;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                const heartSize = size === 'sm' ? 7 : size === 'md' ? 10 : 13;
+
+                return (
+                  <motion.div
+                    key={i}
+                    className="absolute z-0"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: `${heartSize}px`,
+                      height: `${heartSize}px`,
+                      marginLeft: `-${heartSize / 2}px`,
+                      marginTop: `-${heartSize / 2}px`,
+                      transformStyle: 'preserve-3d',
+                      perspective: '1000px',
+                    }}
+                    initial={{ x, y }}
+                    animate={{
+                      x: [
+                        x, 
+                        x * 1.1, 
+                        x * 0.9, 
+                        x * 1.05, 
+                        x
+                      ],
+                      y: [
+                        y, 
+                        y * 1.1, 
+                        y * 0.9, 
+                        y * 1.05, 
+                        y
+                      ],
+                      scale: [0.8, 1.2, 0.9, 1.1, 0.8],
+                      rotateY: [0, 180, 360],
+                      rotateZ: [0, 10, -10, 0],
+                    }}
+                    transition={{
+                      duration: 3 + (i % 4) * 0.4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.15,
+                    }}
+                  >
+                    <svg
+                      width={heartSize}
+                      height={heartSize}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      style={{
+                        filter: 'drop-shadow(0 2px 4px rgba(236, 72, 153, 0.6))',
+                      }}
+                    >
+                      <path
+                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                        fill="url(#heartGradient)"
+                      />
+                      <defs>
+                        <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" style={{ stopColor: '#ec4899', stopOpacity: 1 }} />
+                          <stop offset="50%" style={{ stopColor: '#f472b6', stopOpacity: 1 }} />
+                          <stop offset="100%" style={{ stopColor: '#fbcfe8', stopOpacity: 1 }} />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </motion.div>
+                );
+              })}
+
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-[2px] relative z-10">
+                <div className="w-full h-full rounded-full overflow-hidden relative">
+                  {src ? (
+                    <img 
+                      src={src} 
+                      alt={alt}
+                      className="w-full h-full rounded-full object-cover relative z-10"
+                    />
+                  ) : (
+                    <div 
+                      className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10"
+                    >
+                      {fallbackText}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         // No frame
         return (

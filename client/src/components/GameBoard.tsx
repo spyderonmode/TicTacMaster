@@ -78,111 +78,65 @@ const getSelectedAchievementBorder = (playerInfo: any): string | null => {
   return null; // No border
 };
 
-// Helper function to render achievement borders based on selected type
+// Helper function to render achievement borders based on selected type (Optimized with CSS)
 const renderAchievementBorder = (borderType: string | null, playerName: string, theme: any) => {
   switch (borderType) {
     case 'ultimate_veteran':
       return (
-        <motion.div
-          animate={{
-            borderColor: ['#ff6347', '#ff1493', '#ff6600', '#ffa500', '#ff6347'],
-            opacity: [1, 0.9, 1, 0.95, 1]
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="px-2 py-1 rounded-lg border-2 bg-gradient-to-r from-red-900/25 via-orange-800/25 to-red-900/25 relative overflow-hidden"
+        <div
+          className="px-2 py-1 rounded-lg border-2 bg-gradient-to-r from-red-900/25 via-orange-800/25 to-red-900/25 relative overflow-hidden achievement-ultimate-veteran"
           style={{ borderColor: '#ff6347' }}
         >
           <span className={`text-base ${theme.textColor} max-w-32 truncate font-extrabold relative z-10`}>
             {playerName}
           </span>
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-400/15 to-transparent animate-shimmer"></div>
-        </motion.div>
+        </div>
       );
     case 'grandmaster':
       return (
-        <motion.div
-          animate={{
-            borderColor: ['#818cf8', '#9ca3af', '#8b5cf6', '#f59e0b', '#818cf8'],
-            opacity: [1, 0.92, 1, 0.94, 1]
-          }}
-          transition={{
-            duration: 3.5,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="px-2 py-1 rounded-lg border-2 bg-gradient-to-r from-indigo-900/20 via-gray-800/20 to-purple-900/20 relative"
+        <div
+          className="px-2 py-1 rounded-lg border-2 bg-gradient-to-r from-indigo-900/20 via-gray-800/20 to-purple-900/20 relative achievement-grandmaster"
           style={{ borderColor: '#818cf8' }}
         >
           <span className={`text-base ${theme.textColor} max-w-32 truncate font-bold`}>
             {playerName}
           </span>
-        </motion.div>
+        </div>
       );
     case 'champion':
       return (
-        <motion.div
-          animate={{
-            borderColor: ['#8a2be2', '#00bfff', '#ffd700', '#ff69b4', '#8a2be2'],
-            opacity: [1, 0.93, 1, 0.95, 1]
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="px-2 py-1 rounded-lg border-2 bg-gradient-to-r from-purple-900/15 via-blue-900/15 to-purple-900/15"
+        <div
+          className="px-2 py-1 rounded-lg border-2 bg-gradient-to-r from-purple-900/15 via-blue-900/15 to-purple-900/15 achievement-champion"
           style={{ borderColor: '#8a2be2' }}
         >
           <span className={`text-base ${theme.textColor} max-w-32 truncate font-bold`}>
             {playerName}
           </span>
-        </motion.div>
+        </div>
       );
     case 'legend':
       return (
-        <motion.div
-          animate={{
-            borderColor: ['#ff4500', '#ff0000', '#ff8800', '#ff4500'],
-            opacity: [1, 0.94, 1, 0.96, 1]
-          }}
-          transition={{
-            duration: 2.5,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="px-2 py-1 rounded-md border-2 bg-orange-900/15"
+        <div
+          className="px-2 py-1 rounded-md border-2 bg-orange-900/15 achievement-legend"
           style={{ borderColor: '#ff4500' }}
         >
           <span className={`text-base ${theme.textColor} max-w-32 truncate font-bold`}>
             {playerName}
           </span>
-        </motion.div>
+        </div>
       );
     case 'level_100_master':
     case 'level100Master':
       return (
-        <motion.div
-          animate={{
-            borderColor: ['#fbbf24', '#fcd34d', '#f59e0b', '#fbbf24'],
-            opacity: [1, 0.91, 1, 0.93, 1],
-            scale: [1, 1.02, 1]
-          }}
-          transition={{
-            duration: 2.5,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="px-2 py-1 rounded-lg border-2 bg-gradient-to-r from-amber-900/30 via-yellow-800/30 to-amber-900/30 relative"
+        <div
+          className="px-2 py-1 rounded-lg border-2 bg-gradient-to-r from-amber-900/30 via-yellow-800/30 to-amber-900/30 relative achievement-level-100"
           style={{ borderColor: '#fbbf24' }}
         >
           <span className={`text-base ${theme.textColor} max-w-32 truncate font-extrabold relative z-10`}>
             {playerName}
           </span>
-        </motion.div>
+        </div>
       );
     default:
       return (
@@ -778,18 +732,17 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         throw new Error('No active game');
       }
       
+      // CRITICAL FIX: Ensure game is in active state before processing move
+      if (game.status !== 'active') {
+        throw new Error('Game is not active yet. Please wait...');
+      }
+      
       // For local games (AI and pass-play), handle moves locally
       if (game.id && game.id.startsWith('local-game')) {
         return handleLocalMove(position);
       }
       
       // Making move with current game state
-      
-      // Additional safety check - ensure we have the latest game state
-      if (game.status === 'finished') {
-        // Attempting to move on finished game
-        throw new Error('Game is finished');
-      }
       
       // For online games, use WebSocket for instant synchronization
       if (sendMessage && gameMode === 'online') {
@@ -1106,7 +1059,17 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   const handleCellClick = (position: number) => {
     // Handle cell click for game move
     
-    if (!game || (game.status && game.status !== 'active')) {
+    // CRITICAL FIX: Prevent moves until game is fully initialized
+    if (!game) {
+      toast({
+        title: "Game not ready",
+        description: "Please wait for the game to start...",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (game.status && game.status !== 'active') {
       // Game not active
       toast({
         title: "Game not active",

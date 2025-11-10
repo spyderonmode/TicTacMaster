@@ -1,0 +1,160 @@
+/* Optimized CSS animations for AnimatedPieces - improves game performance */
+
+/* Pop-in animation for piece appearance (replaces framer-motion spring) */
+@keyframes piece-pop-in {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Spark burst animation (one-time effect) */
+@keyframes spark-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+  40%, 60% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+/* Delayed spark burst (for second spark) */
+@keyframes spark-burst-delayed {
+  0%, 10% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+  50%, 70% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+/* Lightning bolt appear animation */
+@keyframes lightning-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Flame flicker animation (infinite) */
+@keyframes flame-flicker {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  25% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+/* Circle pulse animation (infinite) */
+@keyframes circle-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  25% {
+    opacity: 0.9;
+    transform: scale(1.15);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  75% {
+    opacity: 0.95;
+    transform: scale(1.1);
+  }
+}
+
+/* Ring expansion (one-time) */
+@keyframes ring-expand {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(2);
+  }
+  50%, 70% {
+    opacity: 1;
+    transform: scale(2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+/* CSS classes to apply these animations */
+.animated-piece-container {
+  position: relative;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  animation: piece-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.spark-burst-1 {
+  animation: spark-burst 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.spark-burst-2 {
+  animation: spark-burst-delayed 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.lightning-bolt {
+  animation: lightning-appear 0.3s ease-out forwards;
+  animation-delay: 0.25s;
+  opacity: 0;
+}
+
+.flame-group {
+  animation: flame-flicker 2s ease-in-out infinite;
+}
+
+.pulse-circle {
+  animation: circle-pulse 2.5s ease-in-out infinite;
+}
+
+.ring-expansion {
+  animation: ring-expand 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

@@ -41,7 +41,7 @@ export const users = pgTable("users", {
   wins: integer("wins").default(0),
   losses: integer("losses").default(0),
   draws: integer("draws").default(0),
-  coins: bigint("coins", { mode: 'number' }).default(2000).notNull(), // Starting coins for new users
+  coins: bigint("coins", { mode: 'number' }).default(15000).notNull(), // Starting coins for new users
   currentWinStreak: integer("current_win_streak").default(0), // Current consecutive wins
   bestWinStreak: integer("best_win_streak").default(0), // Best win streak ever achieved
   selectedAchievementBorder: varchar("selected_achievement_border"), // Store the selected achievement type for border display
