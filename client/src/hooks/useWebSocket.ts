@@ -201,7 +201,7 @@ export function useWebSocket() {
           // Force page reload after showing the notification
           setTimeout(() => {
             window.location.href = '/'; // Redirect to root instead of reload to prevent reconnection
-          }, 2000); // Give user time to see the notification
+          }, 1000); // Give user time to see the notification
 
           return; // Don't set lastMessage to prevent useEffect processing
         }
@@ -626,7 +626,7 @@ export function useWebSocket() {
                 }, 5000);
                 localStorage.removeItem('currentGameState');
                 sessionStorage.removeItem('currentGameState');
-                setTimeout(() => { window.location.href = '/'; }, 2000);
+                setTimeout(() => { window.location.href = '/'; }, 1000);
                 return;
               }
 

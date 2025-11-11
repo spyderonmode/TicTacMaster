@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { X, Gift, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatNumber } from "@/lib/utils";
 
 interface GiftReceivedNotificationProps {
   gift: {
@@ -39,13 +40,6 @@ export function GiftReceivedNotification({ gift, onClose }: GiftReceivedNotifica
     setTimeout(onClose, 300);
   };
 
-  const formatNumber = (num: number): string => {
-    if (num < 10000) {
-      return num.toLocaleString();
-    }
-    return (num / 1000).toFixed(1) + 'k';
-  };
-
   return (
     <div 
       className={`fixed top-4 right-4 z-50 transition-all duration-300 ${
@@ -53,7 +47,7 @@ export function GiftReceivedNotification({ gift, onClose }: GiftReceivedNotifica
       }`}
       data-testid="notification-gift-received"
     >
-      <Card className="w-80 bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500 border-0 shadow-lg shadow-yellow-500/25">
+      <Card className="w-80 bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 border-0 shadow-lg shadow-purple-500/25">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3">

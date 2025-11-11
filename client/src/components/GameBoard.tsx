@@ -454,49 +454,32 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     }
   }, [game?.status]);
 
-  // Handle player left win event from WebSocket
+  // Handle player left win event from WebSocket - show GameOverModal instead of notification
   useEffect(() => {
     const handlePlayerLeftWin = (event: CustomEvent) => {
       const message = event.detail;
       console.log('🏆 GameBoard: Player left win event received:', message);
       
-      // Show popup in game board area (not room management)
-      const winMessage = message.message || "Opponent left the game.";
-      const notificationDiv = document.createElement('div');
-      notificationDiv.innerHTML = `
-        <div style="
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          background: linear-gradient(135deg, #10b981, #059669);
-          color: white;
-          padding: 24px;
-          border-radius: 12px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-          z-index: 9999;
-          max-width: 400px;
-          text-align: center;
-          font-family: system-ui, -apple-system, sans-serif;
-        ">
-          <div style="font-size: 16px; opacity: 0.9; margin-bottom: 16px;">${winMessage}</div>
-          <div style="font-size: 14px; opacity: 0.8;">Switching to AI mode in 3 seconds...</div>
-        </div>
-      `;
-      document.body.appendChild(notificationDiv);
-      
-      // Smooth transition to AI mode after 3 seconds (no reload)
-      setTimeout(() => {
-        notificationDiv.remove();
+      // Trigger onGameOver with a proper result object to show GameOverModal
+      if (onGameOver && game) {
+        const winnerSymbol = message.winnerSymbol || (message.winner === game.playerXId ? 'X' : 'O');
+        const isCurrentUserWinner = user && message.winner === (user.userId || user.id);
         
-        // Clear game state
-        localStorage.removeItem('currentGameState');
-        sessionStorage.removeItem('currentGameState');
+        const gameResult = {
+          game: game,
+          winner: winnerSymbol,
+          winnerInfo: message.winnerInfo,
+          loserInfo: message.leavingPlayerInfo,
+          condition: 'abandonment',
+          message: isCurrentUserWinner 
+            ? `${message.leavingPlayer || 'Opponent'} left the game. You win!`
+            : `${message.leavingPlayer || 'Opponent'} left the game.`,
+          isAbandonment: true
+        };
         
-        // Trigger smooth navigation to AI mode using React state
-        const navigationEvent = new CustomEvent('navigate_to_ai_mode');
-        window.dispatchEvent(navigationEvent);
-      }, 3000);
+        // Show the GameOverModal with opponent left message
+        onGameOver(gameResult);
+      }
     };
 
     window.addEventListener('player_left_win', handlePlayerLeftWin as EventListener);
@@ -504,7 +487,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     return () => {
       window.removeEventListener('player_left_win', handlePlayerLeftWin as EventListener);
     };
-  }, []);
+  }, [game, user, onGameOver]);
 
   // Debug effect to track modal state changes
   useEffect(() => {

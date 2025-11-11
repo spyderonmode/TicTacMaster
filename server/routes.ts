@@ -1376,6 +1376,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cannot send gift to yourself" });
       }
 
+      // Check gift limit (20M) - unlimited for admin users
+      const GIFT_LIMIT = 20000000; // 20M coins
+      const UNLIMITED_USER_IDS = ["c9122c48-3c24-4891-a6b5-f02aa8362af2","3149a38b-2989-4272-b41e-a70021bccbfb"];
+      
+      if (!UNLIMITED_USER_IDS.includes(senderId) && amount > GIFT_LIMIT) {
+        return res.status(400).json({ 
+          message: `Gift amount cannot exceed 20M coins` 
+        });
+      }
+
       // Send the gift
       const result = await storage.sendCoinGift(senderId, recipientId, amount, message);
 
@@ -1699,6 +1709,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user achievements:", error);
       res.status(500).json({ message: "Failed to fetch user achievements" });
+    }
+  });
+
+  // ===== Daily Reward Routes =====
+  
+  // Get daily reward status for current user
+  app.get('/api/daily-reward', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const rewardStatus = await storage.getDailyReward(userId);
+      res.json(rewardStatus);
+    } catch (error) {
+      console.error("Error fetching daily reward status:", error);
+      res.status(500).json({ message: "Failed to fetch daily reward status" });
+    }
+  });
+
+  // Claim daily reward
+  app.post('/api/daily-reward/claim', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const result = await storage.claimDailyReward(userId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error claiming daily reward:", error);
+      res.status(500).json({ message: "Failed to claim daily reward" });
     }
   });
 
@@ -3236,11 +3277,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.user.userId;
       const betAmount = req.body.betAmount || 1000000; // Default to 1M if not specified
 
-      // Validate bet amount (only allow 5k or 1M for quick match)
-      if (betAmount !== 5000 && betAmount !== 1000000) {
+      // Validate bet amount (only allow 5k, 1M, or 10M for quick match)
+      if (betAmount !== 5000 && betAmount !== 1000000 && betAmount !== 10000000) {
         return res.status(400).json({ 
           error: 'Invalid bet amount',
-          message: 'Quick match only supports 5k or 1M coin bets.'
+          message: 'Quick match only supports 5k, 1M, or 10M coin bets.'
         });
       }
 
@@ -5640,8 +5681,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Only abandon the game if a PLAYER leaves, not a spectator
               if (isPlayerInActiveGame || (isRoomInPlayingState && activeGame && 
                   (activeGame.playerXId === userId || activeGame.playerOId === userId))) {
-                // Player leaving active game - determine winner
+                // Player leaving active game - check if game is already finished first
 
+                // CRITICAL FIX: Re-fetch the latest game state to check if it's already finished
+                const latestGame = await storage.getGameById(activeGame.id);
+                
+                // If game is already finished or has a winner, skip abandonment logic entirely
+                // This prevents winning players from getting abandonment penalties when they leave
+                if (!latestGame || latestGame.status !== 'active' || latestGame.winnerId) {
+                  // Game already finished or has winner - don't mark as abandoned
+                  // Just clean up room state silently
+                  userRoomStates.delete(userId);
+                  await storage.removeRoomParticipant(roomId, userId);
+                  return;
+                }
+
+                // Game is still active with no winner - proceed with abandonment
                 // Determine the winner (the player who didn't leave)
                 const leavingPlayerId = userId;
                 const remainingPlayerId = activeGame.playerXId === leavingPlayerId ? 
@@ -5673,6 +5728,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Game permanently ended in database with winner determined
 
+                // Get the bet amount from the room for display in GameOverModal
+                const betAmount = room?.betAmount || 50000;
+
                 // Get all users in the room (players and spectators)
                 const roomUsers = roomConnections.get(roomId);
                 if (roomUsers && roomUsers.size > 0) {
@@ -5688,6 +5746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     leavingPlayerInfo: leavingPlayerInfo,
                     condition: 'abandonment',
                     message: `${playerName} left the game. ${remainingPlayerInfo?.displayName || remainingPlayerInfo?.username || 'Player'} wins!`,
+                    betAmount: betAmount,
                     redirectToAI: true
                   });
 

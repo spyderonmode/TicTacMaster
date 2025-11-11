@@ -22,6 +22,7 @@ import {
   weeklyLeaderboard,
   weeklyRewards,
   weeklyResetStatus,
+  dailyRewards,
   type User,
   type UpsertUser,
   type Room,
@@ -46,6 +47,7 @@ import {
   type WeeklyLeaderboard,
   type WeeklyReward,
   type WeeklyResetStatus,
+  type DailyReward,
   type InsertRoom,
   type InsertGame,
   type InsertMove,
@@ -62,6 +64,7 @@ import {
   type InsertWeeklyLeaderboard,
   type InsertWeeklyReward,
   type InsertWeeklyResetStatus,
+  type InsertDailyReward,
   type BasicFriendInfo,
 } from "@shared/schema";
 import { db } from "./db";
@@ -230,6 +233,10 @@ export interface IStorage {
   purchaseAvatarFrame(userId: string, frameId: string): Promise<{ success: boolean; message: string; frame?: UserAvatarFrame }>;
   setActiveAvatarFrame(userId: string, frameId: string | null): Promise<{ success: boolean; message: string }>;
   createDefaultAvatarFrames(): Promise<void>;
+
+  // Daily Reward operations
+  getDailyReward(userId: string): Promise<{ canClaim: boolean; reward: DailyReward | null; nextClaimDate?: Date }>;
+  claimDailyReward(userId: string): Promise<{ success: boolean; message: string; reward?: DailyReward; coinsEarned?: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -665,16 +672,14 @@ export class DatabaseStorage implements IStorage {
                   await this.processRoomBetTransaction(winnerId, loserId, betAmount, gameId);
                   //console.log(`💰 Processed room bet transaction: ${betAmount} coins`);
 
-                  // Track weekly stats for room games (exclude abandonment wins)
-                  if (winCondition !== 'abandonment') {
-                    try {
-                      const loserCoins = await this.getUserCoins(loserId);
-                      const actualLoss = loserCoins >= betAmount ? -betAmount : 0;
-                      await this.updateWeeklyStats(winnerId, 'win', betAmount);
-                      await this.updateWeeklyStats(loserId, 'loss', actualLoss);
-                    } catch (error) {
-                      //console.error('📊 Error updating weekly stats for room game:', error);
-                    }
+                  // Track weekly stats for room games (now includes abandonment wins)
+                  try {
+                    const loserCoins = await this.getUserCoins(loserId);
+                    const actualLoss = loserCoins >= betAmount ? -betAmount : 0;
+                    await this.updateWeeklyStats(winnerId, 'win', betAmount);
+                    await this.updateWeeklyStats(loserId, 'loss', actualLoss);
+                  } catch (error) {
+                    //console.error('📊 Error updating weekly stats for room game:', error);
                   }
                 }
               } else {
@@ -698,14 +703,12 @@ export class DatabaseStorage implements IStorage {
                   //console.log(`💰 Loser ${loserId} doesn't have enough coins (${loserCoins}), skipping deduction`);
                 }
 
-                // Track weekly stats for online matchmaking games (exclude abandonment wins)
-                if (winCondition !== 'abandonment') {
-                  try {
-                    await this.updateWeeklyStats(winnerId, 'win', 1000);
-                    await this.updateWeeklyStats(loserId, 'loss', loserCoinsLost);
-                  } catch (error) {
-                    //console.error('📊 Error updating weekly stats:', error);
-                  }
+                // Track weekly stats for online matchmaking games (now includes abandonment wins)
+                try {
+                  await this.updateWeeklyStats(winnerId, 'win', 1000);
+                  await this.updateWeeklyStats(loserId, 'loss', loserCoinsLost);
+                } catch (error) {
+                  //console.error('📊 Error updating weekly stats:', error);
                 }
               }
             } else {
@@ -3320,7 +3323,7 @@ export class DatabaseStorage implements IStorage {
           weekly_wins = COALESCE(weekly_wins, 0) + 1,
           weekly_win_streak = COALESCE(weekly_win_streak, 0) + 1,
           best_weekly_win_streak = GREATEST(COALESCE(best_weekly_win_streak, 0), COALESCE(weekly_win_streak, 0) + 1),
-          coins_earned = COALESCE(coins_earned, 0) + ${coinsEarned},
+          coins_earned = COALESCE(coins_earned, 0) + ${Math.max(coinsEarned, 0)},
           updated_at = ${now}
         WHERE id = ${stats.id}
       `);
@@ -3331,7 +3334,6 @@ export class DatabaseStorage implements IStorage {
           weekly_games = COALESCE(weekly_games, 0) + 1,
           weekly_losses = COALESCE(weekly_losses, 0) + 1,
           weekly_win_streak = 0,
-          coins_earned = COALESCE(coins_earned, 0) + ${coinsEarned},
           updated_at = ${now}
         WHERE id = ${stats.id}
       `);
@@ -3342,7 +3344,6 @@ export class DatabaseStorage implements IStorage {
           weekly_games = COALESCE(weekly_games, 0) + 1,
           weekly_draws = COALESCE(weekly_draws, 0) + 1,
           weekly_win_streak = 0,
-          coins_earned = COALESCE(coins_earned, 0) + ${coinsEarned},
           updated_at = ${now}
         WHERE id = ${stats.id}
       `);
@@ -3399,10 +3400,10 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(
+        desc(weeklyLeaderboard.coinsEarned),
         desc(weeklyLeaderboard.weeklyWins),
         desc(weeklyLeaderboard.weeklyGames),
         desc(weeklyLeaderboard.bestWeeklyWinStreak),
-        desc(weeklyLeaderboard.coinsEarned),
         weeklyLeaderboard.userId // Final deterministic tie-breaker
       )
       .limit(limit);
@@ -3498,15 +3499,15 @@ export class DatabaseStorage implements IStorage {
 
       // Get final leaderboard snapshot for this week/year
       const topPlayers = await this.getWeeklyLeaderboard(weekNumber, year, 50);
-      // 1st=30M, 2nd=20M, 3rd=10M, 4th-10th=5M each, 11th-50th=1M each
+      // 1st=1B, 2nd=700M, 3rd=500M, 4th-10th=300M each, 11th-50th=100M each
       const getRewardAmount = (rank: number): number => {
         switch (rank) {
-          case 1: return 30000000; // 30M
-          case 2: return 20000000; // 20M
-          case 3: return 10000000; // 10M
+          case 1: return 1000000000; // 1B
+          case 2: return 700000000; // 700M
+          case 3: return 500000000; // 500M
           default: 
-            if (rank <= 10) return 5000000; // 5M for ranks 4-10
-            if (rank <= 50) return 1000000; // 1M for ranks 11-50
+            if (rank <= 10) return 300000000; // 300M for ranks 4-10
+            if (rank <= 50) return 100000000; // 100M for ranks 11-50
             return 0; // No reward for ranks beyond 50
         }
       };
@@ -4318,6 +4319,122 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error creating default avatar frames:', error);
     }
+  }
+
+  // Daily Reward operations
+  async getDailyReward(userId: string): Promise<{ canClaim: boolean; reward: DailyReward | null; nextClaimDate?: Date }> {
+    // Get or create daily reward record for user
+    let [reward] = await db.select().from(dailyRewards).where(eq(dailyRewards.userId, userId));
+    
+    if (!reward) {
+      // Create new reward record for user
+      [reward] = await db.insert(dailyRewards).values({ userId }).returning();
+      return { canClaim: true, reward };
+    }
+
+    // Check if user can claim (hasn't claimed today)
+    if (!reward.lastClaimDate) {
+      return { canClaim: true, reward };
+    }
+
+    const now = new Date();
+    const lastClaim = new Date(reward.lastClaimDate);
+    
+    // Set both dates to start of day for comparison
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const lastClaimStart = new Date(lastClaim.getFullYear(), lastClaim.getMonth(), lastClaim.getDate());
+    
+    if (todayStart > lastClaimStart) {
+      // Can claim today
+      return { canClaim: true, reward };
+    }
+
+    // Already claimed today, calculate next claim date
+    const nextClaimDate = new Date(todayStart);
+    nextClaimDate.setDate(nextClaimDate.getDate() + 1);
+    
+    return { canClaim: false, reward, nextClaimDate };
+  }
+
+  async claimDailyReward(userId: string): Promise<{ success: boolean; message: string; reward?: DailyReward; coinsEarned?: number }> {
+    const DAILY_REWARD_AMOUNT = 1000000; // 1 million coins
+
+    // Check if user can claim
+    const { canClaim, reward } = await this.getDailyReward(userId);
+    
+    if (!canClaim) {
+      return { 
+        success: false, 
+        message: "You have already claimed your daily reward today. Come back tomorrow!" 
+      };
+    }
+
+    const now = new Date();
+    const lastClaim = reward?.lastClaimDate ? new Date(reward.lastClaimDate) : null;
+    
+    // Calculate streak
+    let newStreak = 1;
+    if (lastClaim) {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+      const lastClaimStart = new Date(lastClaim.getFullYear(), lastClaim.getMonth(), lastClaim.getDate());
+      
+      if (lastClaimStart.getTime() === yesterdayStart.getTime()) {
+        // Claimed yesterday, continue streak
+        newStreak = (reward.currentStreak || 0) + 1;
+      }
+      // If last claim was before yesterday, streak resets to 1
+    }
+
+    const newBestStreak = Math.max(newStreak, reward?.bestStreak || 0);
+
+    // Process transaction
+    await db.transaction(async (tx) => {
+      // Get user's current balance
+      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const currentBalance = user.coins || 0;
+      const newBalance = currentBalance + DAILY_REWARD_AMOUNT;
+
+      // Update user coins
+      await tx.update(users)
+        .set({ coins: newBalance })
+        .where(eq(users.id, userId));
+
+      // Record coin transaction
+      await tx.insert(coinTransactions).values({
+        userId,
+        amount: DAILY_REWARD_AMOUNT,
+        type: 'daily_reward',
+        balanceBefore: currentBalance,
+        balanceAfter: newBalance,
+      });
+
+      // Update daily reward record
+      await tx.update(dailyRewards)
+        .set({
+          lastClaimDate: now,
+          currentStreak: newStreak,
+          bestStreak: newBestStreak,
+          totalClaimed: (reward?.totalClaimed || 0) + 1,
+          updatedAt: now,
+        })
+        .where(eq(dailyRewards.userId, userId));
+    });
+
+    // Get updated reward record
+    const [updatedReward] = await db.select().from(dailyRewards).where(eq(dailyRewards.userId, userId));
+
+    return {
+      success: true,
+      message: `Daily reward claimed! You earned ${DAILY_REWARD_AMOUNT.toLocaleString()} coins! ${newStreak > 1 ? `🔥 ${newStreak} day streak!` : ''}`,
+      reward: updatedReward,
+      coinsEarned: DAILY_REWARD_AMOUNT,
+    };
   }
 }
 

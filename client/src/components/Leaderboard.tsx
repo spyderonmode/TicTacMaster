@@ -12,6 +12,7 @@ interface WeeklyLeaderboardUser {
   id: string;
   userId: string;
   weeklyWins: number;
+  coinsEarned: number;
   user: {
     id: string;
     username: string;
@@ -75,7 +76,7 @@ const useAnimatedNumber = (value: number) => {
 
 const TopPlayerCard = ({ entry, position, onClick }: { entry: WeeklyLeaderboardUser, position: number, onClick: () => void }) => {
   const user = entry.user;
-  const animatedWins = useAnimatedNumber(entry.weeklyWins);
+  const animatedCoins = useAnimatedNumber(entry.coinsEarned);
 
   const getTopPlayerStyle = (pos: number) => {
     if (pos === 1) return "border-b-2 border-yellow-500/80 shadow-lg shadow-yellow-500/20";
@@ -109,9 +110,9 @@ const TopPlayerCard = ({ entry, position, onClick }: { entry: WeeklyLeaderboardU
         />
       </div>
       <h3 className="text-white text-base sm:text-lg font-bold truncate max-w-[80px] sm:max-w-[100px] mt-2">{user.displayName}</h3>
-      <div className="flex items-center gap-1 text-green-400 mt-1">
-        <Zap className="w-4 h-4" />
-        <span className="font-bold">{formatNumber(animatedWins)}</span>
+      <div className="flex items-center gap-1 text-yellow-400 mt-1">
+        <Coins className="w-4 h-4" />
+        <span className="font-bold">{formatNumber(animatedCoins)}</span>
       </div>
     </motion.div>
   );
@@ -129,7 +130,7 @@ const RewardsList = ({ rewardData, timeUntilEnd }: { rewardData: any[], timeUnti
 
   const combinedReward11to50 = {
     position: "11-50",
-    coins: 1000000,
+    coins: 100000000,
     displayRange: true
   };
 
@@ -292,56 +293,56 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   const remainingPlayers = weeklyLeaderboard?.slice(3) || [];
 
   const rewardData = [
-    { position: 1, coins: 30000000 },
-    { position: 2, coins: 20000000 },
-    { position: 3, coins: 10000000 },
-    { position: 4, coins: 5000000 },
-    { position: 5, coins: 5000000 },
-    { position: 6, coins: 5000000 },
-    { position: 7, coins: 5000000 },
-    { position: 8, coins: 5000000 },
-    { position: 9, coins: 5000000 },
-    { position: 10, coins: 5000000 },
-    { position: 11, coins: 1000000 },
-    { position: 12, coins: 1000000 },
-    { position: 13, coins: 1000000 },
-    { position: 14, coins: 1000000 },
-    { position: 15, coins: 1000000 },
-    { position: 16, coins: 1000000 },
-    { position: 17, coins: 1000000 },
-    { position: 18, coins: 1000000 },
-    { position: 19, coins: 1000000 },
-    { position: 20, coins: 1000000 },
-    { position: 21, coins: 1000000 },
-    { position: 22, coins: 1000000 },
-    { position: 23, coins: 1000000 },
-    { position: 24, coins: 1000000 },
-    { position: 25, coins: 1000000 },
-    { position: 26, coins: 1000000 },
-    { position: 27, coins: 1000000 },
-    { position: 28, coins: 1000000 },
-    { position: 29, coins: 1000000 },
-    { position: 30, coins: 1000000 },
-    { position: 31, coins: 1000000 },
-    { position: 32, coins: 1000000 },
-    { position: 33, coins: 1000000 },
-    { position: 34, coins: 1000000 },
-    { position: 35, coins: 1000000 },
-    { position: 36, coins: 1000000 },
-    { position: 37, coins: 1000000 },
-    { position: 38, coins: 1000000 },
-    { position: 39, coins: 1000000 },
-    { position: 40, coins: 1000000 },
-    { position: 41, coins: 1000000 },
-    { position: 42, coins: 1000000 },
-    { position: 43, coins: 1000000 },
-    { position: 44, coins: 1000000 },
-    { position: 45, coins: 1000000 },
-    { position: 46, coins: 1000000 },
-    { position: 47, coins: 1000000 },
-    { position: 48, coins: 1000000 },
-    { position: 49, coins: 1000000 },
-    { position: 50, coins: 1000000 },
+    { position: 1, coins: 1000000000 },
+    { position: 2, coins: 700000000 },
+    { position: 3, coins: 500000000 },
+    { position: 4, coins: 300000000 },
+    { position: 5, coins: 300000000 },
+    { position: 6, coins: 300000000 },
+    { position: 7, coins: 300000000 },
+    { position: 8, coins: 300000000 },
+    { position: 9, coins: 300000000 },
+    { position: 10, coins: 300000000 },
+    { position: 11, coins: 100000000 },
+    { position: 12, coins: 100000000 },
+    { position: 13, coins: 100000000 },
+    { position: 14, coins: 100000000 },
+    { position: 15, coins: 100000000 },
+    { position: 16, coins: 100000000 },
+    { position: 17, coins: 100000000 },
+    { position: 18, coins: 100000000 },
+    { position: 19, coins: 100000000 },
+    { position: 20, coins: 100000000 },
+    { position: 21, coins: 100000000 },
+    { position: 22, coins: 100000000 },
+    { position: 23, coins: 100000000 },
+    { position: 24, coins: 100000000 },
+    { position: 25, coins: 100000000 },
+    { position: 26, coins: 100000000 },
+    { position: 27, coins: 100000000 },
+    { position: 28, coins: 100000000 },
+    { position: 29, coins: 100000000 },
+    { position: 30, coins: 100000000 },
+    { position: 31, coins: 100000000 },
+    { position: 32, coins: 100000000 },
+    { position: 33, coins: 100000000 },
+    { position: 34, coins: 100000000 },
+    { position: 35, coins: 100000000 },
+    { position: 36, coins: 100000000 },
+    { position: 37, coins: 100000000 },
+    { position: 38, coins: 100000000 },
+    { position: 39, coins: 100000000 },
+    { position: 40, coins: 100000000 },
+    { position: 41, coins: 100000000 },
+    { position: 42, coins: 100000000 },
+    { position: 43, coins: 100000000 },
+    { position: 44, coins: 100000000 },
+    { position: 45, coins: 100000000 },
+    { position: 46, coins: 100000000 },
+    { position: 47, coins: 100000000 },
+    { position: 48, coins: 100000000 },
+    { position: 49, coins: 100000000 },
+    { position: 50, coins: 100000000 },
   ];
 
   useEffect(() => {
@@ -531,9 +532,9 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                         <div className="flex-1 min-w-0">
                           <span className="font-semibold text-white truncate">{user.displayName}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-green-400 font-semibold text-base">
-                          <Zap className="w-4 h-4" />
-                          <span>{formatNumber(entry.weeklyWins)}</span>
+                        <div className="flex items-center gap-1 text-yellow-400 font-semibold text-base">
+                          <Coins className="w-4 h-4" />
+                          <span>{formatNumber(entry.coinsEarned)}</span>
                         </div>
                       </motion.div>
                     );

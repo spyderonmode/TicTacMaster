@@ -2711,7 +2711,7 @@ function LotusX({ className = "", uniqueId }: { className?: string; uniqueId: st
     <motion.div
       className={`relative ${className}`}
       initial={{ scale: 0, rotateY: -180 }}
-      animate={{ scale: 1, rotateY: 0 }}
+      animate={{ scale: 0.8, rotateY: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       style={{ 
         transformStyle: "preserve-3d",
@@ -2779,18 +2779,16 @@ function LotusX({ className = "", uniqueId }: { className?: string; uniqueId: st
               key={`petal-${i}`}
               initial={{ scale: 0, opacity: 0 }}
               animate={{ 
-                scale: [1, 1.15, 1, 1.08, 1],
-                opacity: [1, 0.85, 1, 0.9, 1]
+                scale: 1,
+                opacity: 1
               }}
               transition={{ 
                 delay: 0.2 + i * 0.03, 
-                duration: 3,
-                repeat: Infinity,
-                repeatDelay: i * 0.3,
+                duration: 0.3,
                 ease: "easeInOut"
               }}
             >
-              <motion.ellipse
+              <ellipse
                 cx={x}
                 cy={y}
                 rx="8"
@@ -2799,16 +2797,6 @@ function LotusX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 stroke="rgb(236, 72, 153)"
                 strokeWidth="1.5"
                 transform={`rotate(${i * 90 - 45} ${x} ${y})`}
-                animate={{
-                  rx: [8, 9, 8, 8.5, 8],
-                  ry: [14, 15.5, 14, 14.8, 14]
-                }}
-                transition={{
-                  duration: 3.5,
-                  repeat: Infinity,
-                  delay: i * 0.4,
-                  ease: "easeInOut"
-                }}
               />
             </motion.g>
           );
@@ -2821,13 +2809,12 @@ function LotusX({ className = "", uniqueId }: { className?: string; uniqueId: st
           fill={`url(#lotusXCenter-${uniqueId})`}
           initial={{ scale: 0 }}
           animate={{ 
-            scale: [1, 1.2, 1, 1.1, 1],
-            opacity: [1, 0.8, 1, 0.9, 1]
+            scale: 1,
+            opacity: 1
           }}
           transition={{ 
             delay: 0.3, 
-            duration: 2.5,
-            repeat: Infinity,
+            duration: 0.3,
             ease: "easeInOut"
           }}
         />
@@ -2841,7 +2828,7 @@ function LotusO({ className = "", uniqueId }: { className?: string; uniqueId: st
     <motion.div
       className={`relative ${className}`}
       initial={{ scale: 0, rotateY: 180 }}
-      animate={{ scale: 1, rotateY: 0 }}
+      animate={{ scale: 0.8, rotateY: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       style={{ 
         transformStyle: "preserve-3d",
@@ -2890,18 +2877,16 @@ function LotusO({ className = "", uniqueId }: { className?: string; uniqueId: st
               key={`petal-${i}`}
               initial={{ scale: 0, opacity: 0 }}
               animate={{ 
-                scale: [1, 1.12, 1, 1.06, 1],
-                opacity: [1, 0.8, 1, 0.9, 1]
+                scale: 1,
+                opacity: 1
               }}
               transition={{ 
                 delay: 0.2 + i * 0.02, 
-                duration: 3.2,
-                repeat: Infinity,
-                repeatDelay: i * 0.2,
+                duration: 0.3,
                 ease: "easeInOut"
               }}
             >
-              <motion.ellipse
+              <ellipse
                 cx={x}
                 cy={y}
                 rx="6"
@@ -2910,16 +2895,6 @@ function LotusO({ className = "", uniqueId }: { className?: string; uniqueId: st
                 stroke="rgb(34, 211, 238)"
                 strokeWidth="1.5"
                 transform={`rotate(${i * 45} ${x} ${y})`}
-                animate={{
-                  rx: [6, 7, 6, 6.5, 6],
-                  ry: [12, 13.5, 12, 12.8, 12]
-                }}
-                transition={{
-                  duration: 3.8,
-                  repeat: Infinity,
-                  delay: i * 0.25,
-                  ease: "easeInOut"
-                }}
               />
             </motion.g>
           );
@@ -2932,13 +2907,12 @@ function LotusO({ className = "", uniqueId }: { className?: string; uniqueId: st
           fill={`url(#lotusOCenter-${uniqueId})`}
           initial={{ scale: 0 }}
           animate={{ 
-            scale: [1, 1.2, 1, 1.1, 1],
-            opacity: [1, 0.8, 1, 0.9, 1]
+            scale: 1,
+            opacity: 1
           }}
           transition={{ 
             delay: 0.3, 
-            duration: 2.5,
-            repeat: Infinity,
+            duration: 0.3,
             ease: "easeInOut"
           }}
         />

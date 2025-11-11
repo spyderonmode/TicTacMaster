@@ -332,6 +332,21 @@ export const weeklyResetStatus = pgTable("weekly_reset_status", {
   uniqueIndex("unique_weekly_reset").on(table.weekNumber, table.year),
 ]);
 
+// Daily rewards tracking table
+export const dailyRewards = pgTable("daily_rewards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  lastClaimDate: timestamp("last_claim_date"), // Last time user claimed daily reward
+  currentStreak: integer("current_streak").default(0), // Consecutive days claimed
+  bestStreak: integer("best_streak").default(0), // Highest streak achieved
+  totalClaimed: integer("total_claimed").default(0), // Total number of rewards claimed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  // Index for quick user lookups
+  index("idx_daily_rewards_user").on(table.userId),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedRooms: many(rooms),
@@ -360,6 +375,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   levelUps: many(levelUps),
   weeklyStats: many(weeklyLeaderboard),
   weeklyRewards: many(weeklyRewards),
+  dailyReward: many(dailyRewards),
 }));
 
 export const roomsRelations = relations(rooms, ({ one, many }) => ({
@@ -445,6 +461,10 @@ export const weeklyLeaderboardRelations = relations(weeklyLeaderboard, ({ one })
 
 export const weeklyRewardsRelations = relations(weeklyRewards, ({ one }) => ({
   user: one(users, { fields: [weeklyRewards.userId], references: [users.id] }),
+}));
+
+export const dailyRewardsRelations = relations(dailyRewards, ({ one }) => ({
+  user: one(users, { fields: [dailyRewards.userId], references: [users.id] }),
 }));
 
 // Schemas
@@ -630,6 +650,10 @@ export const insertWeeklyResetStatusSchema = createInsertSchema(weeklyResetStatu
   retryCount: z.number().min(0).default(0),
 });
 
+export const insertDailyRewardSchema = createInsertSchema(dailyRewards).pick({
+  userId: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -691,3 +715,5 @@ export type WeeklyReward = typeof weeklyRewards.$inferSelect;
 export type InsertWeeklyReward = z.infer<typeof insertWeeklyRewardSchema>;
 export type WeeklyResetStatus = typeof weeklyResetStatus.$inferSelect;
 export type InsertWeeklyResetStatus = z.infer<typeof insertWeeklyResetStatusSchema>;
+export type DailyReward = typeof dailyRewards.$inferSelect;
+export type InsertDailyReward = z.infer<typeof insertDailyRewardSchema>;

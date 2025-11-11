@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Gift, Coins } from "lucide-react";
+import { Gift, Coins, AlertCircle } from "lucide-react";
 import { BasicFriendInfo } from "@shared/schema";
+import { formatNumber } from "@/lib/utils";
 
 interface CoinGiftModalProps {
   open: boolean;
@@ -20,6 +21,8 @@ interface CoinGiftModalProps {
 export function CoinGiftModal({ open, onClose, friend, currentUserCoins }: CoinGiftModalProps) {
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -43,17 +46,34 @@ export function CoinGiftModal({ open, onClose, friend, currentUserCoins }: CoinG
       onClose();
     },
     onError: (error: any) => {
-      toast({
-        title: "Failed to Send Gift",
-        description: error.message || "Unable to send coin gift. Please try again.",
-        variant: "destructive",
-      });
+      // Extract clean message from error object
+      let message = "Unable to send coin gift. Please try again.";
+      
+      // Try to get message from error.data first (from parsed JSON response)
+      if (error.data && error.data.message) {
+        message = error.data.message;
+      } 
+      // If error.message looks like JSON, try to parse it
+      else if (error.message) {
+        try {
+          const parsed = JSON.parse(error.message);
+          message = parsed.message || error.message;
+        } catch {
+          // Not JSON, use as is
+          message = error.message;
+        }
+      }
+      
+      setErrorMessage(message);
+      setShowErrorDialog(true);
     },
   });
 
   const resetForm = () => {
     setAmount("");
     setMessage("");
+    setErrorMessage("");
+    setShowErrorDialog(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -75,7 +95,7 @@ export function CoinGiftModal({ open, onClose, friend, currentUserCoins }: CoinG
     if (giftAmount > currentUserCoins) {
       toast({
         title: "Insufficient Coins",
-        description: `You only have ${currentUserCoins.toLocaleString()} coins available.`,
+        description: `You only have ${formatNumber(currentUserCoins)} coins available.`,
         variant: "destructive",
       });
       return;
@@ -106,8 +126,35 @@ export function CoinGiftModal({ open, onClose, friend, currentUserCoins }: CoinG
   const quickAmountButtons = [100, 500, 1000, 5000];
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="bg-slate-800 border-slate-700 text-white" data-testid="modal-coin-gift">
+    <>
+      {/* Error Dialog */}
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent className="bg-red-900/95 border-red-600 text-white max-w-sm" data-testid="dialog-gift-error">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+              <AlertCircle className="w-10 h-10 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold mb-2">Failed to Send Gift</h3>
+              <p className="text-red-100">{errorMessage}</p>
+            </div>
+            <Button
+              onClick={() => setShowErrorDialog(false)}
+              className="w-full bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-close-error"
+            >
+              OK
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Main Gift Dialog */}
+      <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+        <DialogContent 
+          className="bg-slate-800 border-slate-700 text-white **max-w-[95%]**" 
+          data-testid="modal-coin-gift"
+        >
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <Gift className="w-5 h-5 text-yellow-400" />
@@ -119,7 +166,7 @@ export function CoinGiftModal({ open, onClose, friend, currentUserCoins }: CoinG
           <div className="bg-slate-700 p-3 rounded-lg">
             <div className="flex items-center gap-2 text-sm text-gray-300">
               <Coins className="w-4 h-4 text-yellow-400" />
-              Your current balance: <span className="text-yellow-400 font-semibold">{currentUserCoins.toLocaleString()}</span> coins
+              Your current balance: <span className="text-yellow-400 font-semibold">{formatNumber(currentUserCoins)}</span> coins
             </div>
           </div>
 
@@ -150,7 +197,7 @@ export function CoinGiftModal({ open, onClose, friend, currentUserCoins }: CoinG
                   className="border-slate-600 text-gray-300 hover:bg-slate-700"
                   data-testid={`button-quick-amount-${quickAmount}`}
                 >
-                  {quickAmount.toLocaleString()}
+                  {formatNumber(quickAmount)}
                 </Button>
               ))}
             </div>
@@ -208,5 +255,6 @@ export function CoinGiftModal({ open, onClose, friend, currentUserCoins }: CoinG
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

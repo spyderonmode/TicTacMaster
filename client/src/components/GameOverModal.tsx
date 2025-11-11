@@ -747,6 +747,56 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                 Home
               </button>
 
+              {!isSpectator && !isOnlineGameWithOpponent() && result?.betAmount === 5000 && (
+                <button
+                  onClick={() => {
+                    if (!isCreatingGame) {
+                      onPlayAgain();
+                    }
+                  }}
+                  disabled={isCreatingGame}
+                  data-testid="button-play-again-bot"
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: isCreatingGame ? 
+                      'linear-gradient(135deg, rgba(107, 114, 128, 0.5), rgba(107, 114, 128, 0.3))' :
+                      'linear-gradient(135deg, #10b981, #059669)',
+                    color: 'white',
+                    border: isCreatingGame ? 
+                      '1px solid rgba(107, 114, 128, 0.5)' : 
+                      '1px solid rgba(16, 185, 129, 0.5)',
+                    cursor: isCreatingGame ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontWeight: '600',
+                    fontSize: '13px',
+                    opacity: isCreatingGame ? 0.6 : 1,
+                    transition: 'all 0.3s ease',
+                    boxShadow: isCreatingGame ? 
+                      'none' : 
+                      '0 3px 10px rgba(16, 185, 129, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isCreatingGame) {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 14px rgba(16, 185, 129, 0.4)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = isCreatingGame ? 
+                      'none' : 
+                      '0 3px 10px rgba(16, 185, 129, 0.3)';
+                  }}
+                >
+                  <RefreshCw style={{ width: '16px', height: '16px' }} />
+                  {isCreatingGame ? 'Starting...' : 'Play Again'}
+                </button>
+              )}
+
               {!isSpectator && isOnlineGameWithOpponent() && (
                 <button
                   onClick={() => {

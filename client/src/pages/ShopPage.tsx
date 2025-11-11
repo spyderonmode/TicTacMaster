@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { formatNumber } from "@/lib/utils";
 
 interface PieceStyle {
   styleName: string;
@@ -384,7 +385,7 @@ export default function ShopPage() {
     if (userCoins < price) {
       toast({
         title: "Insufficient Coins",
-        description: `You need ${price.toLocaleString()} coins to purchase this style.`,
+        description: `You need ${formatNumber(price)} coins to purchase this style.`,
         variant: "destructive",
       });
       return;
@@ -426,7 +427,7 @@ export default function ShopPage() {
           
           <div className="mt-4 inline-flex items-center gap-2 bg-slate-800/50 px-6 py-3 rounded-lg border border-yellow-500/30">
             <Coins className="w-6 h-6 text-yellow-400" />
-            <span className="text-2xl font-bold text-yellow-400" data-testid="text-user-coins">{userCoins.toLocaleString()}</span>
+            <span className="text-2xl font-bold text-yellow-400" data-testid="text-user-coins">{formatNumber(userCoins)}</span>
             <span className="text-slate-300">Coins</span>
           </div>
         </div>
@@ -536,7 +537,7 @@ export default function ShopPage() {
                       <>
                         <div className="flex items-center justify-center gap-2 text-yellow-400 text-xl font-bold mb-2">
                           <Coins className="w-6 h-6" />
-                          <span data-testid={`text-price-${style.id}`}>{style.price.toLocaleString()}</span>
+                          <span data-testid={`text-price-${style.id}`}>{formatNumber(style.price)}</span>
                         </div>
                         <Button
                           onClick={(e) => {
@@ -551,7 +552,7 @@ export default function ShopPage() {
                         </Button>
                         {userCoins < style.price && (
                           <p className="text-red-400 text-sm text-center">
-                            Need {(style.price - userCoins).toLocaleString()} more coins
+                            Need {formatNumber(style.price - userCoins)} more coins
                           </p>
                         )}
                       </>
@@ -603,7 +604,7 @@ export default function ShopPage() {
                       <div className="flex items-center gap-2">
                         <Coins className="w-4 h-4 text-yellow-400" />
                         <span className={`font-bold ${affordable ? 'text-yellow-400' : 'text-gray-500'}`}>
-                          {emoji.price.toLocaleString()} coins
+                          {formatNumber(emoji.price)} coins
                         </span>
                       </div>
                       <div className="mt-2">
@@ -721,7 +722,7 @@ export default function ShopPage() {
                         <div className="flex items-center justify-center gap-2 text-yellow-400 text-xl font-bold">
                           <Coins className="w-6 h-6" />
                           <span data-testid={`text-price-${frame.id}`}>
-                            {frame.price.toLocaleString()}
+                            {formatNumber(frame.price)}
                           </span>
                         </div>
                       )}

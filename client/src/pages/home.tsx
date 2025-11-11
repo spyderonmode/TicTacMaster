@@ -30,6 +30,7 @@ import { GiftReceivedNotification } from "@/components/GiftReceivedNotification"
 import { ErrorModal } from "@/components/ErrorModal";
 import { ConnectingOverlay } from "@/components/ConnectingOverlay";
 import { QuickChat } from "@/components/QuickChat";
+import { DailyRewardModal } from "@/components/DailyRewardModal";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,6 +85,11 @@ export default function Home() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalData, setErrorModalData] = useState<{ title: string; message: string; type?: 'error' | 'coins' | 'warning' }>({ title: '', message: '' });
   const [showGameRules, setShowGameRules] = useState(false);
+  const [showDailyReward, setShowDailyReward] = useState(false);
+  const [hasPendingDailyReward, setHasPendingDailyReward] = useState(false);
+  const [dailyRewardCanClaim, setDailyRewardCanClaim] = useState(false);
+  const dailyRewardTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCheckedDailyReward = useRef(false);
   const headerSidebarRef = useRef<HTMLDivElement>(null);
   const gameBoardRef = useRef<HTMLDivElement>(null);
 
@@ -135,6 +141,57 @@ export default function Home() {
       });
     }
   }, [user, language, queryClient]);
+
+  // Check daily reward status once on mount
+  useEffect(() => {
+    const checkDailyReward = async () => {
+      if (user && !hasCheckedDailyReward.current) {
+        hasCheckedDailyReward.current = true;
+        try {
+          const response = await fetch('/api/daily-reward', { credentials: 'include' });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.canClaim) {
+              setDailyRewardCanClaim(true);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking daily reward:', error);
+        }
+      }
+    };
+
+    checkDailyReward();
+  }, [user]);
+
+  // Handle showing daily reward based on weekly popup state
+  useEffect(() => {
+    // Clear any pending timers
+    if (dailyRewardTimerRef.current) {
+      clearTimeout(dailyRewardTimerRef.current);
+      dailyRewardTimerRef.current = null;
+    }
+
+    // If daily reward can be claimed and weekly popup is not active
+    if (dailyRewardCanClaim && !showMonthlyRankPopup && !monthlyRankData) {
+      // Show daily reward after a delay
+      dailyRewardTimerRef.current = setTimeout(() => {
+        setShowDailyReward(true);
+        setDailyRewardCanClaim(false);
+      }, 1000);
+    } else if (dailyRewardCanClaim && (showMonthlyRankPopup || monthlyRankData)) {
+      // Weekly popup is active, mark daily reward as pending
+      setHasPendingDailyReward(true);
+    }
+
+    // Cleanup timer on unmount
+    return () => {
+      if (dailyRewardTimerRef.current) {
+        clearTimeout(dailyRewardTimerRef.current);
+        dailyRewardTimerRef.current = null;
+      }
+    };
+  }, [dailyRewardCanClaim, showMonthlyRankPopup, monthlyRankData]);
 
   // Global error handler for all WebSocket error events
   useEffect(() => {
@@ -2603,13 +2660,24 @@ export default function Home() {
         userProfilePicture={(user as any)?.profilePicture || (user as any)?.photoURL}
       />
 
-      {/* Monthly Rank Popup */}
+      <DailyRewardModal 
+        open={showDailyReward}
+        onOpenChange={setShowDailyReward}
+      />
+
+      {/* Weekly League Results Popup */}
       {showMonthlyRankPopup && monthlyRankData && (
         <MonthlyRankPopup
           isOpen={showMonthlyRankPopup}
           onClose={() => {
             setShowMonthlyRankPopup(false);
             setMonthlyRankData(null);
+            
+            // If daily reward is pending, trigger it to show
+            if (hasPendingDailyReward) {
+              setHasPendingDailyReward(false);
+              setDailyRewardCanClaim(true); // This will trigger the effect to show it
+            }
           }}
           rankData={monthlyRankData}
           userDisplayName={(user as any)?.displayName || (user as any)?.firstName || (user as any)?.username || 'Player'}

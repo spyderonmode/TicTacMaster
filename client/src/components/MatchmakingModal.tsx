@@ -562,7 +562,7 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                 }}>
                   Select Bet Amount
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={() => setSelectedBet(5000)}
@@ -635,6 +635,43 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                     </div>
                     <div style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
                       Pro
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBet(10000000)}
+                    data-testid="bet-10m"
+                    style={{
+                      padding: '12px',
+                      borderRadius: '12px',
+                      background: selectedBet === 10000000
+                        ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                      border: selectedBet === 10000000
+                        ? '2px solid rgba(139, 92, 246, 0.5)'
+                        : '2px solid rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedBet !== 10000000) {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedBet !== 10000000) {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Coins style={{ width: '20px', height: '20px', color: '#fbbf24' }} />
+                      <span style={{ fontSize: '22px', fontWeight: '800' }}>10M</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
+                      Elite
                     </div>
                   </button>
                 </div>
