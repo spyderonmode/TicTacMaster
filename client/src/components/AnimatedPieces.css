@@ -65,9 +65,9 @@
   }
 }
 
-/* Flame flicker animation (infinite) */
+/* Flame flicker animation (one-time) */
 @keyframes flame-flicker {
-  0%, 100% {
+  0% {
     transform: translateY(0);
     opacity: 0.7;
   }
@@ -83,11 +83,15 @@
     transform: translateY(-3px);
     opacity: 1;
   }
+  100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
 }
 
-/* Circle pulse animation (infinite) */
+/* Circle pulse animation (one-time) */
 @keyframes circle-pulse {
-  0%, 100% {
+  0% {
     opacity: 0.6;
     transform: scale(1);
   }
@@ -102,6 +106,10 @@
   75% {
     opacity: 0.95;
     transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
   }
 }
 
@@ -148,11 +156,11 @@
 }
 
 .flame-group {
-  animation: flame-flicker 2s ease-in-out infinite;
+  animation: flame-flicker 2s ease-in-out forwards;
 }
 
 .pulse-circle {
-  animation: circle-pulse 2.5s ease-in-out infinite;
+  animation: circle-pulse 2.5s ease-in-out forwards;
 }
 
 .ring-expansion {

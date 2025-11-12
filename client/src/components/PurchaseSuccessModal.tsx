@@ -7,7 +7,7 @@ import { AnimatedPiece } from "@/components/AnimatedPieces";
 interface PurchaseSuccessModalProps {
   open: boolean;
   onClose: () => void;
-  purchaseType: "piece" | "emoji";
+  purchaseType: "piece" | "emoji" | "frame";
   itemName: string;
   itemDescription: string;
   itemId?: string;
@@ -220,7 +220,7 @@ export function PurchaseSuccessModal({
             // Changed text color from 'text-purple-300' to 'text-blue-300'
             className="text-xs text-blue-300 text-center mt-4"
           >
-            Your new {purchaseType === "piece" ? "piece style" : "emoji"} is ready to use!
+            Your new {purchaseType === "piece" ? "piece style" : purchaseType === "emoji" ? "emoji" : "avatar frame"} is ready to use!
           </motion.p>
         </div>
       </DialogContent>

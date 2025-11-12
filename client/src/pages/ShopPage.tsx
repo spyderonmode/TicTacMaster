@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users, Palette } from "lucide-react";
+import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users, Palette, Bird } from "lucide-react";
 import { AnimatedPiece } from "@/components/AnimatedPieces";
 import { PurchaseSuccessModal } from "@/components/PurchaseSuccessModal";
 import { AvatarWithFrame } from "@/components/AvatarWithFrame";
@@ -24,6 +24,7 @@ interface PieceStyle {
 
 interface UserData {
   coins: number;
+  profileImageUrl?: string | null;
 }
 
 interface EmojiItem {
@@ -132,7 +133,21 @@ const PIECE_STYLES = [
     id: "tulip",
     name: "Tulip Garden",
     description: "Soft 3D tulip petals design with gentle floating animations - pure elegance",
-    price: 200000000, // 2000 million coins
+    price: 200000000, // 200 million coins
+    isDefault: false,
+  },
+  {
+    id: "butterfly",
+    name: "Butterfly Dreams",
+    description: "Beautiful 3D butterfly with fluttering wings and magical sparkles - enchanting and graceful",
+    price: 500000000, // 500 million coins
+    isDefault: false,
+  },
+  {
+    id: "peacock",
+    name: "Royal Peacock",
+    description: "Majestic 3D peacock feathers with iridescent eye patterns and stunning color gradients - absolutely regal!",
+    price: 500000000, // 500 million coins
     isDefault: false,
   },
 ];
@@ -164,6 +179,13 @@ const AVATAR_FRAMES = [
     name: 'Lovers Heart 3D',
     description: 'Romantic 3D hearts floating around your avatar - for lovers only!',
     price: 1000000000, // 1 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'diamond_luxury',
+    name: 'Diamond Luxury',
+    description: 'Ultra-premium 3D floating diamond crystals with shimmer effects - the ultimate luxury!',
+    price: 2000000000, // 2 billion coins
     isDefault: false,
   },
 ];
@@ -480,6 +502,7 @@ export default function ShopPage() {
                       {style.id === "cat" && <Cat className="w-5 h-5 text-blue-400" />}
                       {style.id === "bestfriends" && <Users className="w-5 h-5 text-purple-400" />}
                       {style.id === "holi" && <Palette className="w-5 h-5 text-pink-500" />}
+                      {style.id === "peacock" && <Bird className="w-5 h-5 text-emerald-400" />}
                       {style.name}
                     </span>
                     {isActive && (
@@ -504,14 +527,14 @@ export default function ShopPage() {
                     <div className="w-20 h-20 flex items-center justify-center">
                       <AnimatedPiece 
                         symbol="X" 
-                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi"} 
+                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock"} 
                         className={style.id === "default" ? "text-5xl text-blue-400 font-bold" : "text-blue-400"}
                       />
                     </div>
                     <div className="w-20 h-20 flex items-center justify-center">
                       <AnimatedPiece 
                         symbol="O" 
-                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi"} 
+                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock"} 
                         className={style.id === "default" ? "text-5xl text-red-400 font-bold" : "text-red-400"}
                       />
                     </div>

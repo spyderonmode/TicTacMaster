@@ -67,14 +67,14 @@ const getSelectedAchievementBorder = (playerInfo: any): string | null => {
   if (playerInfo?.selectedAchievementBorder !== undefined) {
     return playerInfo.selectedAchievementBorder;
   }
-  
+
   // Fallback to auto-detection of highest achievement for legacy users
   const achievements = playerInfo?.achievements || [];
   if (hasUltimateVeteranAchievement(achievements)) return 'ultimate_veteran';
   if (hasGrandmasterAchievement(achievements)) return 'grandmaster';
   if (hasChampionAchievement(achievements)) return 'champion';
   if (hasLegendAchievement(achievements)) return 'legend';
-  
+
   return null; // No border
 };
 
@@ -154,7 +154,7 @@ const getWinningPositions = (board: Record<string, string>, player: string): num
     [1, 2, 3, 4, 5],      // Row 1
     [11, 12, 13, 14, 15]  // Row 3
   ];
-  
+
   for (const row of edgeRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
@@ -163,35 +163,35 @@ const getWinningPositions = (board: Record<string, string>, player: string): num
       }
     }
   }
-  
+
   // Row 2 (middle): Check for ALL 5 consecutive tokens
   const middleRow = [6, 7, 8, 9, 10];
   if (middleRow.every(pos => board[pos.toString()] === player)) {
     return middleRow;
   }
-  
+
   // Check vertical wins
   const columns = [
     [1, 6, 11], [2, 7, 12], [3, 8, 13], [4, 9, 14], [5, 10, 15]
   ];
-  
+
   for (const column of columns) {
     if (column.every(pos => board[pos.toString()] === player)) {
       return column;
     }
   }
-  
+
   // Check diagonal wins
   const diagonals = [
     [1, 7, 13], [2, 8, 14], [3, 7, 11], [4, 8, 12]
   ];
-  
+
   for (const diagonal of diagonals) {
     if (diagonal.every(pos => board[pos.toString()] === player)) {
       return diagonal;
     }
   }
-  
+
   return [];
 };
 
@@ -204,7 +204,7 @@ const findBestMove = (board: Record<string, string>, availableMoves: number[]): 
       return move;
     }
   }
-  
+
   // Try to block player win
   for (const move of availableMoves) {
     const testBoard = { ...board, [move.toString()]: 'X' };
@@ -212,7 +212,7 @@ const findBestMove = (board: Record<string, string>, availableMoves: number[]): 
       return move;
     }
   }
-  
+
   return null;
 };
 
@@ -224,7 +224,7 @@ const findBestMoveHard = (board: Record<string, string>, availableMoves: number[
       return move;
     }
   }
-  
+
   // Try to block player win
   for (const move of availableMoves) {
     const testBoard = { ...board, [move.toString()]: 'X' };
@@ -232,7 +232,7 @@ const findBestMoveHard = (board: Record<string, string>, availableMoves: number[
       return move;
     }
   }
-  
+
   // Strategic positioning: prefer center and corners
   const strategicMoves = [8, 1, 3, 11, 13, 7, 9]; // Center first, then corners and edges
   for (const move of strategicMoves) {
@@ -240,7 +240,7 @@ const findBestMoveHard = (board: Record<string, string>, availableMoves: number[
       return move;
     }
   }
-  
+
   return null;
 };
 
@@ -250,7 +250,7 @@ const checkWinSimple = (board: Record<string, string>, player: string): boolean 
     [1, 2, 3, 4, 5],      // Row 1
     [11, 12, 13, 14, 15]  // Row 3
   ];
-  
+
   for (const row of edgeRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
@@ -259,35 +259,35 @@ const checkWinSimple = (board: Record<string, string>, player: string): boolean 
       }
     }
   }
-  
+
   // Row 2 (middle): Check for ALL 5 consecutive tokens
   const middleRow = [6, 7, 8, 9, 10];
   if (middleRow.every(pos => board[pos.toString()] === player)) {
     return true;
   }
-  
+
   // Check vertical (3 in a column)
   const columns = [
     [1, 6, 11], [2, 7, 12], [3, 8, 13], [4, 9, 14], [5, 10, 15]
   ];
-  
+
   for (const column of columns) {
     if (column.every(pos => board[pos.toString()] === player)) {
       return true;
     }
   }
-  
+
   // Check diagonal (3 in diagonal, excluding columns 5, 10, 15)
   const diagonals = [
     [1, 7, 13], [2, 8, 14], [3, 7, 11], [4, 8, 12]
   ];
-  
+
   for (const diagonal of diagonals) {
     if (diagonal.every(pos => board[pos.toString()] === player)) {
       return true;
     }
   }
-  
+
   return false;
 };
 
@@ -306,15 +306,15 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   const [currentPlayer, setCurrentPlayer] = useState<'X' | 'O'>('X');
   // Removed winningLine state - now derived from game prop
   const [lastMove, setLastMove] = useState<number | null>(null);
-  
+
   const [opponent, setOpponent] = useState<any>(null);
-  
+
   // Player chat message state
   const [playerXMessage, setPlayerXMessage] = useState<PlayerMessage | null>(null);
   const [playerOMessage, setPlayerOMessage] = useState<PlayerMessage | null>(null);
   const [messageTimeouts, setMessageTimeouts] = useState<{ X?: NodeJS.Timeout; O?: NodeJS.Timeout }>({});
   const [showChatPanel, setShowChatPanel] = useState(false);
-  
+
   // Profile modal state
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -357,7 +357,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       // Get the opponent's actual user ID
       const userId = (user as any)?.userId || (user as any)?.id;
       const opponentId = currentUserSymbol === 'X' ? game.playerOId : game.playerXId;
-      
+
       if (!opponentId) {
         throw new Error('Opponent not found');
       }
@@ -401,7 +401,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     queryKey: ["/api/piece-styles"],
   });
   const currentUserPieceStyle = pieceStyleData?.activeStyle || 'default';
-  
+
   // Determine which player is the current user (X or O)
   const currentUserSymbol = useMemo(() => {
     if (!game || !user) return null;
@@ -415,7 +415,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   const handleProfileClick = (playerId: string) => {
     // Profile click handler called
     // Current selectedPlayerId state and setting modal
-    
+
     // Force close first if already open, then open with new player
     if (showProfileModal) {
       setShowProfileModal(false);
@@ -437,7 +437,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     setShowProfileModal(false);
     setSelectedPlayerId(null);
   };
-  
+
   // Derive winning line from game state using useMemo to prevent infinite loops
   const derivedWinningLine = useMemo(() => {
     return game?.winningPositions || [];
@@ -459,12 +459,12 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     const handlePlayerLeftWin = (event: CustomEvent) => {
       const message = event.detail;
       console.log('🏆 GameBoard: Player left win event received:', message);
-      
+
       // Trigger onGameOver with a proper result object to show GameOverModal
       if (onGameOver && game) {
         const winnerSymbol = message.winnerSymbol || (message.winner === game.playerXId ? 'X' : 'O');
         const isCurrentUserWinner = user && message.winner === (user.userId || user.id);
-        
+
         const gameResult = {
           game: game,
           winner: winnerSymbol,
@@ -476,14 +476,14 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
             : `${message.leavingPlayer || 'Opponent'} left the game.`,
           isAbandonment: true
         };
-        
+
         // Show the GameOverModal with opponent left message
         onGameOver(gameResult);
       }
     };
 
     window.addEventListener('player_left_win', handlePlayerLeftWin as EventListener);
-    
+
     return () => {
       window.removeEventListener('player_left_win', handlePlayerLeftWin as EventListener);
     };
@@ -505,7 +505,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     if (gameMode === 'online' && game && user) {
       const userIsPlayerX = game.playerXId === (user.userId || user.id);
       const userIsPlayerO = game.playerOId === (user.userId || user.id);
-      
+
       if (userIsPlayerX && game.playerOInfo) {
         setOpponent(game.playerOInfo);
       } else if (userIsPlayerO && game.playerXInfo) {
@@ -517,19 +517,19 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   // Player message functions
   const setPlayerMessage = (player: 'X' | 'O', messageText: string) => {
     const message = QUICK_CHAT_MESSAGES.find(msg => msg.text === messageText) || { text: messageText, duration: 3000 };
-    
+
     // Clear existing timeout
     if (messageTimeouts[player]) {
       clearTimeout(messageTimeouts[player]);
     }
-    
+
     // Set new message
     if (player === 'X') {
       setPlayerXMessage(message);
     } else {
       setPlayerOMessage(message);
     }
-    
+
     // Clear message after duration
     const timeout = setTimeout(() => {
       if (player === 'X') {
@@ -539,7 +539,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       }
       setMessageTimeouts(prev => ({ ...prev, [player]: undefined }));
     }, message.duration);
-    
+
     setMessageTimeouts(prev => ({ ...prev, [player]: timeout }));
   };
 
@@ -548,18 +548,18 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       const userId = user.userId || user.id;
       const isPlayerX = game.playerXId === userId;
       const isPlayerO = game.playerOId === userId;
-      
+
       // Check if user is actually a player (not a spectator)
       if (!isPlayerX && !isPlayerO) {
         console.log('❌ Spectator cannot use quick chat');
         return;
       }
-      
+
       const playerSymbol = isPlayerX ? 'X' : 'O';
-      
+
       // Show message locally first
       setPlayerMessage(playerSymbol, messageText);
-      
+
       // Broadcast message to all players and spectators in the room
       const chatMessage = {
         type: 'player_chat',
@@ -570,7 +570,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         messageText: messageText,
         playerInfo: isPlayerX ? game.playerXInfo : game.playerOInfo
       };
-      
+
       // Send via WebSocket
       if (sendMessage) {
         sendMessage(chatMessage);
@@ -605,7 +605,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   // Create stable dependencies for board to prevent infinite loops
   const gameBoardKeys = game?.board ? Object.keys(game.board).sort().join(',') : '';
   const gameBoardValues = game?.board ? Object.values(game.board).join(',') : '';
-  
+
   // Use ref to track last synced board state
   const lastSyncedBoardRef = useRef<string>('');
 
@@ -615,7 +615,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       const isNewGame = Object.keys(gameBoard).length === 0;
       const currentBoardState = gameBoardKeys + '|' + gameBoardValues;
       const syncKey = `${currentBoardState}|${game.syncTimestamp}|${game.timestamp}`;
-      
+
       // For local games, only set board if it's truly empty (new game)
       if (game.id && game.id.startsWith('local-game')) {
         if (isNewGame) {
@@ -646,13 +646,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   useEffect(() => {
     if (lastMessage?.type === 'player_chat') {
       // Handle player chat message
-      
+
       if (lastMessage.gameId === game?.id || lastMessage.roomId === game?.roomId) {
         const messageText = lastMessage.messageText;
         const playerSymbol = lastMessage.playerSymbol;
-        
+
         // Message matches current game/room
-        
+
         // Show the message for the specified player
         if (messageText) {
           setPlayerMessage(playerSymbol, messageText);
@@ -662,7 +662,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         // Message doesn't match current game/room
       }
     }
-    
+
     // Handle move error messages from WebSocket
     if (lastMessage?.type === 'move_error' && lastMessage?.gameId === game?.id) {
       toast({
@@ -675,21 +675,21 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     // Handle incoming emoji from WebSocket
     if (lastMessage?.type === 'emoji_sent' && lastMessage?.gameId === game?.id) {
       const { emoji, senderId } = lastMessage;
-      
+
       if (!emoji) {
         return;
       }
-      
+
       // Determine which player sent the emoji
       const senderSymbol = senderId === game?.playerXId ? 'X' : 'O';
-      
+
       // Clear any existing timeout for this player
       if (senderSymbol === 'X' && playerXEmoji?.timeout) {
         clearTimeout(playerXEmoji.timeout);
       } else if (senderSymbol === 'O' && playerOEmoji?.timeout) {
         clearTimeout(playerOEmoji.timeout);
       }
-      
+
       // Set emoji for the correct player with auto-clear timeout
       if (senderSymbol === 'X') {
         setPlayerXEmoji({ emoji });
@@ -714,19 +714,19 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       if (!game) {
         throw new Error('No active game');
       }
-      
+
       // CRITICAL FIX: Ensure game is in active state before processing move
       if (game.status !== 'active') {
         throw new Error('Game is not active yet. Please wait...');
       }
-      
+
       // For local games (AI and pass-play), handle moves locally
       if (game.id && game.id.startsWith('local-game')) {
         return handleLocalMove(position);
       }
-      
+
       // Making move with current game state
-      
+
       // For online games, use WebSocket for instant synchronization
       if (sendMessage && gameMode === 'online') {
         // Send move via WebSocket for real-time sync
@@ -735,11 +735,11 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
           gameId: game.id,
           position: position
         });
-        
+
         // Return immediately - WebSocket will handle the response
         return Promise.resolve({ success: true });
       }
-      
+
       // Fallback to HTTP API if WebSocket not available
       return await apiRequest(`/api/games/${game.id}/moves`, { method: 'POST', body: { position } });
     },
@@ -749,7 +749,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         // For online games, the Home component will handle WebSocket updates
         // No need to update local state here
         // WebSocket will handle board update
-        
+
 
       }
       // For online games, don't force board update since WebSocket handles it
@@ -780,17 +780,17 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
   const handleLocalMove = (position: number) => {
     if (!game) return;
-    
+
     // HandleLocalMove called
     // Position, current player, and board state
-    
+
     // Sound effects removed as requested
     const newBoard = { ...board };
     newBoard[position.toString()] = currentPlayer;
     setLastMove(position);
-    
+
     console.log('  - New board after move:', newBoard);
-    
+
     // Check for win condition with winning line detection
     const checkWin = (board: Record<string, string>, player: string) => {
       // Check horizontal: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
@@ -798,7 +798,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         [1, 2, 3, 4, 5],      // Row 1
         [11, 12, 13, 14, 15]  // Row 3
       ];
-      
+
       for (const row of edgeRows) {
         for (let i = 0; i <= row.length - 4; i++) {
           const positions = row.slice(i, i + 4);
@@ -808,58 +808,58 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
           }
         }
       }
-      
+
       // Row 2 (middle): Check for ALL 5 consecutive tokens
       const middleRow = [6, 7, 8, 9, 10];
       if (middleRow.every(pos => board[pos.toString()] === player)) {
         return true;
       }
-      
+
       // Check vertical (3 consecutive)
       const columns = [
         [1, 6, 11], [2, 7, 12], [3, 8, 13], [4, 9, 14], [5, 10, 15]
       ];
-      
+
       for (const column of columns) {
         if (column.every(pos => board[pos.toString()] === player)) {
           // Winning line now derived from game state
           return true;
         }
       }
-      
+
       // Check diagonal (3 consecutive, excluding columns 5,10,15)
       const diagonals = [
         [1, 7, 13], [2, 8, 14], // Main diagonals (excluding [3,9,15])
         [3, 7, 11], [4, 8, 12], // Anti-diagonals (excluding [5,9,13])
         [11, 7, 3], [12, 8, 4]  // Additional patterns (excluding those with 5,10,15)
       ];
-      
+
       for (const diagonal of diagonals) {
         if (diagonal.every(pos => board[pos.toString()] === player)) {
           return true;
         }
       }
-      
+
       return false;
     };
-    
+
     const checkDraw = (board: Record<string, string>) => {
       return VALID_POSITIONS.every(pos => board[pos.toString()]);
     };
-    
+
     // Update board state and force render
     // LocalMove: Updating board
     setBoard(newBoard);
-    
+
     if (checkWin(newBoard, currentPlayer)) {
       const winnerInfo = currentPlayer === 'X' 
         ? (game?.playerXInfo?.firstName || game?.playerXInfo?.displayName || game?.playerXInfo?.username || 'Player X')
         : (game?.playerOInfo?.firstName || game?.playerOInfo?.displayName || game?.playerOInfo?.username || (gameMode === 'ai' ? 'AI' : 'Player O'));
-      
+
       // Show winning positions before game over  
       const winningPositions = getWinningPositions(newBoard, currentPlayer);
       // Winning line now derived from game state
-      
+
       // Add delay before showing game over for AI and pass-play
       setTimeout(() => {
         try {
@@ -878,7 +878,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       }, gameMode === 'ai' || gameMode === 'pass-play' ? 1500 : 0);
       return;
     }
-    
+
     if (checkDraw(newBoard)) {
       if (onGameOver) {
         try {
@@ -894,13 +894,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       }
       return;
     }
-    
+
     // Switch player
     const nextPlayer = currentPlayer === 'X' ? 'O' : 'X';
     setCurrentPlayer(nextPlayer);
-    
 
-    
+
+
     // Handle AI move
     if (gameMode === 'ai' && nextPlayer === 'O') {
 
@@ -913,11 +913,11 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   const makeAIMove = (currentBoard: Record<string, string>) => {
     const availableMoves = VALID_POSITIONS.filter(pos => !currentBoard[pos.toString()]);
     if (availableMoves.length === 0) return;
-    
+
     // AI difficulty-based move selection
     const difficulty = game?.aiDifficulty || 'medium';
     let selectedMove;
-    
+
     if (difficulty === 'easy') {
       // Easy: Random move
       selectedMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
@@ -928,17 +928,17 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       // Hard: More strategic play
       selectedMove = findBestMoveHard(currentBoard, availableMoves) || availableMoves[Math.floor(Math.random() * availableMoves.length)];
     }
-    
+
     // Sound effects removed as requested
     const newBoard = { ...currentBoard };
     newBoard[selectedMove.toString()] = 'O';
-    
+
     // AI Move: Updating board
     setBoard(newBoard);
     setLastMove(selectedMove);
-    
 
-    
+
+
     // Check for AI win using same logic
     const checkWin = (board: Record<string, string>, player: string) => {
       // Check horizontal: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
@@ -946,7 +946,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         [1, 2, 3, 4, 5],      // Row 1
         [11, 12, 13, 14, 15]  // Row 3
       ];
-      
+
       for (const row of edgeRows) {
         for (let i = 0; i <= row.length - 4; i++) {
           const positions = row.slice(i, i + 4);
@@ -955,48 +955,48 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
           }
         }
       }
-      
+
       // Row 2 (middle): Check for ALL 5 consecutive tokens
       const middleRow = [6, 7, 8, 9, 10];
       if (middleRow.every(pos => board[pos.toString()] === player)) {
         return true;
       }
-      
+
       // Check vertical (3 consecutive)
       const columns = [
         [1, 6, 11], [2, 7, 12], [3, 8, 13], [4, 9, 14], [5, 10, 15]
       ];
-      
+
       for (const column of columns) {
         if (column.every(pos => board[pos.toString()] === player)) {
           return true;
         }
       }
-      
+
       // Check diagonal (3 consecutive, excluding columns 5,10,15)
       const diagonals = [
         [1, 7, 13], [2, 8, 14], // Main diagonals (excluding [3,9,15])
         [3, 7, 11], [4, 8, 12], // Anti-diagonals (excluding [5,9,13])
         [11, 7, 3], [12, 8, 4]  // Additional patterns (excluding those with 5,10,15)
       ];
-      
+
       return diagonals.some(diagonal => 
         diagonal.every(pos => board[pos.toString()] === player)
       );
     };
-    
+
     const checkDraw = (board: Record<string, string>) => {
       return VALID_POSITIONS.every(pos => board[pos.toString()]);
     };
-    
+
     if (checkWin(newBoard, 'O')) {
-      
+
       // Show winning positions before game over
       const winningPositions = getWinningPositions(newBoard, 'O');
       if (winningPositions.length > 0) {
         // Winning line now derived from game state
       }
-      
+
       // Add delay before showing game over for AI mode
       setTimeout(() => {
         if (onGameOver) {
@@ -1018,10 +1018,10 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       }, 1500);
       return;
     }
-    
+
     if (checkDraw(newBoard)) {
 
-      
+
       if (onGameOver) {
         try {
           onGameOver({
@@ -1035,13 +1035,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       }
       return;
     }
-    
+
     setCurrentPlayer('X');
   };
 
   const handleCellClick = (position: number) => {
     // Handle cell click for game move
-    
+
     // CRITICAL FIX: Prevent moves until game is fully initialized
     if (!game) {
       toast({
@@ -1051,7 +1051,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       });
       return;
     }
-    
+
     if (game.status && game.status !== 'active') {
       // Game not active
       toast({
@@ -1064,9 +1064,9 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
     if (board[position.toString()]) {
       // Position already occupied
-      
 
-      
+
+
       toast({
         title: t('invalidMove'),
         description: t('positionOccupied'),
@@ -1090,9 +1090,9 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       const userId = user?.userId || user?.id;
       const isPlayerX = game.playerXId === userId;
       const isPlayerO = game.playerOId === userId;
-      
+
       // Validate turn
-      
+
       if (!isPlayerX && !isPlayerO) {
         // User is not a player in this game
         toast({
@@ -1102,15 +1102,15 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         });
         return;
       }
-      
+
       const playerSymbol = isPlayerX ? 'X' : 'O';
       // Check player symbol and turn
-      
+
       if (currentPlayer !== playerSymbol) {
         // Not your turn
-        
 
-        
+
+
         const currentPlayerName = currentPlayer === 'X' ? 
           (game.playerXInfo?.firstName || 'Player X') : 
           (game.playerOInfo?.firstName || 'Player O');
@@ -1142,7 +1142,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     const isLastMove = lastMove === position;
     const isFirstMove = Object.keys(board).length === 0;
     const isLockedPosition = isFirstMove && position === 8;
-    
+
     return (
       <motion.div
         key={position}
@@ -1197,7 +1197,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   ? (symbol === 'X' 
                       ? (game?.playerXInfo?.activePieceStyle || 'default') 
                       : (game?.playerOInfo?.activePieceStyle || 'default'))
-                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus"))
+                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock"))
                     ? currentUserPieceStyle
                     : "default"
               }
@@ -1207,7 +1207,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                       (symbol === 'O' && game?.playerOInfo?.activePieceStyle && game?.playerOInfo?.activePieceStyle !== 'default'))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
-                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus"))
+                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock"))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
               }
@@ -1226,10 +1226,10 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       const col = (pos - 1) % 5;
       return { x: col * 20 + 10, y: row * 33.33 + 16.67 };
     };
-    
+
     const start = getGridPosition(positions[0]);
     const end = getGridPosition(positions[positions.length - 1]);
-    
+
     return {
       x1: start.x,
       y1: start.y,
@@ -1248,7 +1248,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   };
 
   const theme = themes[currentTheme];
-  
+
   return (
     <Card className={`${theme.boardStyle}`}>
       <CardHeader>
@@ -1280,7 +1280,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   <span className="text-base text-white font-bold">X</span>
                 </div>
               )}
-              
+
               <div className="flex flex-col items-center">
                 {renderAchievementBorder(
                   getSelectedAchievementBorder(game?.playerXInfo),
@@ -1305,7 +1305,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                 )}
               </div>
             </div>
-            
+
             {/* Chat Message and Emoji for Player X - On RIGHT side */}
             <AnimatePresence>
               {playerXMessage && (
@@ -1374,7 +1374,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
               )}
             </AnimatePresence>
           </div>
-          
+
           {/* Player O - Right Side */}
           <div className="flex items-center space-x-3">
             {/* Chat Message and Emoji for Player O - On LEFT side */}
@@ -1444,7 +1444,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                 </motion.div>
               )}
             </AnimatePresence>
-            
+
             {/* Player O Profile - Vertical Layout */}
             <div className="flex flex-col items-center space-y-2">
               {(gameMode === 'online' && (game?.playerOInfo?.profileImageUrl || game?.playerOInfo?.profilePicture)) ? (
@@ -1470,7 +1470,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   <span className="text-base text-white font-bold">O</span>
                 </div>
               )}
-              
+
               <div className="flex flex-col items-center">
                 {renderAchievementBorder(
                   getSelectedAchievementBorder(game?.playerOInfo),
@@ -1498,7 +1498,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {/* Current Player Indicator */}
         <div className={`mb-6 p-4 ${theme.cellStyle.split(' ')[0]} ${theme.borderColor} border rounded-lg`}>
@@ -1564,13 +1564,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         >
           {/* Row 1: 1,2,3,4,5 */}
           {[1, 2, 3, 4, 5].map(renderCell)}
-          
+
           {/* Row 2: 6,7,8,9,10 */}
           {[6, 7, 8, 9, 10].map(renderCell)}
-          
+
           {/* Row 3: 11,12,13,14,15 */}
           {[11, 12, 13, 14, 15].map(renderCell)}
-          
+
           {/* Winning line animation removed - keeping only box blink */}
         </div>
 
@@ -1588,7 +1588,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
               <span>{t('chat')}</span>
             </Button>
           )}
-          
+
           {/* Send Emoji button - opens emoji picker */}
           {gameMode === 'online' && !isSpectator && ownedEmojis.length > 0 && (
             <Button 
@@ -1601,7 +1601,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
               <span>Send Emoji</span>
             </Button>
           )}
-          
+
           {/* Only show Reset Game button for non-online modes */}
           {gameMode !== 'online' && (
             <Button 
@@ -1614,7 +1614,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
             </Button>
           )}
         </div>
-        
+
         {/* Quick Chat Panel */}
         <div className="relative">
           <QuickChatPanel

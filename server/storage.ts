@@ -4296,6 +4296,12 @@ export class DatabaseStorage implements IStorage {
         description: 'Romantic 3D hearts floating around your avatar - for lovers only!',
         price: 1000000000, // 1 billion coins
       },
+      {
+        id: 'diamond_luxury',
+        name: 'Diamond Luxury',
+        description: 'Ultra-premium 3D floating diamond crystals with shimmer effects - the ultimate luxury!',
+        price: 2000000000, // 2 billion coins
+      },
     ];
 
     try {

@@ -228,6 +228,26 @@ export function useWebSocket() {
           return; // Don't set lastMessage to prevent useEffect processing
         }
 
+        // Handle room closed - when any player leaves, kick everyone out
+        if (message.type === 'room_closed') {
+          console.log('🚪 Room closed event received:', message);
+          
+          // Clear any stored game/room state
+          localStorage.removeItem('currentGameState');
+          sessionStorage.removeItem('currentGameState');
+          localStorage.removeItem('currentRoomState');
+          sessionStorage.removeItem('currentRoomState');
+
+          // Dispatch custom event for home.tsx to handle
+          const roomClosedEvent = new CustomEvent('room_closed', {
+            detail: message
+          });
+
+          window.dispatchEvent(roomClosedEvent);
+
+          return; // Don't set lastMessage to prevent useEffect processing
+        }
+
         // For critical reconnection messages, dispatch custom events immediately
         if (message.type === 'reconnection_room_join') {
           // Dispatching immediate room reconnection event

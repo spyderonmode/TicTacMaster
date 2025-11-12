@@ -740,14 +740,65 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                   width: '80px',
                   height: '80px',
                   margin: '0 auto 16px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #ffd700, #ffed4e)',
+                  position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid rgba(255, 215, 0, 0.2)'
+                  justifyContent: 'center'
                 }}>
-                  <Loader2 style={{ width: '36px', height: '36px', color: '#000000' }} />
+                  <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+                    <defs>
+                      <radialGradient id="goldGradient">
+                        <stop offset="0%" style={{ stopColor: '#ffed4e', stopOpacity: 1 }} />
+                        <stop offset="50%" style={{ stopColor: '#ffd700', stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: '#d4af37', stopOpacity: 1 }} />
+                      </radialGradient>
+                      <linearGradient id="rimGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style={{ stopColor: '#ffed4e', stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: '#d4af37', stopOpacity: 1 }} />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Outer beveled rim */}
+                    <circle cx="50" cy="50" r="48" fill="url(#rimGradient)" opacity="0.3" />
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="url(#rimGradient)" strokeWidth="3" />
+                    
+                    {/* Main gold coin */}
+                    <circle cx="50" cy="50" r="42" fill="url(#goldGradient)" />
+                    
+                    {/* Radial star-map grid */}
+                    <g opacity="0.15" stroke="#000000" strokeWidth="0.5" fill="none">
+                      <circle cx="50" cy="50" r="35" />
+                      <circle cx="50" cy="50" r="25" />
+                      <circle cx="50" cy="50" r="15" />
+                      <line x1="50" y1="8" x2="50" y2="92" />
+                      <line x1="8" y1="50" x2="92" y2="50" />
+                      <line x1="20" y1="20" x2="80" y2="80" />
+                      <line x1="80" y1="20" x2="20" y2="80" />
+                    </g>
+                    
+                    {/* Two opposing player silhouettes */}
+                    <g fill="#1a1a1a" opacity="0.9">
+                      {/* Left player */}
+                      <ellipse cx="32" cy="40" rx="6" ry="7" />
+                      <path d="M 32 47 Q 27 52, 27 60 L 27 62 Q 27 64, 29 64 L 35 64 Q 37 64, 37 62 L 37 60 Q 37 52, 32 47 Z" />
+                      
+                      {/* Right player */}
+                      <ellipse cx="68" cy="40" rx="6" ry="7" />
+                      <path d="M 68 47 Q 63 52, 63 60 L 63 62 Q 63 64, 65 64 L 71 64 Q 73 64, 73 62 L 73 60 Q 73 52, 68 47 Z" />
+                    </g>
+                    
+                    {/* VS symbol in center */}
+                    <text x="50" y="58" textAnchor="middle" fontSize="18" fontWeight="900" fill="#1a1a1a" opacity="0.4">VS</text>
+                    
+                    {/* Inner highlight for depth */}
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255, 255, 255, 0.3)" strokeWidth="1.5" opacity="0.6" />
+                    
+                    {/* Subtle sparkle accents */}
+                    <circle cx="25" cy="25" r="2" fill="rgba(255, 255, 255, 0.8)" />
+                    <circle cx="75" cy="25" r="1.5" fill="rgba(255, 255, 255, 0.6)" />
+                    <circle cx="25" cy="75" r="1.5" fill="rgba(255, 255, 255, 0.6)" />
+                    <circle cx="75" cy="75" r="2" fill="rgba(255, 255, 255, 0.8)" />
+                  </svg>
                 </div>
                 <h2 style={{
                   fontSize: '20px',

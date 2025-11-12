@@ -5688,9 +5688,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 // If game is already finished or has a winner, skip abandonment logic entirely
                 // This prevents winning players from getting abandonment penalties when they leave
-                if (!latestGame || latestGame.status !== 'active' || latestGame.winnerId) {
+                if (!latestGame || latestGame.status === 'finished' || latestGame.winnerId) {
                   // Game already finished or has winner - don't mark as abandoned
-                  // Just clean up room state silently
+                  // But still need to broadcast room_closed to kick everyone out (only if actually finished)
+                  const roomUsers = roomConnections.get(roomId);
+                  if (roomUsers && roomUsers.size > 0) {
+                    const roomClosedMessage = JSON.stringify({
+                      type: 'room_closed',
+                      roomId,
+                      reason: 'player_left',
+                      triggeredBy: {
+                        userId,
+                        displayName: playerName
+                      },
+                      gameId: latestGame?.id,
+                      timestamp: Date.now()
+                    });
+
+                    // Broadcast to all users in the room
+                    roomUsers.forEach(connectionId => {
+                      const connection = connections.get(connectionId);
+                      if (connection && connection.ws.readyState === WebSocket.OPEN) {
+                        connection.ws.send(roomClosedMessage);
+                        
+                        // Clear their room state
+                        connection.roomId = undefined;
+                        if (connection.userId) {
+                          userRoomStates.delete(connection.userId);
+                          const onlineUser = onlineUsers.get(connection.userId);
+                          if (onlineUser) {
+                            onlineUser.roomId = undefined;
+                          }
+                        }
+                      }
+                    });
+
+                    // Clear the entire room
+                    roomConnections.delete(roomId);
+                  }
+
+                  // Clean up room state
                   userRoomStates.delete(userId);
                   await storage.removeRoomParticipant(roomId, userId);
                   return;

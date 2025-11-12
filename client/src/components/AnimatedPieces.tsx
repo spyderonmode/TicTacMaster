@@ -4,7 +4,7 @@ import "./AnimatedPieces.css";
 
 interface AnimatedPieceProps {
   symbol: "X" | "O";
-  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip";
+  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock";
   className?: string;
   position?: number;
 }
@@ -106,6 +106,22 @@ export function AnimatedPiece({ symbol, style = "default", className = "", posit
       <TulipX className={className} uniqueId={uniqueId} />
     ) : (
       <TulipO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "butterfly") {
+    return symbol === "X" ? (
+      <ButterflyX className={className} uniqueId={uniqueId} />
+    ) : (
+      <ButterflyO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "peacock") {
+    return symbol === "X" ? (
+      <PeacockX className={className} uniqueId={uniqueId} />
+    ) : (
+      <PeacockO className={className} uniqueId={uniqueId} />
     );
   }
 
@@ -441,7 +457,7 @@ function FireX({ className = "", uniqueId }: { className?: string; uniqueId: str
           }}
           transition={{
             duration: 2,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -543,7 +559,7 @@ function FireO({ className = "", uniqueId }: { className?: string; uniqueId: str
           }}
           transition={{
             duration: 2.5,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -564,7 +580,7 @@ function FireO({ className = "", uniqueId }: { className?: string; uniqueId: str
           }}
           transition={{
             duration: 2,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -981,7 +997,7 @@ function LoversX({ className = "", uniqueId }: { className?: string; uniqueId: s
       }}
       transition={{ 
         scale: { type: "spring", stiffness: 400, damping: 20 },
-        rotateY: { duration: 2, ease: "easeInOut", repeat: Infinity }
+        rotateY: { duration: 2, ease: "easeInOut",  }
       }}
       style={{ 
         transformStyle: "preserve-3d",
@@ -1039,7 +1055,7 @@ function LoversX({ className = "", uniqueId }: { className?: string; uniqueId: s
           }}
           transition={{
             duration: 3,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -1058,7 +1074,7 @@ function LoversX({ className = "", uniqueId }: { className?: string; uniqueId: s
           }}
           transition={{
             duration: 2.5,
-            repeat: Infinity,
+            
             ease: "easeInOut",
             delay: 0.5
           }}
@@ -1078,7 +1094,7 @@ function LoversX({ className = "", uniqueId }: { className?: string; uniqueId: s
           }}
           transition={{
             duration: 2.8,
-            repeat: Infinity,
+            
             ease: "easeInOut",
             delay: 1
           }}
@@ -1105,7 +1121,7 @@ function LoversO({ className = "", uniqueId }: { className?: string; uniqueId: s
       }}
       transition={{ 
         scale: { type: "spring", stiffness: 400, damping: 20 },
-        rotateY: { duration: 2, ease: "easeInOut", repeat: Infinity }
+        rotateY: { duration: 2, ease: "easeInOut",  }
       }}
       style={{ 
         transformStyle: "preserve-3d",
@@ -1148,7 +1164,7 @@ function LoversO({ className = "", uniqueId }: { className?: string; uniqueId: s
           }}
           transition={{
             duration: 8,
-            repeat: Infinity,
+            
             ease: "linear"
           }}
         >
@@ -1165,7 +1181,7 @@ function LoversO({ className = "", uniqueId }: { className?: string; uniqueId: s
           }}
           transition={{
             duration: 8,
-            repeat: Infinity,
+            
             ease: "linear"
           }}
         >
@@ -1182,7 +1198,7 @@ function LoversO({ className = "", uniqueId }: { className?: string; uniqueId: s
           }}
           transition={{
             duration: 8,
-            repeat: Infinity,
+            
             ease: "linear"
           }}
         >
@@ -1201,7 +1217,7 @@ function LoversO({ className = "", uniqueId }: { className?: string; uniqueId: s
           }}
           transition={{
             duration: 2,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -1257,7 +1273,7 @@ function FlowerX({ className = "", uniqueId }: { className?: string; uniqueId: s
               }}
               transition={{
                 duration: 3 + i * 0.3,
-                repeat: Infinity,
+                
                 delay: i * 0.4,
                 ease: "linear"
               }}
@@ -1280,7 +1296,7 @@ function FlowerX({ className = "", uniqueId }: { className?: string; uniqueId: s
               transition={{
                 duration: 2 + i * 0.2,
                 ease: "easeInOut",
-                repeat: Infinity
+                
               }}
               style={{ transformOrigin: `${pos.x}px ${pos.y}px` }}
             >
@@ -1312,7 +1328,7 @@ function FlowerX({ className = "", uniqueId }: { className?: string; uniqueId: s
               transition={{
                 duration: 2.5 + i * 0.2,
                 ease: "easeInOut",
-                repeat: Infinity
+                
               }}
               style={{ transformOrigin: `${pos.x}px ${pos.y}px` }}
             >
@@ -1387,7 +1403,7 @@ function FlowerO({ className = "", uniqueId }: { className?: string; uniqueId: s
               }}
               transition={{
                 duration: 3.5 + i * 0.25,
-                repeat: Infinity,
+                
                 delay: i * 0.35,
                 ease: "linear"
               }}
@@ -1404,7 +1420,7 @@ function FlowerO({ className = "", uniqueId }: { className?: string; uniqueId: s
               transition={{
                 duration: 2.2 + i * 0.15,
                 ease: "easeInOut",
-                repeat: Infinity
+                
               }}
               style={{ transformOrigin: `${pos.x}px ${pos.y}px` }}
             >
@@ -1480,7 +1496,7 @@ function GreenLeafX({ className = "", uniqueId }: { className?: string; uniqueId
                 }}
                 transition={{
                   duration: 3 + (i % 3) * 0.5,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.12
                 }}
@@ -1549,7 +1565,7 @@ function GreenLeafX({ className = "", uniqueId }: { className?: string; uniqueId
                 }}
                 transition={{
                   duration: 3 + ((i + 1) % 3) * 0.5,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.12 + 0.15
                 }}
@@ -1610,7 +1626,7 @@ function GreenLeafX({ className = "", uniqueId }: { className?: string; uniqueId
               }}
               transition={{
                 duration: 2.5,
-                repeat: Infinity,
+                
                 delay: i * 0.25,
                 ease: "easeInOut"
               }}
@@ -1678,7 +1694,7 @@ function GreenLeafO({ className = "", uniqueId }: { className?: string; uniqueId
                 }}
                 transition={{
                   duration: 3 + (i % 3) * 0.5,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.12
                 }}
@@ -1741,7 +1757,7 @@ function GreenLeafO({ className = "", uniqueId }: { className?: string; uniqueId
               }}
               transition={{
                 duration: 2.5,
-                repeat: Infinity,
+                
                 delay: i * 0.25,
                 ease: "easeInOut"
               }}
@@ -1766,8 +1782,8 @@ function CatX({ className = "", uniqueId }: { className?: string; uniqueId: stri
       }}
       transition={{ 
         scale: { type: "spring", stiffness: 300, damping: 18 },
-        rotateX: { duration: 4, ease: "easeInOut", repeat: Infinity },
-        rotateZ: { duration: 2, ease: "easeInOut", repeat: Infinity }
+        rotateX: { duration: 4, ease: "easeInOut",  },
+        rotateZ: { duration: 2, ease: "easeInOut",  }
       }}
       style={{ 
         transformStyle: "preserve-3d",
@@ -1880,8 +1896,8 @@ function CatX({ className = "", uniqueId }: { className?: string; uniqueId: stri
             scale: [1, 1.15, 1]
           }}
           transition={{
-            rotate: { duration: 6, ease: "linear", repeat: Infinity },
-            scale: { duration: 2, ease: "easeInOut", repeat: Infinity }
+            rotate: { duration: 6, ease: "linear",  },
+            scale: { duration: 2, ease: "easeInOut",  }
           }}
         >
           {/* Top left paw */}
@@ -1933,8 +1949,8 @@ function CatO({ className = "", uniqueId }: { className?: string; uniqueId: stri
       }}
       transition={{ 
         scale: { type: "spring", stiffness: 300, damping: 18 },
-        rotateX: { duration: 4, ease: "easeInOut", repeat: Infinity },
-        rotateZ: { duration: 2, ease: "easeInOut", repeat: Infinity }
+        rotateX: { duration: 4, ease: "easeInOut",  },
+        rotateZ: { duration: 2, ease: "easeInOut",  }
       }}
       style={{ 
         transformStyle: "preserve-3d",
@@ -2017,7 +2033,7 @@ function CatO({ className = "", uniqueId }: { className?: string; uniqueId: stri
           }}
           transition={{
             duration: 2.5,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -2105,7 +2121,7 @@ function CatO({ className = "", uniqueId }: { className?: string; uniqueId: stri
           }}
           transition={{
             duration: 2.5,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         />
@@ -2117,7 +2133,7 @@ function CatO({ className = "", uniqueId }: { className?: string; uniqueId: stri
           }}
           transition={{
             duration: 2.5,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -2147,7 +2163,7 @@ function CatO({ className = "", uniqueId }: { className?: string; uniqueId: stri
               }}
               transition={{
                 duration: 3,
-                repeat: Infinity,
+                
                 delay: i * 0.6,
                 ease: "easeInOut"
               }}
@@ -2213,7 +2229,7 @@ function BestFriendsX({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut"
             }}
           />
@@ -2226,7 +2242,7 @@ function BestFriendsX({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut"
             }}
             style={{ originX: "18px", originY: "18px" }}
@@ -2258,7 +2274,7 @@ function BestFriendsX({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut",
               delay: 0.3
             }}
@@ -2303,7 +2319,7 @@ function BestFriendsX({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut",
               delay: 0.5
             }}
@@ -2317,7 +2333,7 @@ function BestFriendsX({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut",
               delay: 0.5
             }}
@@ -2350,7 +2366,7 @@ function BestFriendsX({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut",
               delay: 0.8
             }}
@@ -2393,7 +2409,7 @@ function BestFriendsX({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 2,
-              repeat: Infinity,
+              
               ease: "easeInOut"
             }}
           />
@@ -2422,7 +2438,7 @@ function BestFriendsX({ className = "", uniqueId }: { className?: string; unique
               }}
               transition={{
                 duration: 2,
-                repeat: Infinity,
+                
                 delay: i * 0.5,
                 ease: "easeInOut"
               }}
@@ -2485,7 +2501,7 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut"
             }}
           />
@@ -2498,7 +2514,7 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut"
             }}
             style={{ originX: "50px", originY: "22px" }}
@@ -2530,7 +2546,7 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut",
               delay: 0.3
             }}
@@ -2575,7 +2591,7 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut",
               delay: 0.5
             }}
@@ -2589,7 +2605,7 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut",
               delay: 0.5
             }}
@@ -2622,7 +2638,7 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 3,
-              repeat: Infinity,
+              
               ease: "easeInOut",
               delay: 0.8
             }}
@@ -2665,7 +2681,7 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
             }}
             transition={{
               duration: 2,
-              repeat: Infinity,
+              
               ease: "easeInOut"
             }}
           />
@@ -2694,7 +2710,7 @@ function BestFriendsO({ className = "", uniqueId }: { className?: string; unique
               }}
               transition={{
                 duration: 2,
-                repeat: Infinity,
+                
                 delay: i * 0.5,
                 ease: "easeInOut"
               }}
@@ -2934,7 +2950,7 @@ function HoliX({ className = "", uniqueId }: { className?: string; uniqueId: str
       transition={{ 
         scale: { type: "spring", stiffness: 300, damping: 20 },
         opacity: { duration: 0.3 },
-        y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" }
+        y: { duration: 3.5,  ease: "easeInOut" }
       }}
     >
       <svg
@@ -2948,7 +2964,7 @@ function HoliX({ className = "", uniqueId }: { className?: string; uniqueId: str
           }}
           transition={{
             duration: 2,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -2964,7 +2980,7 @@ function HoliX({ className = "", uniqueId }: { className?: string; uniqueId: str
             }}
             transition={{
               duration: 1.8,
-              repeat: Infinity,
+              
               ease: "easeInOut"
             }}
           />
@@ -2980,7 +2996,7 @@ function HoliX({ className = "", uniqueId }: { className?: string; uniqueId: str
             }}
             transition={{
               duration: 2,
-              repeat: Infinity,
+              
               delay: 0.3,
               ease: "easeInOut"
             }}
@@ -2997,7 +3013,7 @@ function HoliX({ className = "", uniqueId }: { className?: string; uniqueId: str
             }}
             transition={{
               duration: 1.5,
-              repeat: Infinity,
+              
               delay: 0.5,
               ease: "easeInOut"
             }}
@@ -3014,7 +3030,7 @@ function HoliX({ className = "", uniqueId }: { className?: string; uniqueId: str
             }}
             transition={{
               duration: 1.7,
-              repeat: Infinity,
+              
               delay: 0.6,
               ease: "easeInOut"
             }}
@@ -3044,7 +3060,7 @@ function HoliX({ className = "", uniqueId }: { className?: string; uniqueId: str
               }}
               transition={{
                 duration: 2.2,
-                repeat: Infinity,
+                
                 delay: i * 0.15,
                 ease: "easeInOut"
               }}
@@ -3069,7 +3085,7 @@ function HoliO({ className = "", uniqueId }: { className?: string; uniqueId: str
       transition={{ 
         scale: { type: "spring", stiffness: 300, damping: 20 },
         opacity: { duration: 0.3 },
-        x: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+        x: { duration: 4,  ease: "easeInOut" }
       }}
     >
       <svg
@@ -3083,7 +3099,7 @@ function HoliO({ className = "", uniqueId }: { className?: string; uniqueId: str
           }}
           transition={{
             duration: 2.2,
-            repeat: Infinity,
+            
             ease: "easeInOut"
           }}
         >
@@ -3101,7 +3117,7 @@ function HoliO({ className = "", uniqueId }: { className?: string; uniqueId: str
             }}
             transition={{
               duration: 1.9,
-              repeat: Infinity,
+              
               ease: "easeInOut"
             }}
           />
@@ -3119,7 +3135,7 @@ function HoliO({ className = "", uniqueId }: { className?: string; uniqueId: str
             }}
             transition={{
               duration: 2.1,
-              repeat: Infinity,
+              
               delay: 0.2,
               ease: "easeInOut"
             }}
@@ -3138,7 +3154,7 @@ function HoliO({ className = "", uniqueId }: { className?: string; uniqueId: str
             }}
             transition={{
               duration: 1.6,
-              repeat: Infinity,
+              
               delay: 0.4,
               ease: "easeInOut"
             }}
@@ -3157,7 +3173,7 @@ function HoliO({ className = "", uniqueId }: { className?: string; uniqueId: str
             }}
             transition={{
               duration: 1.8,
-              repeat: Infinity,
+              
               delay: 0.5,
               ease: "easeInOut"
             }}
@@ -3187,7 +3203,7 @@ function HoliO({ className = "", uniqueId }: { className?: string; uniqueId: str
               }}
               transition={{
                 duration: 2.4,
-                repeat: Infinity,
+                
                 delay: i * 0.12,
                 ease: "easeInOut"
               }}
@@ -3256,8 +3272,8 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
               }}
               transition={{ 
                 scale: { delay: i * 0.03, type: "spring", stiffness: 300 },
-                x: { duration: 3 + i * 0.15, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 },
-                y: { duration: 2.8 + i * 0.12, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }
+                x: { duration: 3 + i * 0.15,  ease: "easeInOut", delay: i * 0.1 },
+                y: { duration: 2.8 + i * 0.12,  ease: "easeInOut", delay: i * 0.08 }
               }}
             >
               {/* Left petal */}
@@ -3271,7 +3287,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 }}
                 transition={{
                   duration: 2.5 + i * 0.1,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.1
                 }}
@@ -3288,7 +3304,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 }}
                 transition={{
                   duration: 2.5 + i * 0.1,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.1 + 0.05
                 }}
@@ -3305,7 +3321,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 }}
                 transition={{
                   duration: 2.5 + i * 0.1,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.1 + 0.02
                 }}
@@ -3325,7 +3341,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 }}
                 transition={{
                   duration: 2.5,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.08
                 }}
@@ -3353,8 +3369,8 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
               }}
               transition={{ 
                 scale: { delay: i * 0.03 + 0.1, type: "spring", stiffness: 300 },
-                x: { duration: 3.2 + i * 0.15, repeat: Infinity, ease: "easeInOut", delay: i * 0.12 },
-                y: { duration: 2.9 + i * 0.12, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }
+                x: { duration: 3.2 + i * 0.15,  ease: "easeInOut", delay: i * 0.12 },
+                y: { duration: 2.9 + i * 0.12,  ease: "easeInOut", delay: i * 0.1 }
               }}
             >
               {/* Left petal */}
@@ -3368,7 +3384,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 }}
                 transition={{
                   duration: 2.6 + i * 0.1,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.12
                 }}
@@ -3385,7 +3401,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 }}
                 transition={{
                   duration: 2.6 + i * 0.1,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.12 + 0.05
                 }}
@@ -3402,7 +3418,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 }}
                 transition={{
                   duration: 2.6 + i * 0.1,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.12 + 0.02
                 }}
@@ -3422,7 +3438,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
                 }}
                 transition={{
                   duration: 2.5,
-                  repeat: Infinity,
+                  
                   ease: "easeInOut",
                   delay: i * 0.08
                 }}
@@ -3460,7 +3476,7 @@ function TulipX({ className = "", uniqueId }: { className?: string; uniqueId: st
               }}
               transition={{
                 duration: 3.5 + i * 0.3,
-                repeat: Infinity,
+                
                 delay: i * 0.3,
                 ease: "easeInOut"
               }}
@@ -3536,8 +3552,8 @@ function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: st
               }}
               transition={{ 
                 scale: { delay: i * 0.02, type: "spring", stiffness: 300 },
-                x: { duration: 2.5 + i * 0.08, repeat: Infinity, ease: "easeInOut", delay: i * 0.06 },
-                y: { duration: 2.5 + i * 0.08, repeat: Infinity, ease: "easeInOut", delay: i * 0.06 }
+                x: { duration: 2.5 + i * 0.08,  ease: "easeInOut", delay: i * 0.06 },
+                y: { duration: 2.5 + i * 0.08,  ease: "easeInOut", delay: i * 0.06 }
               }}
               style={{ transformOrigin: `${x}px ${y}px` }}
             >
@@ -3554,7 +3570,7 @@ function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: st
                   }}
                   transition={{
                     duration: 2.3 + i * 0.08,
-                    repeat: Infinity,
+                    
                     ease: "easeInOut",
                     delay: i * 0.08
                   }}
@@ -3571,7 +3587,7 @@ function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: st
                   }}
                   transition={{
                     duration: 2.3 + i * 0.08,
-                    repeat: Infinity,
+                    
                     ease: "easeInOut",
                     delay: i * 0.08 + 0.04
                   }}
@@ -3588,7 +3604,7 @@ function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: st
                   }}
                   transition={{
                     duration: 2.3 + i * 0.08,
-                    repeat: Infinity,
+                    
                     ease: "easeInOut",
                     delay: i * 0.08 + 0.02
                   }}
@@ -3608,7 +3624,7 @@ function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: st
                   }}
                   transition={{
                     duration: 2.3,
-                    repeat: Infinity,
+                    
                     ease: "easeInOut",
                     delay: i * 0.06
                   }}
@@ -3632,8 +3648,8 @@ function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: st
             opacity: [0.95, 1, 0.95],
           }}
           transition={{
-            scale: { delay: 0.3, duration: 2.8, repeat: Infinity, ease: "easeInOut" },
-            opacity: { delay: 0.3, duration: 2.8, repeat: Infinity, ease: "easeInOut" }
+            scale: { delay: 0.3, duration: 2.8,  ease: "easeInOut" },
+            opacity: { delay: 0.3, duration: 2.8,  ease: "easeInOut" }
           }}
         />
 
@@ -3651,8 +3667,8 @@ function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: st
           }}
           transition={{
             delay: 0.32,
-            scale: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
-            opacity: { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+            scale: { duration: 2.5,  ease: "easeInOut" },
+            opacity: { duration: 2.5,  ease: "easeInOut" }
           }}
         />
 
@@ -3685,6 +3701,892 @@ function TulipO({ className = "", uniqueId }: { className?: string; uniqueId: st
                 ease: "easeInOut"
               }}
               style={{ transformOrigin: `${x}px ${y}px` }}
+            />
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+function ButterflyX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotate: -180 }}
+      animate={{ scale: 1, rotate: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 260, 
+        damping: 20,
+        duration: 3
+      }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <linearGradient id={`butterflyXWing1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(168, 85, 247)", stopOpacity: 0.95 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(147, 51, 234)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(126, 34, 206)", stopOpacity: 1 }} />
+          </linearGradient>
+          <linearGradient id={`butterflyXWing2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(192, 132, 252)", stopOpacity: 0.95 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(168, 85, 247)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(147, 51, 234)", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`butterflyXBody-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(88, 28, 135)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(59, 7, 100)", stopOpacity: 1 }} />
+          </radialGradient>
+          <filter id={`butterflyBevel-${uniqueId}`}>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
+            <feOffset in="blur" dx="2" dy="2" result="offsetBlur"/>
+            <feSpecularLighting in="blur" surfaceScale="4" specularConstant="0.6" specularExponent="20" lightingColor="#ffffff" result="specOut">
+              <fePointLight x="-5000" y="-10000" z="30000"/>
+            </feSpecularLighting>
+            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+            <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+          </filter>
+        </defs>
+
+        <motion.g
+          initial={{ rotateY: 0 }}
+          animate={{ rotateY: 0 }}
+          style={{ transformOrigin: "50% 50%", transformStyle: "preserve-3d" }}
+        >
+          <motion.path
+            d="M 50 25 Q 25 15, 15 25 Q 10 35, 15 45 Q 25 50, 35 48 Q 40 35, 50 25 Z"
+            fill={`url(#butterflyXWing1-${uniqueId})`}
+            stroke="rgb(126, 34, 206)"
+            strokeWidth="1.5"
+            filter={`url(#butterflyBevel-${uniqueId})`}
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 1 }}
+            style={{ transformOrigin: "50% 35%", transformStyle: "preserve-3d" }}
+          />
+
+          <motion.path
+            d="M 50 25 Q 75 15, 85 25 Q 90 35, 85 45 Q 75 50, 65 48 Q 60 35, 50 25 Z"
+            fill={`url(#butterflyXWing2-${uniqueId})`}
+            stroke="rgb(126, 34, 206)"
+            strokeWidth="1.5"
+            filter={`url(#butterflyBevel-${uniqueId})`}
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 1 }}
+            style={{ transformOrigin: "50% 35%", transformStyle: "preserve-3d" }}
+          />
+
+          <motion.path
+            d="M 50 75 Q 25 65, 18 72 Q 12 80, 18 88 Q 28 92, 38 88 Q 45 80, 50 75 Z"
+            fill={`url(#butterflyXWing1-${uniqueId})`}
+            stroke="rgb(126, 34, 206)"
+            strokeWidth="1.5"
+            filter={`url(#butterflyBevel-${uniqueId})`}
+            opacity="0.95"
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 1 }}
+            style={{ transformOrigin: "50% 65%", transformStyle: "preserve-3d" }}
+          />
+
+          <motion.path
+            d="M 50 75 Q 75 65, 82 72 Q 88 80, 82 88 Q 72 92, 62 88 Q 55 80, 50 75 Z"
+            fill={`url(#butterflyXWing2-${uniqueId})`}
+            stroke="rgb(126, 34, 206)"
+            strokeWidth="1.5"
+            filter={`url(#butterflyBevel-${uniqueId})`}
+            opacity="0.95"
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 1 }}
+            style={{ transformOrigin: "50% 65%", transformStyle: "preserve-3d" }}
+          />
+        </motion.g>
+
+        <motion.path
+          d="M 30 30 L 70 70"
+          stroke="rgb(88, 28, 135)"
+          strokeWidth="10"
+          strokeLinecap="round"
+          fill="none"
+          filter={`url(#butterflyBevel-${uniqueId})`}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.3 }}
+        />
+
+        <motion.path
+          d="M 70 30 L 30 70"
+          stroke="rgb(88, 28, 135)"
+          strokeWidth="10"
+          strokeLinecap="round"
+          fill="none"
+          filter={`url(#butterflyBevel-${uniqueId})`}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.35 }}
+        />
+
+        <motion.ellipse
+          cx="50"
+          cy="50"
+          rx="5"
+          ry="25"
+          fill={`url(#butterflyXBody-${uniqueId})`}
+          stroke="rgb(59, 7, 100)"
+          strokeWidth="1"
+          filter={`url(#butterflyBevel-${uniqueId})`}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        />
+
+        <motion.path
+          d="M 48 20 Q 46 12, 44 8"
+          stroke="rgb(88, 28, 135)"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+          style={{ transformOrigin: "48px 20px" }}
+        />
+        <motion.circle
+          cx="44"
+          cy="8"
+          r="2"
+          fill="rgb(168, 85, 247)"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.2, delay: 0.6 }}
+        />
+
+        <motion.path
+          d="M 52 20 Q 54 12, 56 8"
+          stroke="rgb(88, 28, 135)"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+          style={{ transformOrigin: "52px 20px" }}
+        />
+        <motion.circle
+          cx="56"
+          cy="8"
+          r="2"
+          fill="rgb(168, 85, 247)"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.2, delay: 0.6 }}
+        />
+
+        {[...Array(8)].map((_, i) => {
+          const angle = (i * 45) + 22.5;
+          const radius = 35;
+          const x = 50 + radius * Math.cos((angle * Math.PI) / 180);
+          const y = 50 + radius * Math.sin((angle * Math.PI) / 180);
+          
+          return (
+            <motion.circle
+              key={`sparkle-${i}`}
+              cx={x}
+              cy={y}
+              r="1.5"
+              fill="rgb(216, 180, 254)"
+              opacity="0.6"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1.2, opacity: 0.8 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.6 + i * 0.05,
+                ease: "easeOut"
+              }}
+            />
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+function ButterflyO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotate: -180 }}
+      animate={{ scale: 1, rotate: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 260, 
+        damping: 20,
+        duration: 3
+      }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <linearGradient id={`butterflyOWing1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(251, 146, 60)", stopOpacity: 0.95 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(249, 115, 22)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(234, 88, 12)", stopOpacity: 1 }} />
+          </linearGradient>
+          <linearGradient id={`butterflyOWing2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(253, 186, 116)", stopOpacity: 0.95 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(251, 146, 60)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(249, 115, 22)", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`butterflyOBody-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(124, 45, 18)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(69, 26, 3)", stopOpacity: 1 }} />
+          </radialGradient>
+          <filter id={`butterflyOBevel-${uniqueId}`}>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
+            <feOffset in="blur" dx="2" dy="2" result="offsetBlur"/>
+            <feSpecularLighting in="blur" surfaceScale="4" specularConstant="0.6" specularExponent="20" lightingColor="#FFA500" result="specOut">
+              <fePointLight x="-5000" y="-10000" z="30000"/>
+            </feSpecularLighting>
+            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+            <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+          </filter>
+        </defs>
+
+        <motion.g
+          initial={{ rotateY: 0 }}
+          animate={{ rotateY: 0 }}
+          style={{ transformOrigin: "50% 50%", transformStyle: "preserve-3d" }}
+        >
+          <motion.path
+            d="M 50 25 Q 25 15, 15 25 Q 10 35, 15 45 Q 25 50, 35 48 Q 40 35, 50 25 Z"
+            fill={`url(#butterflyOWing1-${uniqueId})`}
+            stroke="rgb(234, 88, 12)"
+            strokeWidth="1.5"
+            filter={`url(#butterflyOBevel-${uniqueId})`}
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 1 }}
+            style={{ transformOrigin: "50% 35%", transformStyle: "preserve-3d" }}
+          />
+
+          <motion.path
+            d="M 50 25 Q 75 15, 85 25 Q 90 35, 85 45 Q 75 50, 65 48 Q 60 35, 50 25 Z"
+            fill={`url(#butterflyOWing2-${uniqueId})`}
+            stroke="rgb(234, 88, 12)"
+            strokeWidth="1.5"
+            filter={`url(#butterflyOBevel-${uniqueId})`}
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 1 }}
+            style={{ transformOrigin: "50% 35%", transformStyle: "preserve-3d" }}
+          />
+
+          <motion.path
+            d="M 50 75 Q 25 65, 18 72 Q 12 80, 18 88 Q 28 92, 38 88 Q 45 80, 50 75 Z"
+            fill={`url(#butterflyOWing1-${uniqueId})`}
+            stroke="rgb(234, 88, 12)"
+            strokeWidth="1.5"
+            filter={`url(#butterflyOBevel-${uniqueId})`}
+            opacity="0.95"
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 1 }}
+            style={{ transformOrigin: "50% 65%", transformStyle: "preserve-3d" }}
+          />
+
+          <motion.path
+            d="M 50 75 Q 75 65, 82 72 Q 88 80, 82 88 Q 72 92, 62 88 Q 55 80, 50 75 Z"
+            fill={`url(#butterflyOWing2-${uniqueId})`}
+            stroke="rgb(234, 88, 12)"
+            strokeWidth="1.5"
+            filter={`url(#butterflyOBevel-${uniqueId})`}
+            opacity="0.95"
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 1 }}
+            style={{ transformOrigin: "50% 65%", transformStyle: "preserve-3d" }}
+          />
+        </motion.g>
+
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="25"
+          stroke="rgb(124, 45, 18)"
+          strokeWidth="10"
+          fill="none"
+          filter={`url(#butterflyOBevel-${uniqueId})`}
+          initial={{ pathLength: 0, rotate: -90 }}
+          animate={{ pathLength: 1, rotate: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.3 }}
+          style={{ originX: "50%", originY: "50%" }}
+        />
+
+        <motion.ellipse
+          cx="50"
+          cy="50"
+          rx="5"
+          ry="25"
+          fill={`url(#butterflyOBody-${uniqueId})`}
+          stroke="rgb(69, 26, 3)"
+          strokeWidth="1"
+          filter={`url(#butterflyOBevel-${uniqueId})`}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        />
+
+        <motion.path
+          d="M 48 20 Q 46 12, 44 8"
+          stroke="rgb(124, 45, 18)"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+          style={{ transformOrigin: "48px 20px" }}
+        />
+        <motion.circle
+          cx="44"
+          cy="8"
+          r="2"
+          fill="rgb(251, 146, 60)"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.2, delay: 0.6 }}
+        />
+
+        <motion.path
+          d="M 52 20 Q 54 12, 56 8"
+          stroke="rgb(124, 45, 18)"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+          style={{ transformOrigin: "52px 20px" }}
+        />
+        <motion.circle
+          cx="56"
+          cy="8"
+          r="2"
+          fill="rgb(251, 146, 60)"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.2, delay: 0.6 }}
+        />
+
+        {[...Array(8)].map((_, i) => {
+          const angle = (i * 45) + 22.5;
+          const radius = 40;
+          const x = 50 + radius * Math.cos((angle * Math.PI) / 180);
+          const y = 50 + radius * Math.sin((angle * Math.PI) / 180);
+          
+          return (
+            <motion.circle
+              key={`sparkle-${i}`}
+              cx={x}
+              cy={y}
+              r="1.5"
+              fill="rgb(254, 215, 170)"
+              opacity="0.6"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1.2, opacity: 0.8 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.6 + i * 0.05,
+                ease: "easeOut"
+              }}
+            />
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+function PeacockX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotateY: -180 }}
+      animate={{ scale: 1, rotateY: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 200, 
+        damping: 18,
+        duration: 3
+      }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <linearGradient id={`peacockXFeather1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(16, 185, 129)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(5, 150, 105)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(6, 78, 59)", stopOpacity: 1 }} />
+          </linearGradient>
+          <linearGradient id={`peacockXFeather2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(14, 165, 233)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(59, 130, 246)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(37, 99, 235)", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`peacockXEye-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(147, 51, 234)", stopOpacity: 1 }} />
+            <stop offset="40%" style={{ stopColor: "rgb(59, 130, 246)", stopOpacity: 1 }} />
+            <stop offset="70%" style={{ stopColor: "rgb(16, 185, 129)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(6, 78, 59)", stopOpacity: 1 }} />
+          </radialGradient>
+          <filter id={`peacockBevel-${uniqueId}`}>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
+            <feOffset in="blur" dx="2" dy="2" result="offsetBlur"/>
+            <feSpecularLighting in="blur" surfaceScale="4" specularConstant="0.6" specularExponent="20" lightingColor="#ffffff" result="specOut">
+              <fePointLight x="-5000" y="-10000" z="30000"/>
+            </feSpecularLighting>
+            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+            <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+          </filter>
+        </defs>
+
+        <motion.g
+          style={{ transformOrigin: "50% 50%", transformStyle: "preserve-3d" }}
+        >
+          <motion.path
+            d="M 20 20 L 80 80"
+            stroke={`url(#peacockXFeather1-${uniqueId})`}
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+            filter={`url(#peacockBevel-${uniqueId})`}
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          />
+          
+          <motion.path
+            d="M 80 20 L 20 80"
+            stroke={`url(#peacockXFeather2-${uniqueId})`}
+            strokeWidth="14"
+            strokeLinecap="round"
+            fill="none"
+            filter={`url(#peacockBevel-${uniqueId})`}
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.15 }}
+          />
+
+          <motion.circle
+            cx="35"
+            cy="35"
+            r="7"
+            fill={`url(#peacockXEye-${uniqueId})`}
+            stroke="rgb(16, 185, 129)"
+            strokeWidth="1.5"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+          />
+          <motion.circle
+            cx="35"
+            cy="35"
+            r="3.5"
+            fill="rgb(59, 130, 246)"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.6 }}
+          />
+          <motion.circle
+            cx="35"
+            cy="35"
+            r="1.2"
+            fill="white"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.1, delay: 0.7 }}
+          />
+
+          <motion.circle
+            cx="65"
+            cy="35"
+            r="7"
+            fill={`url(#peacockXEye-${uniqueId})`}
+            stroke="rgb(14, 165, 233)"
+            strokeWidth="1.5"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.55 }}
+          />
+          <motion.circle
+            cx="65"
+            cy="35"
+            r="3.5"
+            fill="rgb(147, 51, 234)"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.65 }}
+          />
+          <motion.circle
+            cx="65"
+            cy="35"
+            r="1.2"
+            fill="white"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.1, delay: 0.75 }}
+          />
+
+          <motion.circle
+            cx="35"
+            cy="65"
+            r="7"
+            fill={`url(#peacockXEye-${uniqueId})`}
+            stroke="rgb(14, 165, 233)"
+            strokeWidth="1.5"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.6 }}
+          />
+          <motion.circle
+            cx="35"
+            cy="65"
+            r="3.5"
+            fill="rgb(16, 185, 129)"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.7 }}
+          />
+          <motion.circle
+            cx="35"
+            cy="65"
+            r="1.2"
+            fill="white"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.1, delay: 0.8 }}
+          />
+
+          <motion.circle
+            cx="65"
+            cy="65"
+            r="7"
+            fill={`url(#peacockXEye-${uniqueId})`}
+            stroke="rgb(16, 185, 129)"
+            strokeWidth="1.5"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.65 }}
+          />
+          <motion.circle
+            cx="65"
+            cy="65"
+            r="3.5"
+            fill="rgb(147, 51, 234)"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.75 }}
+          />
+          <motion.circle
+            cx="65"
+            cy="65"
+            r="1.2"
+            fill="white"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.1, delay: 0.85 }}
+          />
+        </motion.g>
+
+        {[...Array(12)].map((_, i) => {
+          const angle = i * 30;
+          const radius = 42;
+          const x = 50 + radius * Math.cos((angle * Math.PI) / 180);
+          const y = 50 + radius * Math.sin((angle * Math.PI) / 180);
+          
+          return (
+            <motion.circle
+              key={`sparkle-${i}`}
+              cx={x}
+              cy={y}
+              r="1.2"
+              fill={i % 3 === 0 ? "rgb(147, 51, 234)" : i % 3 === 1 ? "rgb(14, 165, 233)" : "rgb(16, 185, 129)"}
+              opacity="0.8"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1.3, opacity: 0.9 }}
+              transition={{
+                duration: 0.4,
+                delay: 0.7 + i * 0.03,
+                ease: "easeOut"
+              }}
+            />
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+function PeacockO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotateY: -180 }}
+      animate={{ scale: 1, rotateY: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 200, 
+        damping: 18,
+        duration: 3
+      }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <radialGradient id={`peacockOGradient-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(251, 191, 36)", stopOpacity: 1 }} />
+            <stop offset="40%" style={{ stopColor: "rgb(245, 158, 11)", stopOpacity: 1 }} />
+            <stop offset="70%" style={{ stopColor: "rgb(217, 119, 6)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(180, 83, 9)", stopOpacity: 1 }} />
+          </radialGradient>
+          <linearGradient id={`peacockOFeather1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(251, 191, 36)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(245, 158, 11)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(217, 119, 6)", stopOpacity: 1 }} />
+          </linearGradient>
+          <linearGradient id={`peacockOFeather2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(251, 146, 60)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(249, 115, 22)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(234, 88, 12)", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`peacockOEye-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(168, 85, 247)", stopOpacity: 1 }} />
+            <stop offset="40%" style={{ stopColor: "rgb(217, 119, 6)", stopOpacity: 1 }} />
+            <stop offset="70%" style={{ stopColor: "rgb(251, 191, 36)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(180, 83, 9)", stopOpacity: 1 }} />
+          </radialGradient>
+          <filter id={`peacockOBevel-${uniqueId}`}>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
+            <feOffset in="blur" dx="2" dy="2" result="offsetBlur"/>
+            <feSpecularLighting in="blur" surfaceScale="4" specularConstant="0.6" specularExponent="20" lightingColor="#FFA500" result="specOut">
+              <fePointLight x="-5000" y="-10000" z="30000"/>
+            </feSpecularLighting>
+            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+            <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+          </filter>
+        </defs>
+
+        <motion.g
+          style={{ transformOrigin: "50% 50%", transformStyle: "preserve-3d" }}
+        >
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="30"
+            stroke={`url(#peacockOGradient-${uniqueId})`}
+            strokeWidth="12"
+            fill="none"
+            filter={`url(#peacockOBevel-${uniqueId})`}
+            initial={{ pathLength: 0, rotate: -90 }}
+            animate={{ pathLength: 1, rotate: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            style={{ originX: "50%", originY: "50%" }}
+          />
+
+          <motion.circle
+            cx="50"
+            cy="20"
+            r="6"
+            fill={`url(#peacockOEye-${uniqueId})`}
+            stroke="rgb(251, 191, 36)"
+            strokeWidth="1.5"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          />
+          <motion.circle
+            cx="50"
+            cy="20"
+            r="3"
+            fill="rgb(168, 85, 247)"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.4 }}
+          />
+          <motion.circle
+            cx="50"
+            cy="20"
+            r="1"
+            fill="white"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.1, delay: 0.5 }}
+          />
+
+          <motion.circle
+            cx="50"
+            cy="80"
+            r="6"
+            fill={`url(#peacockOEye-${uniqueId})`}
+            stroke="rgb(245, 158, 11)"
+            strokeWidth="1.5"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.35 }}
+          />
+          <motion.circle
+            cx="50"
+            cy="80"
+            r="3"
+            fill="rgb(251, 146, 60)"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.45 }}
+          />
+          <motion.circle
+            cx="50"
+            cy="80"
+            r="1"
+            fill="white"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.1, delay: 0.55 }}
+          />
+
+          <motion.circle
+            cx="20"
+            cy="50"
+            r="6"
+            fill={`url(#peacockOEye-${uniqueId})`}
+            stroke="rgb(251, 191, 36)"
+            strokeWidth="1.5"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+          />
+          <motion.circle
+            cx="20"
+            cy="50"
+            r="3"
+            fill="rgb(217, 119, 6)"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.5 }}
+          />
+          <motion.circle
+            cx="20"
+            cy="50"
+            r="1"
+            fill="white"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.1, delay: 0.6 }}
+          />
+
+          <motion.circle
+            cx="80"
+            cy="50"
+            r="6"
+            fill={`url(#peacockOEye-${uniqueId})`}
+            stroke="rgb(245, 158, 11)"
+            strokeWidth="1.5"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.45 }}
+          />
+          <motion.circle
+            cx="80"
+            cy="50"
+            r="3"
+            fill="rgb(168, 85, 247)"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.55 }}
+          />
+          <motion.circle
+            cx="80"
+            cy="50"
+            r="1"
+            fill="white"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.1, delay: 0.65 }}
+          />
+
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+            const angle = i * 45;
+            const x = 50 + 38 * Math.cos((angle * Math.PI) / 180);
+            const y = 50 + 38 * Math.sin((angle * Math.PI) / 180);
+            return (
+              <motion.path
+                key={`feather-${i}`}
+                d={`M 50 50 L ${x} ${y}`}
+                stroke={i % 2 === 0 ? `url(#peacockOFeather1-${uniqueId})` : `url(#peacockOFeather2-${uniqueId})`}
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                opacity="0.6"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.4, delay: 0.2 + i * 0.04 }}
+              />
+            );
+          })}
+        </motion.g>
+
+        {[...Array(12)].map((_, i) => {
+          const angle = i * 30;
+          const radius = 48;
+          const x = 50 + radius * Math.cos((angle * Math.PI) / 180);
+          const y = 50 + radius * Math.sin((angle * Math.PI) / 180);
+          
+          return (
+            <motion.circle
+              key={`sparkle-${i}`}
+              cx={x}
+              cy={y}
+              r="1.2"
+              fill={i % 3 === 0 ? "rgb(168, 85, 247)" : i % 3 === 1 ? "rgb(251, 191, 36)" : "rgb(249, 115, 22)"}
+              opacity="0.8"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1.3, opacity: 0.9 }}
+              transition={{
+                duration: 0.4,
+                delay: 0.7 + i * 0.03,
+                ease: "easeOut"
+              }}
             />
           );
         })}

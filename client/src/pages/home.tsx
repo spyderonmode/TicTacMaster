@@ -527,6 +527,46 @@ export default function Home() {
 
     window.addEventListener('game_abandoned', handleGameAbandoned);
 
+    // Handle room closed event - when any player leaves, kick everyone out
+    const handleRoomClosed = (event: any) => {
+      console.log('🚪 Room closed event received:', event.detail);
+      try {
+        const { triggeredBy, reason } = event.detail;
+        
+        // Clear all game and room state
+        setCurrentGame(null);
+        setCurrentRoom(null);
+        setSelectedMode('ai');
+        setShowGameOver(false);
+        setGameResult(null);
+        setIsCreatingGame(false);
+        setShowPlayAgainRequest(false);
+        setPlayAgainRequest(null);
+
+        // Invalidate room and game queries
+        if (event.detail.roomId) {
+          queryClient.invalidateQueries({ queryKey: ['/api/rooms', event.detail.roomId] });
+          queryClient.invalidateQueries({ queryKey: ['/api/rooms', event.detail.roomId, 'participants'] });
+        }
+
+        // Show toast notification
+        toast({
+          title: "Room Closed",
+          description: `${triggeredBy?.displayName || 'A player'} left the room. You've been returned home.`,
+          duration: 3000,
+        });
+
+        // Navigate to home
+        setLocation('/');
+      } catch (error) {
+        console.error('🚪 Error handling room closed:', error);
+        // Force page reload as fallback
+        window.location.href = '/';
+      }
+    };
+
+    window.addEventListener('room_closed', handleRoomClosed);
+
     // Handle play again request events
     const handlePlayAgainRequest = (event: any) => {
       try {
@@ -798,6 +838,7 @@ export default function Home() {
 
     return () => {
       window.removeEventListener('game_abandoned', handleGameAbandoned);
+      window.removeEventListener('room_closed', handleRoomClosed);
       window.removeEventListener('play_again_request_received', handlePlayAgainRequest);
       window.removeEventListener('play_again_rejected_received', handlePlayAgainRejected);
       window.removeEventListener('play_again_countdown', handlePlayAgainCountdown);
@@ -915,7 +956,7 @@ export default function Home() {
               // Show game started toast only once per game
               const gameToastKey = `${lastMessage.game.id}-${lastMessage.roomId}`;
               if (!shownGameStartedToasts.has(gameToastKey)) {
-                setShownGameStartedToasts(prev => new Set([...prev, gameToastKey]));
+                setShownGameStartedToasts(prev => new Set(Array.from(prev).concat(gameToastKey)));
                 toast({
                   title: "Game Started!",
                   description: "Your match has begun. Good luck!",
@@ -955,7 +996,7 @@ export default function Home() {
 
           if (isCurrentGame || isCurrentRoom) {
             // Update or create game state for everyone (players and spectators)
-            setCurrentGame(prevGame => {
+            setCurrentGame((prevGame: any) => {
               // If we have a currentGame, update it
               if (prevGame && prevGame.id === lastMessage.gameId) {
                 return {
@@ -1003,7 +1044,7 @@ export default function Home() {
           if (isCurrentGameAuto || isCurrentRoomAuto) {
             // Auto-play move received (logging removed to prevent spam)
             // Update or create game state for everyone (players and spectators)
-            setCurrentGame(prevGame => {
+            setCurrentGame((prevGame: any) => {
               // If we have a currentGame, update it
               if (prevGame && prevGame.id === lastMessage.gameId) {
                 return {
@@ -1045,7 +1086,7 @@ export default function Home() {
         case 'auto_play_enabled':
           // Handle auto-play activation notification
           if (currentGame && lastMessage.gameId === currentGame.id) {
-            setCurrentGame(prevGame => ({
+            setCurrentGame((prevGame: any) => ({
               ...prevGame,
               autoPlayActive: lastMessage.player,
               timestamp: Date.now()
@@ -1055,7 +1096,7 @@ export default function Home() {
         case 'auto_play_disabled':
           // Handle auto-play deactivation notification
           if (currentGame && lastMessage.gameId === currentGame.id) {
-            setCurrentGame(prevGame => ({
+            setCurrentGame((prevGame: any) => ({
               ...prevGame,
               autoPlayActive: null,
               timestamp: Date.now()
@@ -1069,7 +1110,7 @@ export default function Home() {
               title: "Auto-Play Disabled",
               description: lastMessage.message || "You've regained control! Make your next move.",
             });
-            setCurrentGame(prevGame => ({
+            setCurrentGame((prevGame: any) => ({
               ...prevGame,
               autoPlayActive: null,
               timestamp: Date.now()
@@ -1091,7 +1132,7 @@ export default function Home() {
           // Handle winning move with position highlighting
           if (currentGame && lastMessage.gameId === currentGame.id) {
             //console.log('🎮 Winning move received:', lastMessage);
-            setCurrentGame(prevGame => ({
+            setCurrentGame((prevGame: any) => ({
               ...prevGame,
               board: lastMessage.board,
               currentPlayer: lastMessage.currentPlayer,
