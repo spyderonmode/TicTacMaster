@@ -562,14 +562,14 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                 }}>
                   Select Bet Amount
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                   <button
                     type="button"
                     onClick={() => setSelectedBet(5000)}
                     data-testid="bet-5k"
                     style={{
-                      padding: '12px',
-                      borderRadius: '12px',
+                      padding: '8px',
+                      borderRadius: '10px',
                       background: selectedBet === 5000
                         ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
                         : 'rgba(255, 255, 255, 0.05)',
@@ -592,11 +592,11 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                       }
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <Coins style={{ width: '20px', height: '20px', color: '#fbbf24' }} />
-                      <span style={{ fontSize: '22px', fontWeight: '800' }}>5k</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '3px' }}>
+                      <Coins style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                      <span style={{ fontSize: '18px', fontWeight: '800' }}>5k</span>
                     </div>
-                    <div style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
+                    <div style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
                       Starter
                     </div>
                   </button>
@@ -605,8 +605,8 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                     onClick={() => setSelectedBet(1000000)}
                     data-testid="bet-1m"
                     style={{
-                      padding: '12px',
-                      borderRadius: '12px',
+                      padding: '8px',
+                      borderRadius: '10px',
                       background: selectedBet === 1000000
                         ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
                         : 'rgba(255, 255, 255, 0.05)',
@@ -629,11 +629,11 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                       }
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <Coins style={{ width: '20px', height: '20px', color: '#fbbf24' }} />
-                      <span style={{ fontSize: '22px', fontWeight: '800' }}>1M</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '3px' }}>
+                      <Coins style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                      <span style={{ fontSize: '18px', fontWeight: '800' }}>1M</span>
                     </div>
-                    <div style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
+                    <div style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
                       Pro
                     </div>
                   </button>
@@ -642,8 +642,8 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                     onClick={() => setSelectedBet(10000000)}
                     data-testid="bet-10m"
                     style={{
-                      padding: '12px',
-                      borderRadius: '12px',
+                      padding: '8px',
+                      borderRadius: '10px',
                       background: selectedBet === 10000000
                         ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
                         : 'rgba(255, 255, 255, 0.05)',
@@ -666,11 +666,11 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                       }
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <Coins style={{ width: '20px', height: '20px', color: '#fbbf24' }} />
-                      <span style={{ fontSize: '22px', fontWeight: '800' }}>10M</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '3px' }}>
+                      <Coins style={{ width: '16px', height: '16px', color: '#fbbf24' }} />
+                      <span style={{ fontSize: '18px', fontWeight: '800' }}>10M</span>
                     </div>
-                    <div style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
+                    <div style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
                       Elite
                     </div>
                   </button>

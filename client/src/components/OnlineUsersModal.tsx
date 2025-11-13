@@ -148,7 +148,7 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
                                     {onlineUser.displayName || onlineUser.firstName || onlineUser.username}
                                   </h3>
                                   {onlineUser.inRoom && (
-                                    <Badge variant="secondary" className="text-xs">{t('inRoom')}</Badge>
+                                    <Badge variant="secondary" className="text-xs">{t('Room')}</Badge>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground">

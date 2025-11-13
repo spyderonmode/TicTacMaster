@@ -5,12 +5,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, Send, X, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageCircle, Send, X, Users, ChevronDown, ChevronUp, WifiOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { BasicFriendInfo } from '@shared/schema';
 import { motion, AnimatePresence } from 'framer-motion';
+import { parseErrorMessage } from '@/lib/errorUtils';
 
 interface ChatMessage {
   fromMe: boolean;
@@ -85,11 +86,42 @@ export function QuickChat() {
     },
     onError: (error: any) => {
       console.error('Chat message error:', error);
-      toast({
-        title: t('error'),
-        description: error.message || t('failedToSendMessage'),
-        variant: "destructive",
-      });
+      
+      // Parse the error message to get a user-friendly version
+      const friendlyMessage = parseErrorMessage(error);
+      
+      // Check if this is an offline error to show a special cute message
+      const isOfflineError = error?.message?.includes('Target user connection not found') || 
+                             error?.message?.includes('connection not found') ||
+                             friendlyMessage.toLowerCase().includes('offline');
+      
+      if (isOfflineError) {
+        // Show a cute, friendly notification for offline friends
+        toast({
+          title: (
+            <div className="flex items-center gap-2 text-white">
+              <div className="bg-orange-500/20 p-2 rounded-full">
+                <WifiOff className="h-5 w-5 text-orange-400" />
+              </div>
+              <span className="font-semibold">Friend Went Offline</span>
+            </div>
+          ) as any,
+          description: (
+            <div className="text-gray-200 mt-1">
+              {selectedChatFriend?.displayName || selectedChatFriend?.firstName || 'Your friend'} is no longer online.
+            </div>
+          ) as any,
+          variant: "default",
+          className: "bg-gradient-to-r from-slate-800 to-slate-700 border-2 border-orange-500/30 shadow-lg shadow-orange-500/20",
+        });
+      } else {
+        // Show generic error for other cases
+        toast({
+          title: t('error'),
+          description: friendlyMessage,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -269,7 +301,7 @@ export function QuickChat() {
                     <button
                       key={friend.id}
                       onClick={() => startChatWithFriend(friend)}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 transition-colors relative" // Reduced padding
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 transition-colors relative"
                       data-testid={`expanded-chat-friend-${friend.id}`}
                     >
                       <div className="relative">
@@ -277,22 +309,22 @@ export function QuickChat() {
                           <img
                             src={friend.profileImageUrl}
                             alt={friend.displayName || friend.firstName || undefined}
-                            className="w-5 h-5 rounded-full" // **Reduced from w-8 h-8 to w-5 h-5**
+                            className="w-5 h-5 rounded-full"
                           />
                         ) : (
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs"> // **Reduced from w-8 h-8 and text-sm**
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs">
                             {friend.firstName?.[0] || '?'}
                           </div>
                         )}
-                        <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 border-2 border-slate-800 rounded-full"></div> {/* **Reduced from w-2.5 h-2.5** */}
+                        <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 border-2 border-slate-800 rounded-full"></div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-xs text-white truncate block"> {/* **Reduced from text-sm to text-xs** */}
+                        <span className="text-xs text-white truncate block">
                           {friend.displayName || friend.firstName || ''}
                         </span>
                       </div>
                       {unreadMessages.get(friend.id) && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-3.5 w-3.5 flex items-center justify-center p-0"> {/* **Reduced from h-5 w-5** */}
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-3.5 w-3.5 flex items-center justify-center p-0">
                           {unreadMessages.get(friend.id)}
                         </span>
                       )}

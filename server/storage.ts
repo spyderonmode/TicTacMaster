@@ -71,6 +71,9 @@ import { db } from "./db";
 import { getLevelFromWins, getWinsToNextLevel } from "@shared/level";
 import { eq, and, desc, count, or, ne, isNull, isNotNull, sql, exists, inArray, lt, gt, not, like, ilike } from "drizzle-orm";
 
+// League earnings multiplier - applied to all weekly leaderboard coin earnings
+const LEAGUE_EARNINGS_MULTIPLIER = 2;
+
 export interface IStorage {
   // User operations - mandatory for Replit Auth
   getUser(id: string): Promise<User | undefined>;
@@ -205,6 +208,7 @@ export interface IStorage {
   resetWeeklyStats(weekNumber: number, year: number): Promise<void>;
   getWeeklyRewards(userId: string): Promise<WeeklyReward[]>;
   hasReceivedWeeklyReward(userId: string, weekNumber: number, year: number): Promise<boolean>;
+  doubleCurrentWeekEarnings(): Promise<{ success: boolean; updatedCount: number }>;
 
   // Weekly Reset Status operations
   getResetStatus(weekNumber: number, year: number): Promise<WeeklyResetStatus | undefined>;
@@ -967,6 +971,22 @@ export class DatabaseStorage implements IStorage {
       .from(roomParticipants)
       .innerJoin(users, eq(roomParticipants.userId, users.id))
       .where(eq(roomParticipants.roomId, roomId));
+  }
+
+  async getActiveRoomParticipation(userId: string): Promise<{ roomId: string; role: string; roomCode: string; roomStatus: string } | null> {
+    const result = await db
+      .select({
+        roomId: roomParticipants.roomId,
+        role: roomParticipants.role,
+        roomCode: rooms.code,
+        roomStatus: rooms.status,
+      })
+      .from(roomParticipants)
+      .innerJoin(rooms, eq(roomParticipants.roomId, rooms.id))
+      .where(eq(roomParticipants.userId, userId))
+      .limit(1);
+    
+    return result.length > 0 ? result[0] : null;
   }
 
   async removeRoomParticipant(roomId: string, userId: string): Promise<void> {
@@ -3316,6 +3336,8 @@ export class DatabaseStorage implements IStorage {
 
     // Use atomic SQL-level increments to prevent race conditions
     if (result === 'win') {
+      // Apply multiplier only to positive earnings; preserve negative values (shouldn't occur for wins, but guards against bugs)
+      const multipliedEarnings = coinsEarned > 0 ? coinsEarned * LEAGUE_EARNINGS_MULTIPLIER : coinsEarned;
       await db.execute(sql`
         UPDATE weekly_leaderboard 
         SET 
@@ -3323,7 +3345,7 @@ export class DatabaseStorage implements IStorage {
           weekly_wins = COALESCE(weekly_wins, 0) + 1,
           weekly_win_streak = COALESCE(weekly_win_streak, 0) + 1,
           best_weekly_win_streak = GREATEST(COALESCE(best_weekly_win_streak, 0), COALESCE(weekly_win_streak, 0) + 1),
-          coins_earned = COALESCE(coins_earned, 0) + ${Math.max(coinsEarned, 0)},
+          coins_earned = COALESCE(coins_earned, 0) + ${multipliedEarnings},
           updated_at = ${now}
         WHERE id = ${stats.id}
       `);
@@ -3462,6 +3484,30 @@ export class DatabaseStorage implements IStorage {
     const seconds = Math.floor((positiveTimeLeft % (1000 * 60)) / 1000);
 
     return { days, hours, minutes, seconds };
+  }
+
+  async doubleCurrentWeekEarnings(): Promise<{ success: boolean; updatedCount: number }> {
+    try {
+      const { weekNumber, year } = this.getISOWeekInfo();
+      const now = new Date();
+
+      const result = await db.execute(sql`
+        UPDATE weekly_leaderboard 
+        SET 
+          coins_earned = COALESCE(coins_earned, 0) * 2,
+          updated_at = ${now}
+        WHERE week_number = ${weekNumber} 
+          AND year = ${year}
+          AND COALESCE(coins_earned, 0) > 0
+      `);
+
+      const updatedCount = result.rowCount ?? 0;
+
+      return { success: true, updatedCount };
+    } catch (error) {
+      console.error('Error doubling current week earnings:', error);
+      return { success: false, updatedCount: 0 };
+    }
   }
 
   async distributeWeeklyRewards(weekNumber: number, year: number): Promise<WeeklyReward[]> {
@@ -4252,13 +4298,13 @@ export class DatabaseStorage implements IStorage {
         id: 'thundering',
         name: 'Thundering Storm',
         description: 'Electrifying blue lightning effects with pulsing energy',
-        price: 50000000, // 50 million coins
+        price: 1000000000, // 50 million coins
       },
       {
         id: 'firestorm',
         name: 'Fire Storm',
         description: 'Blazing 3D fire frame with intense flames erupting outside the border',
-        price: 1000000000, // 1 billion coins
+        price: 2000000000, // 1 billion coins
       },
       {
         id: 'level_100_master',
@@ -4301,6 +4347,24 @@ export class DatabaseStorage implements IStorage {
         name: 'Diamond Luxury',
         description: 'Ultra-premium 3D floating diamond crystals with shimmer effects - the ultimate luxury!',
         price: 2000000000, // 2 billion coins
+      },
+      {
+        id: 'holographic_matrix',
+        name: 'Holographic Matrix',
+        description: 'Mind-blowing 3D holographic frame with liquid wave distortion on your avatar - truly mesmerizing!',
+        price: 1000000000, // 2 billion coins
+      },
+      {
+        id: 'cosmic_vortex',
+        name: 'Cosmic Vortex',
+        description: 'Explosive neon energy plasma border with dual-rotating waves and pulsing brightness effect!',
+        price: 1000000000, // 2 billion coins
+      },
+      {
+        id: 'royal_zigzag_crown',
+        name: 'Royal Golden',
+        description: 'Majestic 3D zigzag golden border with floating crown jewels - feel like royalty!',
+        price: 3000000000, // 2 million coins
       },
     ];
 

@@ -114,6 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const onlineUsers = new Map<string, { userId: string; username: string; displayName: string; roomId?: string; lastSeen: Date }>();
   const userRoomStates = new Map<string, { roomId: string; gameId?: string; isInGame: boolean }>();
   const matchmakingTimers = new Map<string, NodeJS.Timeout>(); // Track user timers for bot matches
+  const userJoinLocks = new Map<string, Promise<any>>(); // Per-user locks to prevent race conditions when joining rooms
   
   // Track pending disconnects with grace period for reconnection (prevents mobile app-switch kicks)
   const pendingDisconnects = new Map<string, {
@@ -312,6 +313,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // No more pending messages, deactivate retry timer
       retryTimerActive = false;
     }
+  }
+
+  // Helper function to ensure user can join a new room (auto-leave previous room)
+  async function ensureUserCanJoinRoom(userId: string, targetRoomId: string): Promise<{ canJoin: boolean; error?: string }> {
+    // Proper Promise chain lock without deletion gaps
+    const existingChain = userJoinLocks.get(userId) || Promise.resolve();
+    
+    const task = async () => {
+      // Check if user is in an active game
+      const activeGame = await storage.getActiveGameForUser(userId);
+      if (activeGame && activeGame.status === 'active' && activeGame.roomId !== targetRoomId) {
+        return {
+          canJoin: false,
+          error: 'You are already in an active game. Please finish your current game before joining a new room.'
+        };
+      }
+
+      // Get user's current room from database (source of truth)
+      const currentRoomParticipation = await storage.getActiveRoomParticipation(userId);
+      
+      // If user is already in the target room, skip processing (prevent duplicate adds)
+      if (currentRoomParticipation && currentRoomParticipation.roomId === targetRoomId) {
+        return { canJoin: true }; // Already in target room, no action needed
+      }
+      
+      if (currentRoomParticipation && currentRoomParticipation.roomId !== targetRoomId) {
+        // User is in a different room, auto-leave
+        const oldRoomId = currentRoomParticipation.roomId;
+
+        // Remove user from old room participants
+        await storage.removeRoomParticipant(oldRoomId, userId);
+
+        // Clear user room states
+        userRoomStates.delete(userId);
+
+        // Update room connections
+        const roomConns = roomConnections.get(oldRoomId);
+        if (roomConns) {
+          const userConns = Array.from(connections.entries())
+            .filter(([_, conn]) => conn.userId === userId)
+            .map(([connId, _]) => connId);
+          
+          userConns.forEach(connId => {
+            roomConns.delete(connId);
+            const conn = connections.get(connId);
+            if (conn) {
+              conn.roomId = undefined;
+            }
+          });
+        }
+
+        // Notify other users in the old room
+        const participants = await storage.getRoomParticipants(oldRoomId);
+        const remainingParticipants = participants.filter(p => p.userId !== userId);
+
+        for (const participant of remainingParticipants) {
+          const participantConnections = Array.from(connections.values())
+            .filter(conn => conn.userId === participant.userId);
+
+          for (const conn of participantConnections) {
+            if (conn.ws.readyState === WebSocket.OPEN) {
+              conn.ws.send(JSON.stringify({
+                type: 'user_left',
+                roomId: oldRoomId,
+                userId: userId
+              }));
+            }
+          }
+        }
+      }
+
+      return { canJoin: true };
+    };
+
+    // Chain this task onto the existing promise chain
+    const newChain = existingChain.then(task, task); // Run task on both resolve and reject
+    userJoinLocks.set(userId, newChain);
+    
+    // Wait for our chained task to complete and return its result
+    return await newChain;
   }
 
   // Matchmaking mutex to prevent race conditions
@@ -2886,6 +2967,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const responderInfo = await storage.getUser(userId);
 
       if (response === 'accepted') {
+        // Ensure user can join (auto-leave previous room if needed)
+        const joinCheck = await ensureUserCanJoinRoom(userId, invitation.roomId);
+        if (!joinCheck.canJoin) {
+          return res.status(400).json({ error: joinCheck.error || "Cannot join room" });
+        }
+
         // Add user to room as participant
         await storage.addRoomParticipant({
           roomId: invitation.roomId,
@@ -4040,6 +4127,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (role === 'spectator' && spectatorCount >= 50) {
         return res.status(400).json({ message: "Spectator limit reached" });
+      }
+
+      // Ensure user can join (auto-leave previous room if needed)
+      const joinCheck = await ensureUserCanJoinRoom(userId, room.id);
+      if (!joinCheck.canJoin) {
+        return res.status(400).json({ error: joinCheck.error || "Cannot join room" });
       }
 
       // Add participant to room

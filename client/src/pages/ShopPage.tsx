@@ -105,7 +105,7 @@ const PIECE_STYLES = [
     id: "cat",
     name: "Cat",
     description: "Adorable cat scratches and curled up kitty with 3D spin effects",
-    price: 150000000, // 150 million coins
+    price: 300000000, // 150 million coins
     isDefault: false,
   },
   {
@@ -186,6 +186,27 @@ const AVATAR_FRAMES = [
     name: 'Diamond Luxury',
     description: 'Ultra-premium 3D floating diamond crystals with shimmer effects - the ultimate luxury!',
     price: 2000000000, // 2 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'holographic_matrix',
+    name: 'Holographic Matrix',
+    description: 'Mind-blowing 3D holographic frame with liquid wave distortion on your avatar - truly mesmerizing!',
+    price: 1000000000, // 2 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'cosmic_vortex',
+    name: 'Cosmic Vortex',
+    description: 'Explosive neon energy plasma border with dual-rotating waves and pulsing brightness effect!',
+    price: 1000000000, // 2 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'royal_zigzag_crown',
+    name: 'Royal Golden',
+    description: 'Majestic 3D zigzag golden border with floating crown jewels - feel like royalty!',
+    price: 3000000000, // 2 million coins
     isDefault: false,
   },
 ];
@@ -833,7 +854,7 @@ export default function ShopPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Coins className="w-5 h-5 text-yellow-400" />
-                  Win betting rooms for big rewards
+                  Claim Daily Reward
                 </li>
               </ul>
               <div className="mt-6 pt-4 border-t border-slate-600">

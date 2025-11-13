@@ -294,6 +294,21 @@ async function syncAllUsersToDatabase() {
   }
 }
 
+// Invalidate all active sessions for a specific user
+async function invalidateAllUserSessions(userId: string): Promise<void> {
+  try {
+    // Delete all sessions from the session table where the user ID matches
+    await db.execute(sql`
+      DELETE FROM session 
+      WHERE sess::jsonb->'user'->>'userId' = ${userId}
+    `);
+    console.log(`🔒 Invalidated all sessions for user: ${userId}`);
+  } catch (error: any) {
+    console.error('❌ Error invalidating user sessions:', error.message || error);
+    throw error;
+  }
+}
+
 export function setupAuth(app: Express) {
   const PostgreSQLStore = connectPgSimple(session);
 
@@ -934,7 +949,16 @@ export function setupAuth(app: Express) {
         console.error('Error syncing password reset user to database:', error);
       }
 
-      res.json({ message: 'Password has been reset successfully. You can now log in with your new password.' });
+      // Invalidate all active sessions for this user
+      try {
+        await invalidateAllUserSessions(user.id);
+        console.log('✅ All active sessions invalidated for user:', user.id);
+      } catch (error) {
+        console.error('Error invalidating user sessions:', error);
+        // Don't fail the password reset if session invalidation fails
+      }
+
+      res.json({ message: 'Password has been reset successfully. All active sessions have been logged out. You can now log in with your new password.' });
     } catch (error) {
       console.error('Error resetting password:', error);
       res.status(500).json({ error: 'Failed to reset password' });

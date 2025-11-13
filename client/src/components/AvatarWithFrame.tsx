@@ -587,6 +587,308 @@ export function AvatarWithFrame({
           </div>
         );
 
+      case 'holographic_matrix':
+        return (
+          <div className={`${sizeClasses[size]} rounded-full relative`} style={{ padding: '8px' }}>
+            {/* Outer 3D Prismatic Border Ring - positioned outside */}
+            <div 
+              className="absolute rounded-full"
+              style={{
+                inset: '-6px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%)',
+                padding: '4px',
+                boxShadow: `
+                  inset 0 2px 4px rgba(255, 255, 255, 0.3),
+                  inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+                  0 0 20px rgba(102, 126, 234, 0.5)
+                `,
+                transform: 'translateZ(0)',
+              }}
+            >
+              {/* Multi-layer 3D border effect */}
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'conic-gradient(from 0deg, transparent 0%, rgba(255,255,255,0.4) 10%, transparent 20%, rgba(255,255,255,0.4) 30%, transparent 40%, rgba(255,255,255,0.4) 50%, transparent 60%, rgba(255,255,255,0.4) 70%, transparent 80%, rgba(255,255,255,0.4) 90%, transparent 100%)',
+                }}
+                animate={{
+                  rotate: [0, 360],
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              />
+
+              {/* Inner layer */}
+              <div 
+                className="w-full h-full rounded-full"
+                style={{
+                  background: 'linear-gradient(225deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+                  padding: '2px',
+                  boxShadow: 'inset 0 2px 3px rgba(0, 0, 0, 0.4), inset 0 -2px 3px rgba(255, 255, 255, 0.2)',
+                }}
+              />
+            </div>
+
+            {/* Avatar - Full Size */}
+            <div className="w-full h-full rounded-full overflow-hidden relative z-10 bg-black"
+              style={{
+                perspective: '1000px',
+                transformStyle: 'preserve-3d',
+              }}
+            >
+              {src ? (
+                <motion.img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover"
+                  style={{
+                    transformStyle: 'preserve-3d',
+                    backfaceVisibility: 'hidden',
+                  }}
+                  animate={{
+                    rotateX: [0, 5, -5, 5, 0],
+                    rotateY: [0, -8, 8, -8, 0],
+                    translateZ: [0, 15, -10, 15, 0],
+                    scale: [1, 1.03, 0.98, 1.03, 1],
+                  }}
+                  transition={{
+                    duration: 6,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
+              ) : (
+                <motion.div 
+                  className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg"
+                  style={{
+                    transformStyle: 'preserve-3d',
+                    backfaceVisibility: 'hidden',
+                  }}
+                  animate={{
+                    rotateX: [0, 5, -5, 5, 0],
+                    rotateY: [0, -8, 8, -8, 0],
+                    translateZ: [0, 15, -10, 15, 0],
+                    scale: [1, 1.03, 0.98, 1.03, 1],
+                  }}
+                  transition={{
+                    duration: 6,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                >
+                  {fallbackText}
+                </motion.div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'cosmic_vortex':
+        return (
+          <div className={`${sizeClasses[size]} rounded-full relative`} style={{ padding: '8px' }}>
+            {/* Outer Neon Energy Plasma Border Ring - positioned outside */}
+            <div 
+              className="absolute rounded-full overflow-visible"
+              style={{
+                inset: '-6px',
+                background: 'linear-gradient(135deg, #ff006e 0%, #8338ec 33%, #3a86ff 66%, #06ffa5 100%)',
+                padding: '4px',
+                boxShadow: `
+                  inset 0 0 8px rgba(255, 0, 110, 0.6),
+                  inset 0 0 12px rgba(131, 56, 236, 0.4)
+                `,
+              }}
+            >
+              {/* Animated energy waves - multiple layers */}
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'conic-gradient(from 0deg, #ff006e, #8338ec, #3a86ff, #06ffa5, #ffbe0b, #ff006e)',
+                  opacity: 0.8,
+                }}
+                animate={{
+                  rotate: [0, 360],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              />
+
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'conic-gradient(from 180deg, transparent 0%, #ff006e 25%, transparent 50%, #3a86ff 75%, transparent 100%)',
+                  opacity: 0.6,
+                }}
+                animate={{
+                  rotate: [360, 0],
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              />
+
+              {/* Inner glow layer */}
+              <div 
+                className="w-full h-full rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, #ff006e 0%, #8338ec 25%, #3a86ff 50%, #06ffa5 75%, #ffbe0b 100%)',
+                  padding: '2px',
+                }}
+              />
+            </div>
+
+            {/* Avatar - Full Size */}
+            <div className="w-full h-full rounded-full overflow-hidden relative z-10">
+              {src ? (
+                <motion.img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover relative z-10"
+                  animate={{
+                    scale: [1, 1.3, 1],
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
+              ) : (
+                <motion.div 
+                  className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10"
+                  animate={{
+                    scale: [1, 1.3, 1],
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                >
+                  {fallbackText}
+                </motion.div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'royal_zigzag_crown':
+        return (
+          <div className={`${sizeClasses[size]} relative`} style={{ padding: '8px' }}>
+            {/* Zigzag Border - positioned outside */}
+            <div 
+              className="absolute overflow-visible"
+              style={{
+                inset: '-6px',
+              }}
+            >
+              {/* SVG Zigzag Border */}
+              <svg 
+                className="absolute w-full h-full"
+                viewBox="0 0 100 100"
+                style={{ 
+                  left: '50%', 
+                  top: '50%', 
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                <defs>
+                  <linearGradient id="royalGoldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style={{ stopColor: '#ffd700', stopOpacity: 1 }} />
+                    <stop offset="25%" style={{ stopColor: '#ffed4e', stopOpacity: 1 }} />
+                    <stop offset="50%" style={{ stopColor: '#ffa500', stopOpacity: 1 }} />
+                    <stop offset="75%" style={{ stopColor: '#ffed4e', stopOpacity: 1 }} />
+                    <stop offset="100%" style={{ stopColor: '#ffd700', stopOpacity: 1 }} />
+                  </linearGradient>
+                </defs>
+                
+                {/* Zigzag circle path */}
+                <motion.circle
+                  cx="50"
+                  cy="50"
+                  r="46"
+                  fill="none"
+                  stroke="url(#royalGoldGradient)"
+                  strokeWidth="8"
+                  strokeDasharray="3,1"
+                  strokeLinecap="square"
+                  animate={{
+                    opacity: [0.95, 1, 0.95],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
+              </svg>
+
+              {/* 16 Golden Sparkles - in the space between border and avatar */}
+              {[...Array(16)].map((_, i) => {
+                const angle = (i * 360) / 16;
+                const radius = size === 'sm' ? 18 : size === 'md' ? 24 : 32;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+
+                return (
+                  <motion.div
+                    key={`sparkle-${i}`}
+                    className="absolute z-10"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: '8px',
+                      height: '8px',
+                      marginLeft: '-4px',
+                      marginTop: '-4px',
+                      background: 'radial-gradient(circle, #fff, #ffd700, #ffa500, transparent)',
+                      borderRadius: '50%',
+                    }}
+                    animate={{
+                      x: [x, x],
+                      y: [y, y],
+                      opacity: [0, 1, 0],
+                      scale: [0.5, 2, 0.5],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.09,
+                    }}
+                  />
+                );
+              })}
+
+            </div>
+
+            {/* Avatar - Full Size - No Animation */}
+            <div className="w-full h-full rounded-full overflow-hidden relative z-10">
+              {src ? (
+                <img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover relative z-10"
+                />
+              ) : (
+                <div 
+                  className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10"
+                >
+                  {fallbackText}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
       default:
         // No frame
         return (
