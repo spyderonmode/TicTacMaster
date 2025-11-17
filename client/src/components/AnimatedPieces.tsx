@@ -4,7 +4,7 @@ import "./AnimatedPieces.css";
 
 interface AnimatedPieceProps {
   symbol: "X" | "O";
-  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock";
+  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb";
   className?: string;
   position?: number;
 }
@@ -122,6 +122,14 @@ export function AnimatedPiece({ symbol, style = "default", className = "", posit
       <PeacockX className={className} uniqueId={uniqueId} />
     ) : (
       <PeacockO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "bulb") {
+    return symbol === "X" ? (
+      <BulbX className={className} uniqueId={uniqueId} />
+    ) : (
+      <BulbO className={className} uniqueId={uniqueId} />
     );
   }
 
@@ -4590,6 +4598,231 @@ function PeacockO({ className = "", uniqueId }: { className?: string; uniqueId: 
             />
           );
         })}
+      </svg>
+    </motion.div>
+  );
+}
+function BulbX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ type: "spring", stiffness: 400, damping: 22 }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <radialGradient id={`bulbGlow-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(255, 255, 200)", stopOpacity: 1 }} />
+            <stop offset="40%" style={{ stopColor: "rgb(255, 220, 100)", stopOpacity: 0.9 }} />
+            <stop offset="80%" style={{ stopColor: "rgb(255, 180, 50)", stopOpacity: 0.7 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(255, 150, 0)", stopOpacity: 0.5 }} />
+          </radialGradient>
+          <linearGradient id={`bulbXLine1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(255, 240, 150)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(255, 200, 80)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(255, 180, 50)", stopOpacity: 1 }} />
+          </linearGradient>
+          <linearGradient id={`bulbXLine2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(255, 240, 150)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(255, 200, 80)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(255, 180, 50)", stopOpacity: 1 }} />
+          </linearGradient>
+          <filter id={`bulbGlassX-${uniqueId}`}>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
+            <feSpecularLighting in="blur" surfaceScale="5" specularConstant="0.8" specularExponent="20" lightingColor="#ffffff" result="specOut">
+              <fePointLight x="-5000" y="-10000" z="30000"/>
+            </feSpecularLighting>
+            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+            <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+          </filter>
+        </defs>
+
+        <g>
+          <motion.ellipse 
+            cx="35" cy="35" rx="18" ry="22" 
+            fill={`url(#bulbGlow-${uniqueId})`} 
+            filter={`url(#bulbGlassX-${uniqueId})`}
+            initial={{ opacity: 0.1 }}
+            animate={{ opacity: [0.1, 0.8, 0.3] }}
+            transition={{ duration: 0.4, times: [0, 0.5, 1], delay: 0.3 }}
+          />
+          <motion.ellipse 
+            cx="65" cy="35" rx="18" ry="22" 
+            fill={`url(#bulbGlow-${uniqueId})`} 
+            filter={`url(#bulbGlassX-${uniqueId})`}
+            initial={{ opacity: 0.1 }}
+            animate={{ opacity: [0.1, 0.8, 0.3] }}
+            transition={{ duration: 0.4, times: [0, 0.5, 1], delay: 0.5 }}
+          />
+          <motion.ellipse 
+            cx="35" cy="65" rx="18" ry="22" 
+            fill={`url(#bulbGlow-${uniqueId})`} 
+            filter={`url(#bulbGlassX-${uniqueId})`}
+            initial={{ opacity: 0.1 }}
+            animate={{ opacity: [0.1, 0.8, 0.3] }}
+            transition={{ duration: 0.4, times: [0, 0.5, 1], delay: 0.7 }}
+          />
+          <motion.ellipse 
+            cx="65" cy="65" rx="18" ry="22" 
+            fill={`url(#bulbGlow-${uniqueId})`} 
+            filter={`url(#bulbGlassX-${uniqueId})`}
+            initial={{ opacity: 0.1 }}
+            animate={{ opacity: [0.1, 0.8, 0.3] }}
+            transition={{ duration: 0.4, times: [0, 0.5, 1], delay: 0.9 }}
+          />
+        </g>
+
+        <motion.path d="M 20 20 L 80 80" stroke={`url(#bulbXLine1-${uniqueId})`} strokeWidth="18" strokeLinecap="round" fill="none" opacity="0.4" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, ease: "easeOut" }} style={{ transform: "translate(3px, 3px)" }} />
+        <motion.path d="M 80 20 L 20 80" stroke={`url(#bulbXLine2-${uniqueId})`} strokeWidth="18" strokeLinecap="round" fill="none" opacity="0.4" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }} style={{ transform: "translate(3px, 3px)" }} />
+        <motion.path d="M 20 20 L 80 80" stroke={`url(#bulbXLine1-${uniqueId})`} strokeWidth="14" strokeLinecap="round" fill="none" filter={`url(#bulbGlassX-${uniqueId})`} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, ease: "easeOut" }} />
+        <motion.path d="M 80 20 L 20 80" stroke={`url(#bulbXLine2-${uniqueId})`} strokeWidth="14" strokeLinecap="round" fill="none" filter={`url(#bulbGlassX-${uniqueId})`} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }} />
+
+        <g>
+          <motion.circle 
+            cx="35" cy="35" r="2" 
+            fill="rgb(255, 255, 255)" 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 0.9, scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.4 }}
+          />
+          <motion.circle 
+            cx="65" cy="35" r="2" 
+            fill="rgb(255, 255, 255)" 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 0.9, scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.6 }}
+          />
+          <motion.circle 
+            cx="35" cy="65" r="2" 
+            fill="rgb(255, 255, 255)" 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 0.9, scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.8 }}
+          />
+          <motion.circle 
+            cx="65" cy="65" r="2" 
+            fill="rgb(255, 255, 255)" 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 0.9, scale: 1 }}
+            transition={{ duration: 0.2, delay: 1.0 }}
+          />
+        </g>
+
+        <path d="M 33 12 L 33 18 M 37 12 L 37 18" stroke="rgb(180, 180, 180)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+        <path d="M 63 12 L 63 18 M 67 12 L 67 18" stroke="rgb(180, 180, 180)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+        <path d="M 33 82 L 33 88 M 37 82 L 37 88" stroke="rgb(180, 180, 180)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+        <path d="M 63 82 L 63 88 M 67 82 L 67 88" stroke="rgb(180, 180, 180)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+      </svg>
+    </motion.div>
+  );
+}
+
+function BulbO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ type: "spring", stiffness: 400, damping: 22 }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <radialGradient id={`bulbOGlow-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(255, 230, 230)", stopOpacity: 1 }} />
+            <stop offset="30%" style={{ stopColor: "rgb(255, 150, 150)", stopOpacity: 0.95 }} />
+            <stop offset="60%" style={{ stopColor: "rgb(255, 100, 100)", stopOpacity: 0.8 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(220, 50, 50)", stopOpacity: 0.6 }} />
+          </radialGradient>
+          <radialGradient id={`bulbOStroke-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(255, 200, 200)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(255, 120, 120)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(220, 60, 60)", stopOpacity: 1 }} />
+          </radialGradient>
+          <filter id={`bulbGlassO-${uniqueId}`}>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
+            <feSpecularLighting in="blur" surfaceScale="5" specularConstant="0.8" specularExponent="20" lightingColor="#ffffff" result="specOut">
+              <fePointLight x="-5000" y="-10000" z="30000"/>
+            </feSpecularLighting>
+            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+            <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+          </filter>
+        </defs>
+
+        <g>
+          <motion.ellipse 
+            cx="50" cy="50" rx="35" ry="40" 
+            fill={`url(#bulbOGlow-${uniqueId})`} 
+            filter={`url(#bulbGlassO-${uniqueId})`}
+            initial={{ opacity: 0.1 }}
+            animate={{ opacity: [0.1, 0.8, 0.3] }}
+            transition={{ duration: 0.6, times: [0, 0.6, 1], delay: 0.3 }}
+          />
+        </g>
+
+        <motion.circle cx="50" cy="50" r="32" stroke={`url(#bulbOStroke-${uniqueId})`} strokeWidth="18" fill="none" opacity="0.4" initial={{ pathLength: 0, rotate: -90 }} animate={{ pathLength: 1, rotate: 0 }} transition={{ duration: 0.4, ease: "easeOut" }} style={{ originX: "50%", originY: "50%", transform: "translate(3px, 3px)" }} />
+        <motion.circle cx="50" cy="50" r="32" stroke={`url(#bulbOStroke-${uniqueId})`} strokeWidth="14" fill="none" filter={`url(#bulbGlassO-${uniqueId})`} initial={{ pathLength: 0, rotate: -90 }} animate={{ pathLength: 1, rotate: 0 }} transition={{ duration: 0.4, ease: "easeOut" }} style={{ originX: "50%", originY: "50%" }} />
+
+        <g>
+          <motion.circle 
+            cx="50" cy="50" r="44" 
+            fill="none" 
+            stroke="rgba(255, 150, 150, 0.3)" 
+            strokeWidth="3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.6, 0.3] }}
+            transition={{ duration: 0.5, times: [0, 0.7, 1], delay: 0.4 }}
+          />
+        </g>
+
+        <g>
+          <motion.circle 
+            cx="50" cy="30" r="2.5" 
+            fill="rgb(255, 255, 255)" 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 0.9, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+          />
+          <motion.circle 
+            cx="35" cy="42" r="2" 
+            fill="rgb(255, 255, 255)" 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
+          />
+          <motion.circle 
+            cx="65" cy="42" r="2" 
+            fill="rgb(255, 255, 255)" 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.9 }}
+          />
+        </g>
+
+        <path d="M 48 13 L 48 19 M 52 13 L 52 19" stroke="rgb(180, 180, 180)" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+        <path d="M 48 81 L 48 87 M 52 81 L 52 87" stroke="rgb(180, 180, 180)" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+        <rect x="45" y="10" width="10" height="4" rx="1" fill="rgb(150, 150, 150)" opacity="0.6" />
+        <rect x="45" y="86" width="10" height="4" rx="1" fill="rgb(150, 150, 150)" opacity="0.6" />
       </svg>
     </motion.div>
   );

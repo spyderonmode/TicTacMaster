@@ -22,24 +22,26 @@ interface ThemeContextType {
 
 const themes = {
   default: {
-    name: 'Default',
-    description: 'Classic dark theme',
-    boardStyle: 'bg-slate-800 border-slate-700',
-    cellStyle: 'bg-slate-700 border-slate-600 text-white hover:bg-slate-600',
-    cellHoverStyle: 'hover:bg-slate-600',
+    name: 'Default (Patterned & Matched)',
+    description: 'Premium patterned dark theme with subtle color matching',
+    boardStyle: 'bg-black border-gray-700 shadow-2xl shadow-black/90 bg-[linear-gradient(to_right,#4f4f56_1px,transparent_1px),linear-gradient(to_bottom,#4f4f56_1px,transparent_1px)] bg-size-[16px_16px]',
+    // Shadow removed: Clean, flat cell
+    cellStyle: 'bg-zinc-950 border-gray-700 text-white hover:bg-zinc-900 hover:border-gray-500 transition-all duration-300',
+    cellHoverStyle: 'hover:bg-zinc-900 hover:border-gray-500 transition-all duration-300',
     playerXColor: 'text-blue-400',
     playerOColor: 'text-red-400',
-    backgroundColor: 'bg-slate-900',
+    backgroundColor: 'bg-black',
     textColor: 'text-white',
-    borderColor: 'border-slate-700',
+    borderColor: 'border-gray-700',
     winningCellStyle: 'bg-gradient-to-br from-yellow-400 to-orange-500'
   },
   neon: {
     name: 'Neon',
     description: 'Cyberpunk neon glow',
-    boardStyle: 'bg-black border-cyan-500 shadow-lg shadow-cyan-500/20',
-    cellStyle: 'bg-gray-900 border-cyan-400 text-cyan-300 hover:bg-cyan-900/30 hover:border-cyan-300 hover:shadow-cyan-400/50',
-    cellHoverStyle: 'hover:bg-cyan-900/30 hover:border-cyan-300 hover:shadow-cyan-400/50',
+    boardStyle: 'bg-black border-cyan-500 shadow-[0_0_20px_rgba(34,211,238,0.5)]',
+    // Shadow removed: Clean, flat cell (kept inner shadow as it defines depth, removed outer shadow)
+    cellStyle: 'bg-gray-900 border-cyan-400 text-cyan-300 shadow-inner shadow-cyan-900/70 hover:bg-cyan-800/50 hover:border-cyan-300 transition-all duration-300',
+    cellHoverStyle: 'hover:bg-cyan-800/50 hover:border-cyan-300 transition-all duration-300',
     playerXColor: 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]',
     playerOColor: 'text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]',
     backgroundColor: 'bg-black',
@@ -50,7 +52,8 @@ const themes = {
   autumn: {
     name: 'Autumn',
     description: 'Warm autumn colors theme',
-    boardStyle: 'bg-gradient-to-br from-orange-100 to-amber-100 border-orange-300 shadow-lg shadow-orange-200/50',
+    boardStyle: 'bg-gradient-to-br from-orange-100 to-amber-100 border-orange-300 shadow-xl shadow-orange-300/80',
+    // Shadow removed: Clean, flat cell
     cellStyle: 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 text-orange-900 hover:from-orange-100 hover:to-amber-100 transition-all duration-300',
     cellHoverStyle: 'hover:from-orange-100 hover:to-amber-100 transition-all duration-300',
     playerXColor: 'text-red-700 font-semibold',
@@ -64,6 +67,7 @@ const themes = {
     name: 'Minimalist',
     description: 'Clean and simple',
     boardStyle: 'bg-white border-gray-300 shadow-md',
+    // Shadow removed: Clean, flat cell
     cellStyle: 'bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100',
     cellHoverStyle: 'hover:bg-gray-100',
     playerXColor: 'text-indigo-600',
@@ -76,9 +80,10 @@ const themes = {
   nature: {
     name: 'Nature',
     description: 'Earth tones and natural colors',
-    boardStyle: 'bg-green-900 border-green-700 shadow-lg',
-    cellStyle: 'bg-green-800 border-green-600 text-green-100 hover:bg-green-700',
-    cellHoverStyle: 'hover:bg-green-700',
+    boardStyle: 'bg-green-900 border-green-700 shadow-2xl shadow-green-950/90',
+    // Shadow removed: Clean, flat cell (kept inner shadow as it defines depth, removed outer shadow)
+    cellStyle: 'bg-green-800 border-green-600 text-green-100 shadow-inner shadow-green-950/70 hover:bg-green-700 transition-all duration-300',
+    cellHoverStyle: 'hover:bg-green-700 transition-all duration-300',
     playerXColor: 'text-emerald-300',
     playerOColor: 'text-amber-300',
     backgroundColor: 'bg-green-950',
@@ -89,9 +94,10 @@ const themes = {
   space: {
     name: 'Space',
     description: 'Deep space adventure',
-    boardStyle: 'bg-indigo-950 border-purple-600 shadow-lg shadow-purple-600/20',
-    cellStyle: 'bg-indigo-900 border-purple-500 text-purple-100 hover:bg-purple-900/50',
-    cellHoverStyle: 'hover:bg-purple-900/50',
+    boardStyle: 'bg-indigo-950 border-purple-600 shadow-2xl shadow-purple-600/50',
+    // Shadow removed: Clean, flat cell (kept inner shadow as it defines depth, removed outer shadow)
+    cellStyle: 'bg-indigo-900 border-purple-500 text-purple-100 shadow-inner shadow-indigo-950/80 hover:bg-purple-900/50 transition-all duration-300',
+    cellHoverStyle: 'hover:bg-purple-900/50 transition-all duration-300',
     playerXColor: 'text-blue-300 drop-shadow-[0_0_6px_rgba(147,197,253,0.6)]',
     playerOColor: 'text-purple-300 drop-shadow-[0_0_6px_rgba(196,181,253,0.6)]',
     backgroundColor: 'bg-indigo-950',
@@ -102,7 +108,8 @@ const themes = {
   halloween: {
     name: 'Halloween',
     description: 'Spooky orange and black theme',
-    boardStyle: 'bg-gradient-to-br from-orange-800 to-black border-orange-500 shadow-lg shadow-orange-500/30',
+    boardStyle: 'bg-gradient-to-br from-orange-800 to-black border-orange-500 shadow-xl shadow-orange-700/70',
+    // Shadow removed: Clean, flat cell
     cellStyle: 'bg-gradient-to-br from-orange-700 to-orange-900 border-orange-600 text-orange-100 hover:from-orange-600 hover:to-orange-800 transition-all duration-300',
     cellHoverStyle: 'hover:from-orange-600 hover:to-orange-800 transition-all duration-300',
     playerXColor: 'text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]',
@@ -115,7 +122,8 @@ const themes = {
   christmas: {
     name: 'Christmas',
     description: 'Festive red and green theme',
-    boardStyle: 'bg-gradient-to-br from-red-800 to-green-800 border-red-400 shadow-lg shadow-red-400/30',
+    boardStyle: 'bg-gradient-to-br from-red-800 to-green-800 border-red-400 shadow-xl shadow-red-700/70',
+    // Shadow removed: Clean, flat cell
     cellStyle: 'bg-gradient-to-br from-red-700 to-green-700 border-red-500 text-red-100 hover:from-red-600 hover:to-green-600 transition-all duration-300',
     cellHoverStyle: 'hover:from-red-600 hover:to-green-600 transition-all duration-300',
     playerXColor: 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.8)]',
@@ -128,7 +136,8 @@ const themes = {
   summer: {
     name: 'Summer',
     description: 'Bright and sunny theme',
-    boardStyle: 'bg-gradient-to-br from-yellow-300 to-blue-300 border-yellow-400 shadow-lg shadow-yellow-400/30',
+    boardStyle: 'bg-gradient-to-br from-yellow-300 to-blue-300 border-yellow-400 shadow-xl shadow-yellow-500/60',
+    // Shadow removed: Clean, flat cell
     cellStyle: 'bg-gradient-to-br from-yellow-200 to-blue-200 border-yellow-300 text-yellow-900 hover:from-yellow-100 hover:to-blue-100 transition-all duration-300',
     cellHoverStyle: 'hover:from-yellow-100 hover:to-blue-100 transition-all duration-300',
     playerXColor: 'text-yellow-700 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)]',
@@ -141,8 +150,9 @@ const themes = {
   level_100_frame: {
     name: 'Level 100 Master',
     description: 'Elite golden theme for level 100 masters',
-    boardStyle: 'bg-gradient-to-br from-amber-800 to-yellow-700 border-amber-500 shadow-2xl shadow-amber-500/40',
-    cellStyle: 'bg-gradient-to-br from-amber-700 to-yellow-600 border-amber-400 text-amber-100 hover:from-amber-600 hover:to-yellow-500 transition-all duration-300 shadow-md',
+    boardStyle: 'bg-gradient-to-br from-amber-800 to-yellow-700 border-amber-500 shadow-2xl shadow-amber-500/80',
+    // Shadow removed: Clean, flat cell
+    cellStyle: 'bg-gradient-to-br from-amber-700 to-yellow-600 border-amber-400 text-amber-100 hover:from-amber-600 hover:to-yellow-500 transition-all duration-300',
     cellHoverStyle: 'hover:from-amber-600 hover:to-yellow-500 transition-all duration-300',
     playerXColor: 'text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.9)] font-bold',
     playerOColor: 'text-yellow-300 drop-shadow-[0_0_12px_rgba(253,224,71,0.9)] font-bold',

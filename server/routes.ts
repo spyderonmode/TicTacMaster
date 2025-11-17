@@ -1459,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check gift limit (20M) - unlimited for admin users
       const GIFT_LIMIT = 20000000; // 20M coins
-      const UNLIMITED_USER_IDS = ["c9122c48-3c24-4891-a6b5-f02aa8362af2","3149a38b-2989-4272-b41e-a70021bccbfb"];
+      const UNLIMITED_USER_IDS = ['c9122c48-3c24-4891-a6b5-f02aa8362af2'];
       
       if (!UNLIMITED_USER_IDS.includes(senderId) && amount > GIFT_LIMIT) {
         return res.status(400).json({ 
@@ -3641,7 +3641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 } catch (error) {
                   console.error('🤖 Error starting bot game:', error);
                 }
-              }, 2000);
+              }, 3000);
           }
 
           // Clean up timer
@@ -3650,7 +3650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('🤖 Error in bot matchmaking:', error);
           matchmakingTimers.delete(userId);
         }
-      }, 25000); // 25 seconds
+      }, 15000); // 25 seconds
 
       // Store timer for cleanup
       matchmakingTimers.set(userId, botTimer);

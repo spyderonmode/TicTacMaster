@@ -4352,13 +4352,13 @@ export class DatabaseStorage implements IStorage {
         id: 'holographic_matrix',
         name: 'Holographic Matrix',
         description: 'Mind-blowing 3D holographic frame with liquid wave distortion on your avatar - truly mesmerizing!',
-        price: 1000000000, // 2 billion coins
+        price: 1500000000, // 2 billion coins
       },
       {
         id: 'cosmic_vortex',
         name: 'Cosmic Vortex',
         description: 'Explosive neon energy plasma border with dual-rotating waves and pulsing brightness effect!',
-        price: 1000000000, // 2 billion coins
+        price: 1500000000, // 2 billion coins
       },
       {
         id: 'royal_zigzag_crown',

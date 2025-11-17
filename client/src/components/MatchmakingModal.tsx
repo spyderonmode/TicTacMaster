@@ -310,7 +310,7 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
         setQueuePosition(0);
         setSearchStartTime(Date.now());
         joinMatchmakingMutation.mutate();
-      }, 3000);
+      }, 2000);
 
       return;
     }

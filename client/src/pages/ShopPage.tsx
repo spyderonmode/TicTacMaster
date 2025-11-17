@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users, Palette, Bird } from "lucide-react";
+import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users, Palette, Bird, Lightbulb } from "lucide-react";
 import { AnimatedPiece } from "@/components/AnimatedPieces";
 import { PurchaseSuccessModal } from "@/components/PurchaseSuccessModal";
 import { AvatarWithFrame } from "@/components/AvatarWithFrame";
@@ -147,7 +147,14 @@ const PIECE_STYLES = [
     id: "peacock",
     name: "Royal Peacock",
     description: "Majestic 3D peacock feathers with iridescent eye patterns and stunning color gradients - absolutely regal!",
-    price: 500000000, // 500 million coins
+    price: 450000000, // 500 million coins
+    isDefault: false,
+  },
+  {
+    id: "bulb",
+    name: "Light Bulb",
+    description: "Brilliant 3D glowing light bulb design with pulsing brightness - illuminate your game!",
+    price: 500000000, // 250 million coins
     isDefault: false,
   },
 ];
@@ -192,14 +199,14 @@ const AVATAR_FRAMES = [
     id: 'holographic_matrix',
     name: 'Holographic Matrix',
     description: 'Mind-blowing 3D holographic frame with liquid wave distortion on your avatar - truly mesmerizing!',
-    price: 1000000000, // 2 billion coins
+    price: 1500000000, // 2 billion coins
     isDefault: false,
   },
   {
     id: 'cosmic_vortex',
     name: 'Cosmic Vortex',
     description: 'Explosive neon energy plasma border with dual-rotating waves and pulsing brightness effect!',
-    price: 1000000000, // 2 billion coins
+    price: 1500000000, // 2 billion coins
     isDefault: false,
   },
   {
@@ -211,7 +218,11 @@ const AVATAR_FRAMES = [
   },
 ];
 
-export default function ShopPage() {
+interface ShopPageProps {
+  onClose?: () => void;
+}
+
+export default function ShopPage({ onClose }: ShopPageProps = {}) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
@@ -451,7 +462,7 @@ export default function ShopPage() {
         <div className="mb-4">
           <Button
             variant="outline"
-            onClick={() => setLocation('/')}
+            onClick={() => onClose ? onClose() : setLocation('/')}
             className="bg-slate-800/50 border-slate-700 text-white hover:bg-slate-700"
             data-testid="button-back-home"
           >
@@ -524,6 +535,7 @@ export default function ShopPage() {
                       {style.id === "bestfriends" && <Users className="w-5 h-5 text-purple-400" />}
                       {style.id === "holi" && <Palette className="w-5 h-5 text-pink-500" />}
                       {style.id === "peacock" && <Bird className="w-5 h-5 text-emerald-400" />}
+                      {style.id === "bulb" && <Lightbulb className="w-5 h-5 text-yellow-300" />}
                       {style.name}
                     </span>
                     {isActive && (
@@ -548,14 +560,14 @@ export default function ShopPage() {
                     <div className="w-20 h-20 flex items-center justify-center">
                       <AnimatedPiece 
                         symbol="X" 
-                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock"} 
+                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb"} 
                         className={style.id === "default" ? "text-5xl text-blue-400 font-bold" : "text-blue-400"}
                       />
                     </div>
                     <div className="w-20 h-20 flex items-center justify-center">
                       <AnimatedPiece 
                         symbol="O" 
-                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock"} 
+                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb"} 
                         className={style.id === "default" ? "text-5xl text-red-400 font-bold" : "text-red-400"}
                       />
                     </div>

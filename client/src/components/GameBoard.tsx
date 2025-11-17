@@ -1159,33 +1159,15 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         onClick={() => handleCellClick(position)}
         animate={isWinningCell ? {
           scale: [1, 1.05, 1.1, 1.05, 1],
-          backgroundColor: [
-            'rgb(51, 65, 85)', // slate-700
-            'rgb(34, 197, 94)', // green-500
-            'rgb(16, 185, 129)', // emerald-500
-            'rgb(34, 197, 94)', // green-500
-            'rgb(51, 65, 85)'  // slate-700
-          ],
-          boxShadow: [
-            '0 0 0 rgba(34, 197, 94, 0)',
-            '0 0 30px rgba(34, 197, 94, 0.8)',
-            '0 0 40px rgba(16, 185, 129, 0.9)',
-            '0 0 30px rgba(34, 197, 94, 0.8)',
-            '0 0 0 rgba(34, 197, 94, 0)'
-          ],
-          borderColor: [
-            'transparent',
-            'rgb(34, 197, 94)',
-            'rgb(16, 185, 129)',
-            'rgb(34, 197, 94)',
-            'transparent'
-          ]
+          // REMOVING GREEN BACKGROUND/SHADOW ANIMATION (Lines 2-18)
+          // ONLY KEEPING THE SCALE ANIMATION FOR VISUAL HIGHLIGHT
         } : {}}
         transition={isWinningCell ? {
           duration: 1.5,
           repeat: Infinity,
           ease: "easeInOut"
         } : {}}
+
       >
         {symbol && (
           <div className="w-16 h-16 flex items-center justify-center">
@@ -1197,7 +1179,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   ? (symbol === 'X' 
                       ? (game?.playerXInfo?.activePieceStyle || 'default') 
                       : (game?.playerOInfo?.activePieceStyle || 'default'))
-                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock"))
+                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb"))
                     ? currentUserPieceStyle
                     : "default"
               }
@@ -1207,7 +1189,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                       (symbol === 'O' && game?.playerOInfo?.activePieceStyle && game?.playerOInfo?.activePieceStyle !== 'default'))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
-                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock"))
+                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb"))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
               }
@@ -1255,33 +1237,34 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         <div className="flex items-center justify-between gap-4">
           {/* Player X - Left Side */}
           <div className="flex items-center space-x-3">
-            {/* Player X Profile - Vertical Layout */}
-            <div className="flex flex-col items-center space-y-2">
-              {(gameMode === 'online' && (game?.playerXInfo?.profileImageUrl || game?.playerXInfo?.profilePicture)) ? (
-                <div
-                  className="cursor-pointer hover:ring-2 hover:ring-blue-400 rounded-full transition-all duration-200 hover:scale-110 relative z-50"
-                  onClick={() => {
-                    console.log('🎮 Player X profile DIV clicked:', game.playerXInfo.id);
-                    setSelectedPlayerId(game.playerXInfo.id);
-                    setShowProfileModal(true);
-                  }}
-                  title="Click to view player profile"
-                >
-                  <AvatarWithFrame
-                    src={game.playerXInfo.profileImageUrl || game.playerXInfo.profilePicture}
-                    alt="Player X"
-                    size="md"
-                    borderType={playerXAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerXInfo)}
-                    fallbackText={game.playerXInfo.firstName?.charAt(0) || game.playerXInfo.displayName?.charAt(0) || game.playerXInfo.username?.charAt(0) || 'X'}
-                  />
-                </div>
-              ) : (
-                <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-base text-white font-bold">X</span>
-                </div>
-              )}
+  {/* Player X Profile - Vertical Layout */}
+  <div className="flex flex-col items-center space-y-2">
+    {(gameMode === 'online' && (game?.playerXInfo?.profileImageUrl || game?.playerXInfo?.profilePicture)) ? (
+      <div
+        className="cursor-pointer hover:ring-2 hover:ring-blue-400 rounded-full transition-all duration-200 hover:scale-110 relative z-50"
+        onClick={() => {
+          console.log('🎮 Player X profile DIV clicked:', game.playerXInfo.id);
+          setSelectedPlayerId(game.playerXInfo.id);
+          setShowProfileModal(true);
+        }}
+        title="Click to view player profile"
+      >
+        <AvatarWithFrame
+          src={game.playerXInfo.profileImageUrl || game.playerXInfo.profilePicture}
+          alt="Player X"
+          size="lg" // <-- CHANGE: Increased size
+          borderType={playerXAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerXInfo)}
+          fallbackText={game.playerXInfo.firstName?.charAt(0) || game.playerXInfo.displayName?.charAt(0) || game.playerXInfo.username?.charAt(0) || 'X'}
+        />
+      </div>
+    ) : (
+      // CHANGE: Updated placeholder size
+      <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center"> 
+        <span className="text-xl text-white font-bold">X</span>
+      </div>
+    )}
 
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center mt-3">
                 {renderAchievementBorder(
                   getSelectedAchievementBorder(game?.playerXInfo),
                   gameMode === 'online' 
@@ -1289,21 +1272,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                     : 'Player X',
                   theme
                 )}
-
-                {gameMode === 'online' && game?.playerXInfo?.achievements && game.playerXInfo.achievements.length > 0 && (
-                  <div className="flex items-center gap-1 mt-1">
-                    {game.playerXInfo.achievements.slice(-1).map((achievement: any) => (
-                      <span
-                        key={achievement.id}
-                        className="text-xs text-gray-700 dark:text-gray-300 px-1 py-0.5"
-                        title={achievement.description}
-                      >
-                        {achievement.icon}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+                 </div>
             </div>
 
             {/* Chat Message and Emoji for Player X - On RIGHT side */}
@@ -1460,38 +1429,24 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   <AvatarWithFrame
                     src={game.playerOInfo.profileImageUrl || game.playerOInfo.profilePicture}
                     alt="Player O"
-                    size="md"
+                    size="lg" // <-- CHANGE: Increased size
                     borderType={playerOAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerOInfo)}
                     fallbackText={game.playerOInfo.firstName?.charAt(0) || game.playerOInfo.displayName?.charAt(0) || game.playerOInfo.username?.charAt(0) || 'O'}
                   />
                 </div>
               ) : (
-                <div className="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-base text-white font-bold">O</span>
+                // CHANGE: Updated placeholder size
+                <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-xl text-white font-bold">O</span>
                 </div>
               )}
-
-              <div className="flex flex-col items-center">
+<div className="flex flex-col items-center mt-3">
                 {renderAchievementBorder(
                   getSelectedAchievementBorder(game?.playerOInfo),
                   gameMode === 'online' 
                     ? (game?.playerOInfo?.firstName || game?.playerOInfo?.displayName || game?.playerOInfo?.username || 'Player O')
                     : (gameMode === 'ai' ? 'AI' : 'Player O'),
                   theme
-                )}
-
-                {gameMode === 'online' && game?.playerOInfo?.achievements && game.playerOInfo.achievements.length > 0 && (
-                  <div className="flex items-center gap-1 mt-1">
-                    {game.playerOInfo.achievements.slice(-1).map((achievement: any) => (
-                      <span
-                        key={achievement.id}
-                        className="text-xs text-gray-700 dark:text-gray-300 px-1 py-0.5"
-                        title={achievement.description}
-                      >
-                        {achievement.icon}
-                      </span>
-                    ))}
-                  </div>
                 )}
               </div>
             </div>

@@ -13,7 +13,6 @@ import VerifyEmail from "@/pages/verify-email";
 import ResetPassword from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 import LoadingScreen from "@/components/LoadingScreen";
-import ShopPage from "@/pages/ShopPage";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { UpdateNotificationManager } from "@/components/UpdateNotificationManager";
 import { Component, useState, useEffect } from "react";
@@ -201,7 +200,16 @@ function Router() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/not-found" component={NotFound} />
-      <Route path="/shop" component={ShopPage} />
+      <Route path="/shop">
+        {/* Redirect to home and emit event to open shop */}
+        {(() => {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('open-shop'));
+            setLocation('/');
+          }, 0);
+          return <Home />;
+        })()}
+      </Route>
       <Route path="/">
         <Home />
       </Route>

@@ -31,6 +31,7 @@ import { ErrorModal } from "@/components/ErrorModal";
 import { ConnectingOverlay } from "@/components/ConnectingOverlay";
 import { QuickChat } from "@/components/QuickChat";
 import { DailyRewardModal } from "@/components/DailyRewardModal";
+import ShopPage from "@/pages/ShopPage";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,6 +89,7 @@ export default function Home() {
   const [showDailyReward, setShowDailyReward] = useState(false);
   const [hasPendingDailyReward, setHasPendingDailyReward] = useState(false);
   const [dailyRewardCanClaim, setDailyRewardCanClaim] = useState(false);
+  const [showShop, setShowShop] = useState(false);
   const dailyRewardTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasCheckedDailyReward = useRef(false);
   const headerSidebarRef = useRef<HTMLDivElement>(null);
@@ -141,6 +143,15 @@ export default function Home() {
       });
     }
   }, [user, language, queryClient]);
+
+  // Listen for custom "open-shop" event for backward compatibility with /shop route
+  useEffect(() => {
+    const handleOpenShop = () => {
+      setShowShop(true);
+    };
+    window.addEventListener('open-shop', handleOpenShop);
+    return () => window.removeEventListener('open-shop', handleOpenShop);
+  }, []);
 
   // Check daily reward status once on mount
   useEffect(() => {
@@ -2309,7 +2320,7 @@ export default function Home() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setShowHeaderSidebar(false);
-                          setLocation('/shop');
+                          setShowShop(true);
                         }}
                         className="bg-gradient-to-r from-purple-600 to-pink-600 border-purple-500/50 text-white hover:from-purple-500 hover:to-pink-500 text-xs"
                         data-testid="button-shop-menu"
@@ -2824,6 +2835,15 @@ export default function Home() {
       <ConnectingOverlay 
         isVisible={selectedMode === 'online' && !isConnected && (!!currentGame || !!currentRoom)}
       />
+
+      {/* Shop Modal */}
+      {showShop && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setShowShop(false)}>
+          <div className="fixed inset-0 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <ShopPage onClose={() => setShowShop(false)} />
+          </div>
+        </div>
+      )}
     </>
   );
 }
