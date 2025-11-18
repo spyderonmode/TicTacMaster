@@ -9,8 +9,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Gift, Coins, Flame } from "lucide-react";
+import { Gift, Coins, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface DailyRewardStatus {
   canClaim: boolean;
@@ -33,6 +34,8 @@ interface DailyRewardModalProps {
 export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) {
   const { toast } = useToast();
   const [showCelebration, setShowCelebration] = useState(false);
+  const [chestOpening, setChestOpening] = useState(false);
+  const [rewardAmount, setRewardAmount] = useState(1000000);
 
   const { data: rewardStatus, isLoading } = useQuery<DailyRewardStatus>({
     queryKey: ['/api/daily-reward'],
@@ -52,19 +55,18 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
       return response.json();
     },
     onSuccess: (data) => {
+      // Extract coin amount from response if available
+      if (typeof data.coinsEarned === 'number') {
+        setRewardAmount(data.coinsEarned);
+      }
       setShowCelebration(true);
       queryClient.invalidateQueries({ queryKey: ['/api/daily-reward'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-      
-      toast({
-        title: "Daily Reward Claimed!",
-        description: data.message,
-      });
 
       setTimeout(() => {
         setShowCelebration(false);
         onOpenChange(false);
-      }, 3000);
+      }, 3500);
     },
     onError: (error: Error) => {
       toast({
@@ -76,7 +78,11 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
   });
 
   const handleClaim = () => {
-    claimMutation.mutate();
+    setChestOpening(true);
+    setTimeout(() => {
+      claimMutation.mutate();
+      setChestOpening(false);
+    }, 1500);
   };
 
   const formatNextClaimTime = (nextClaimDate?: string) => {
@@ -95,21 +101,151 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="sm:max-w-md bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-500/30"
+        className="sm:max-w-md bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-500/30 overflow-hidden"
         data-testid="dialog-daily-reward"
       >
         {showCelebration ? (
-          <div className="flex flex-col items-center justify-center py-8 space-y-4">
-            <div className="relative">
-              <Coins className="h-24 w-24 text-yellow-500 animate-bounce" />
-              <div className="absolute inset-0 bg-yellow-500/20 rounded-full blur-xl animate-pulse"></div>
+          <div className="flex flex-col items-center justify-center py-10 space-y-6 relative min-h-[400px]">
+            {/* Cute sparkles and stars background */}
+            <div className="absolute inset-0 overflow-hidden">
+              {[...Array(30)].map((_, i) => (
+                <motion.div
+                  key={`star-${i}`}
+                  className="absolute text-yellow-400"
+                  initial={{ 
+                    opacity: 0,
+                    scale: 0,
+                    x: Math.random() * 100 + '%',
+                    y: Math.random() * 100 + '%',
+                  }}
+                  animate={{ 
+                    opacity: [0, 1, 1, 0],
+                    scale: [0, 1, 1, 0],
+                    rotate: [0, 360],
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    delay: i * 0.1,
+                    repeat: Infinity,
+                    repeatDelay: 1
+                  }}
+                >
+                  ✨
+                </motion.div>
+              ))}
             </div>
-            <h2 className="text-3xl font-bold text-yellow-500 animate-pulse">
-              Reward Claimed!
-            </h2>
-            <p className="text-xl text-white">
-              +1,000,000 Coins
-            </p>
+
+            {/* Coin explosion effect */}
+            <AnimatePresence>
+              {[...Array(10)].map((_, i) => (
+                <motion.div
+                  key={`coin-${i}`}
+                  initial={{ 
+                    x: 0, 
+                    y: 0, 
+                    scale: 0,
+                    opacity: 0.5 
+                  }}
+                  animate={{ 
+                    x: (Math.random() - 0.5) * 500,
+                    y: (Math.random() - 0.5) * 500,
+                    scale: [0, 1.8, 0],
+                    opacity: [1, 1, 0],
+                    rotate: Math.random() * 1080
+                  }}
+                  transition={{ 
+                    duration: 4,
+                    delay: i * 0.08,
+                    ease: "easeOut"
+                  }}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                >
+                  <Coins className="h-10 w-10 text-yellow-400 drop-shadow-lg" />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            
+            {/* Cute bouncing coin with hearts */}
+            <motion.div 
+              className="relative z-10 flex flex-col items-center"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ 
+                scale: 1, 
+                rotate: 0,
+              }}
+              transition={{ type: "spring", stiffness: 150, damping: 10 }}
+            >
+              <motion.div
+                animate={{ 
+                  y: [0, -15, 0],
+                }}
+                transition={{ 
+                  duration: 0.8,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              >
+                <Coins className="h-28 w-28 text-yellow-400 drop-shadow-2xl" />
+              </motion.div>
+              <div className="absolute inset-0 bg-yellow-400/30 rounded-full blur-2xl animate-pulse scale-150"></div>
+            </motion.div>
+            
+            {/* Cute celebration text with emoji */}
+            <motion.div
+              className="z-10 text-center space-y-3"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <motion.div
+                className="text-5xl"
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                }}
+                transition={{ 
+                  duration: 1,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              >
+                🪙
+              </motion.div>
+              
+              <motion.h2 
+                className="text-4xl font-black bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-300 bg-clip-text text-transparent"
+                animate={{ 
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                }}
+                transition={{ 
+                  duration: 3,
+                  repeat: Infinity,
+                }}
+              >
+                Amazing!
+              </motion.h2>
+              
+              <motion.div
+                className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-2xl p-6 border-2 border-yellow-400/50 shadow-2xl"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.5, type: "spring" }}
+              >
+                <p className="text-sm text-yellow-200 font-semibold mb-2">You earned</p>
+                <p className="text-5xl font-black text-yellow-300 drop-shadow-lg">
+                  +{rewardAmount.toLocaleString()}
+                </p>
+                <p className="text-2xl text-yellow-100 mt-2 font-bold">Coins!</p>
+              </motion.div>
+              
+              <motion.p 
+                className="text-lg text-slate-300 italic"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+              >
+                Keep your streak going! 🎯
+              </motion.p>
+            </motion.div>
           </div>
         ) : (
           <>
@@ -128,11 +264,76 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                 <div className="text-center text-slate-400">Loading...</div>
               ) : rewardStatus?.canClaim ? (
                 <>
-                  <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 border-2 border-yellow-500/30 rounded-lg p-6 text-center space-y-4">
-                    <div className="relative inline-block">
-                      <Coins className="h-20 w-20 text-yellow-500 mx-auto" />
-                      <div className="absolute inset-0 bg-yellow-500/20 rounded-full blur-lg"></div>
+                  {/* Premium Chest Display */}
+                  <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 border-2 border-yellow-500/30 rounded-lg p-6 text-center space-y-4 relative overflow-hidden">
+                    {/* Animated background particles */}
+                    <div className="absolute inset-0 opacity-20">
+                      {[...Array(10)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          className="absolute w-1 h-1 bg-yellow-500 rounded-full"
+                          animate={{
+                            y: [0, -100],
+                            opacity: [0, 1, 0],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            delay: i * 0.2,
+                          }}
+                          style={{
+                            left: `${Math.random() * 100}%`,
+                            top: '100%',
+                          }}
+                        />
+                      ))}
                     </div>
+                    
+                    {/* Chest Animation */}
+                    <motion.div 
+                      className="relative inline-block"
+                      animate={chestOpening ? {
+                        scale: [1, 1.2, 1],
+                        rotate: [0, -10, 10, -10, 0],
+                      } : {}}
+                      transition={{ duration: 1.5 }}
+                    >
+                      <motion.div
+                        className="relative"
+                        initial={false}
+                        animate={chestOpening ? { rotateX: 180 } : { rotateX: 0 }}
+                        transition={{ duration: 0.8 }}
+                        style={{ transformStyle: "preserve-3d" }}
+                      >
+                        <Gift className="h-20 w-20 text-yellow-500 mx-auto" />
+                      </motion.div>
+                      <div className="absolute inset-0 bg-yellow-500/20 rounded-full blur-lg"></div>
+                      
+                      {/* Sparkle effects around chest */}
+                      <AnimatePresence>
+                        {chestOpening && [...Array(8)].map((_, i) => (
+                          <motion.div
+                            key={i}
+                            className="absolute"
+                            initial={{ scale: 0, opacity: 1 }}
+                            animate={{
+                              scale: [0, 1, 0],
+                              opacity: [1, 1, 0],
+                              x: Math.cos((i / 8) * Math.PI * 2) * 50,
+                              y: Math.sin((i / 8) * Math.PI * 2) * 50,
+                            }}
+                            transition={{ duration: 1 }}
+                            style={{
+                              left: '50%',
+                              top: '50%',
+                            }}
+                          >
+                            <div className="w-2 h-2 bg-yellow-400 rounded-full" />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </motion.div>
+                    
                     <div>
                       <p className="text-4xl font-bold text-yellow-500">
                         1,000,000
@@ -142,8 +343,8 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                   </div>
 
                   {rewardStatus.reward && rewardStatus.reward.currentStreak > 0 && (
-                    <div className="flex items-center justify-center gap-2 text-orange-500">
-                      <Flame className="h-5 w-5" />
+                    <div className="flex items-center justify-center gap-2 text-blue-500">
+                      <Target className="h-5 w-5" />
                       <span className="font-semibold" data-testid="text-current-streak">
                         {rewardStatus.reward.currentStreak} Day Streak
                       </span>
@@ -176,8 +377,8 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                   
                   {rewardStatus?.reward && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2 text-orange-500">
-                        <Flame className="h-5 w-5" />
+                      <div className="flex items-center justify-center gap-2 text-blue-500">
+                        <Target className="h-5 w-5" />
                         <span className="font-semibold">
                           {rewardStatus.reward.currentStreak} Day Streak
                         </span>

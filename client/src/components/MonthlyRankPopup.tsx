@@ -6,9 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Crown, Medal, Award, Trophy, Coins, Target, Sparkles, Star } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
-// formatNumber is only used for the Reward, not the performance panel now
-import { formatNumber } from '@/lib/utils'; 
+import { useToast } from '@/hooks/use-toast'; 
 
 interface WeeklyRankData {
   id: string;
@@ -34,8 +32,8 @@ interface WeeklyRankPopupProps {
 // --- Helper function for Coin Abbreviation (New or Modified) ---
 
 /**
- * Formats a number, abbreviating large numbers with 'k' or 'M'.
- * e.g., 435000 -> 435k, -435000 -> -435k
+ * Formats a number, abbreviating large numbers with 'k', 'M', or 'B'.
+ * e.g., 435000 -> 435k, 2000800000 -> 2B
  * @param num The number to format.
  * @returns The formatted string.
  */
@@ -43,13 +41,17 @@ const abbreviateNumber = (num: number): string => {
     const absNum = Math.abs(num);
     const sign = num < 0 ? '-' : '';
     
+    if (absNum >= 1000000000) {
+        // Divide by 1 billion and round to 1 decimal place if needed
+        return sign + (absNum / 1000000000).toFixed(1).replace(/\.0$/, '') + 'B';
+    }
     if (absNum >= 1000000) {
         // Divide by 1 million and round to 1 decimal place if needed
         return sign + (absNum / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
     }
     if (absNum >= 1000) {
         // Divide by 1 thousand and round to 1 decimal place if needed
-        return sign + (absNum / 1000).toFixed(0) + 'k'; // Keeping it simple for hundreds of thousands
+        return sign + (absNum / 1000).toFixed(0) + 'k';
     }
     return String(num);
 };
@@ -221,35 +223,34 @@ const WeeklyRankPopup = ({
                 </p>
               </div>
 
-              {/* Premium User Profile Card - Reduced padding */}
+              {/* Premium User Profile Card - Clean emoji separated */}
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-purple-500/10 to-blue-500/10 rounded-xl blur-xl"></div>
-                {/* Reduced padding to p-3 */}
                 <div className="relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-xl p-3 shadow-lg">
-                  <div className="flex items-center justify-center space-x-3">
+                  <div className="flex flex-col items-center space-y-2">
+                    {/* Clean emoji/avatar - separated from name */}
                     <div className="relative">
                       <div className={`absolute inset-0 bg-gradient-to-r ${getRankGradient()} rounded-full blur-md opacity-50 animate-pulse`}></div>
                       {userProfileImage ? (
-                        // Reduced image size to w-14 h-14
                         <img 
                           src={userProfileImage} 
                           alt={userDisplayName}
-                          className={`relative w-14 h-14 rounded-full border-4 border-gradient-to-r ${getRankGradient()} ring-4 ring-gray-800`}
+                          className={`relative w-16 h-16 rounded-full border-4 border-gradient-to-r ${getRankGradient()} ring-4 ring-gray-800 shadow-xl`}
                           data-testid="user-profile-image"
                         />
                       ) : (
-                        // Reduced placeholder size
-                        <div className={`relative w-14 h-14 rounded-full bg-gradient-to-br ${getRankGradient()} flex items-center justify-center text-white text-lg font-bold ring-4 ring-gray-800 shadow-xl`}>
+                        <div className={`relative w-16 h-16 rounded-full bg-gradient-to-br ${getRankGradient()} flex items-center justify-center text-white text-xl font-bold ring-4 ring-gray-800 shadow-xl`}>
                           {userDisplayName.charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
-                    <div className="text-left">
-                      {/* Reduced text size to base/lg */}
+                    
+                    {/* Name below emoji - clean separation */}
+                    <div className="text-center">
                       <h3 className="text-base sm:text-lg font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent" data-testid="user-display-name">
                         {userDisplayName}
                       </h3>
-                      <div className="flex items-center gap-1 mt-1">
+                      <div className="flex items-center justify-center gap-1 mt-1">
                         <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                         <span className="text-xs text-gray-400">League Player</span>
                       </div>
@@ -314,7 +315,7 @@ const WeeklyRankPopup = ({
                     </div>
                     {/* Reduced font size to 3xl */}
                     <div className="text-3xl font-black text-yellow-300 drop-shadow-lg" data-testid="reward-amount">
-                      +{formatNumber(rankData.rewardAmount)}
+                      +{abbreviateNumber(rankData.rewardAmount)}
                     </div>
                     <p className="text-xs text-yellow-200/80 mt-1 font-semibold tracking-wide">
                       Coins Added to Your Balance

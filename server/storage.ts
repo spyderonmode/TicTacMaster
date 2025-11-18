@@ -421,7 +421,7 @@ export class DatabaseStorage implements IStorage {
 
   // Room operations
   async createRoom(roomData: InsertRoom & { ownerId: string }): Promise<Room> {
-    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const code = Math.floor(10000000 + Math.random() * 90000000).toString();
     const [room] = await db
       .insert(rooms)
       .values({
