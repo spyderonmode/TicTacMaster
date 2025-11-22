@@ -7,11 +7,42 @@
     <title>TicTac 3x5 - Play Online</title>
     <meta name="description" content="Play TicTac 3x5 with friends online or challenge the AI. Works offline with cached gameplay!" />
     
+    <!-- Mobile Optimization -->
     <meta name="theme-color" content="#3b82f6" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     
+    <!-- Preconnect to improve performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- DNS Prefetch for external resources -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    
+    <!-- Open Graph & Social Media -->
     <meta property="og:title" content="TicTac 3x5 Game" />
     <meta property="og:description" content="Play TicTac 3x5 with friends online or challenge the AI" />
     <meta property="og:type" content="website" />
+    
+    <!-- Performance Hints -->
+    <link rel="modulepreload" href="/src/main.tsx" />
+    <style>
+      /* Critical CSS - Prevent flash of unstyled content */
+      #root {
+        min-height: 100vh;
+        background: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        #root {
+          background: #0a0a0a;
+        }
+      }
+      /* Loading state */
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+    </style>
     
     <script>
       if ('serviceWorker' in navigator) {
@@ -50,7 +81,22 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Loading state while app initializes -->
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div style="text-align: center; color: white;">
+          <div style="width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; margin: 0 auto 20px; animation: spin 1s linear infinite;"></div>
+          <h2 style="font-size: 24px; font-weight: 600; margin: 0 0 10px 0;">TicTac 3x5</h2>
+          <p style="font-size: 14px; opacity: 0.9; margin: 0;">Loading game...</p>
+        </div>
+      </div>
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
   </body>

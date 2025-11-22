@@ -7,11 +7,11 @@ import { AnimatedPiece } from "@/components/AnimatedPieces";
 interface PurchaseSuccessModalProps {
   open: boolean;
   onClose: () => void;
-  purchaseType: "piece" | "emoji" | "frame";
+  purchaseType: "piece" | "sticker" | "frame";
   itemName: string;
   itemDescription: string;
   itemId?: string;
-  emojiAnimation?: string;
+  stickerAnimation?: string;
 }
 
 export function PurchaseSuccessModal({
@@ -21,7 +21,7 @@ export function PurchaseSuccessModal({
   itemName,
   itemDescription,
   itemId,
-  emojiAnimation,
+  stickerAnimation,
 }: PurchaseSuccessModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -167,7 +167,7 @@ export function PurchaseSuccessModal({
                 </div>
               )}
 
-              {purchaseType === "emoji" && emojiAnimation && (
+              {purchaseType === "sticker" && stickerAnimation && (
                 <motion.div
                   className="text-5xl mb-4"
                   animate={{
@@ -180,7 +180,7 @@ export function PurchaseSuccessModal({
                     ease: "easeInOut"
                   }}
                 >
-                  {emojiAnimation}
+                  {stickerAnimation}
                 </motion.div>
               )}
 

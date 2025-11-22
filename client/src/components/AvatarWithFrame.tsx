@@ -702,18 +702,20 @@ export function AvatarWithFrame({
                 `,
               }}
             >
-              {/* Animated energy waves - multiple layers */}
+              {/* Animated energy waves - optimized */}
               <motion.div
                 className="absolute inset-0 rounded-full"
                 style={{
                   background: 'conic-gradient(from 0deg, #ff006e, #8338ec, #3a86ff, #06ffa5, #ffbe0b, #ff006e)',
                   opacity: 0.8,
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
                 }}
                 animate={{
-                  rotate: [0, 360],
+                  rotate: 360,
                 }}
                 transition={{
-                  duration: 4,
+                  duration: 5,
                   repeat: Infinity,
                   ease: 'linear',
                 }}
@@ -724,12 +726,14 @@ export function AvatarWithFrame({
                 style={{
                   background: 'conic-gradient(from 180deg, transparent 0%, #ff006e 25%, transparent 50%, #3a86ff 75%, transparent 100%)',
                   opacity: 0.6,
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
                 }}
                 animate={{
-                  rotate: [360, 0],
+                  rotate: -360,
                 }}
                 transition={{
-                  duration: 6,
+                  duration: 7,
                   repeat: Infinity,
                   ease: 'linear',
                 }}
@@ -752,11 +756,15 @@ export function AvatarWithFrame({
                   src={src} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover relative z-10"
+                  style={{
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
+                  }}
                   animate={{
-                    scale: [1, 1.3, 1],
+                    scale: [1, 1.05, 1],
                   }}
                   transition={{
-                    duration: 4,
+                    duration: 5,
                     repeat: Infinity,
                     ease: 'easeInOut',
                   }}
@@ -764,17 +772,271 @@ export function AvatarWithFrame({
               ) : (
                 <motion.div 
                   className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10"
+                  style={{
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
+                  }}
                   animate={{
-                    scale: [1, 1.3, 1],
+                    scale: [1, 1.05, 1],
                   }}
                   transition={{
-                    duration: 4,
+                    duration: 5,
                     repeat: Infinity,
                     ease: 'easeInOut',
                   }}
                 >
                   {fallbackText}
                 </motion.div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'celestial_nebula':
+        return (
+          <div className={`${sizeClasses[size]} rounded-full relative`} style={{ padding: '5px' }}>
+            {/* Triple-layer Supernova Border with Extreme Energy */}
+            <div 
+              className="absolute rounded-full overflow-visible"
+              style={{
+                inset: '-3.2px',
+              }}
+            >
+              {/* Outer explosive energy ring - optimized */}
+              <motion.div
+                className="absolute rounded-full"
+                style={{
+                  inset: '-4.8px',
+                  background: 'radial-gradient(circle, transparent 30%, #ff006e 50%, #8338ec 70%, #3a86ff 90%, transparent 100%)',
+                  willChange: 'transform, opacity',
+                  transform: 'translateZ(0)',
+                }}
+                animate={{
+                  scale: [1, 1.3, 1],
+                  opacity: [0.6, 1, 0.6],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Main border with intense gradient */}
+              <div 
+                className="absolute rounded-full"
+                style={{
+                  inset: '0px',
+                  background: 'linear-gradient(135deg, #ff006e 0%, #8338ec 20%, #3a86ff 40%, #06ffa5 60%, #ffbe0b 80%, #ff006e 100%)',
+                  padding: '2px',
+                }}
+              >
+                {/* Fast spinning galaxy layer 1 - optimized */}
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'conic-gradient(from 0deg, #ff006e, transparent, #8338ec, transparent, #3a86ff, transparent, #06ffa5, transparent, #ff006e)',
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
+                  }}
+                  animate={{
+                    rotate: 360,
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: 'linear',
+                  }}
+                />
+
+                {/* Counter-rotating galaxy layer 2 - optimized */}
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'conic-gradient(from 180deg, transparent, #f093fb, transparent, #00f2fe, transparent, #ffbe0b, transparent)',
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
+                  }}
+                  animate={{
+                    rotate: -360,
+                  }}
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity,
+                    ease: 'linear',
+                  }}
+                />
+
+                {/* Pulsing cosmic energy waves - reduced to 2 */}
+                {[...Array(2)].map((_, i) => (
+                  <motion.div
+                    key={`wave-${i}`}
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: `radial-gradient(circle, transparent ${40 + i * 15}%, rgba(255, 0, 110, 0.3) ${55 + i * 15}%, transparent ${70 + i * 15}%)`,
+                      willChange: 'transform, opacity',
+                      transform: 'translateZ(0)',
+                    }}
+                    animate={{
+                      scale: [1, 1.4, 1],
+                      opacity: [0, 0.8, 0],
+                    }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      ease: 'easeOut',
+                      delay: i * 1.25,
+                    }}
+                  />
+                ))}
+
+                {/* Shooting star comets - reduced to 6 */}
+                {[...Array(6)].map((_, i) => {
+                  const angle = (i * 360) / 6;
+                  const startRadius = size === 'sm' ? 12 : size === 'md' ? 17.6 : 25.6;
+                  const endRadius = size === 'sm' ? 28 : size === 'md' ? 38.4 : 52;
+                  const startX = Math.cos((angle * Math.PI) / 180) * startRadius;
+                  const startY = Math.sin((angle * Math.PI) / 180) * startRadius;
+                  const endX = Math.cos((angle * Math.PI) / 180) * endRadius;
+                  const endY = Math.sin((angle * Math.PI) / 180) * endRadius;
+
+                  return (
+                    <motion.div
+                      key={`comet-${i}`}
+                      className="absolute"
+                      style={{
+                        left: '50%',
+                        top: '50%',
+                        width: '2.4px',
+                        height: '9.6px',
+                        background: 'linear-gradient(to bottom, #fff, #00f2fe, transparent)',
+                        borderRadius: '50%',
+                        transformOrigin: 'center',
+                        willChange: 'transform, opacity',
+                        transform: 'translateZ(0)',
+                      }}
+                      animate={{
+                        x: [startX, endX, startX],
+                        y: [startY, endY, startY],
+                        opacity: [0, 1, 0],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: 'easeOut',
+                        delay: i * 0.33,
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Glowing particles - reduced to 16 */}
+                {[...Array(16)].map((_, i) => {
+                  const angle = (i * 360) / 16;
+                  const radius = size === 'sm' ? 14.4 : size === 'md' ? 20.8 : 30.4;
+                  const x = Math.cos((angle * Math.PI) / 180) * radius;
+                  const y = Math.sin((angle * Math.PI) / 180) * radius;
+                  const colors = ['#ff006e', '#8338ec', '#3a86ff', '#06ffa5', '#ffbe0b', '#f093fb'];
+                  const color = colors[i % colors.length];
+
+                  return (
+                    <motion.div
+                      key={`particle-${i}`}
+                      className="absolute"
+                      style={{
+                        left: '50%',
+                        top: '50%',
+                        width: '2.4px',
+                        height: '2.4px',
+                        background: `radial-gradient(circle, ${color}, transparent)`,
+                        borderRadius: '50%',
+                        willChange: 'transform, opacity',
+                        transform: 'translateZ(0)',
+                      }}
+                      animate={{
+                        x: [x, x * 1.2, x],
+                        y: [y, y * 1.2, y],
+                        opacity: [0.5, 1, 0.5],
+                        scale: [1, 2, 1],
+                      }}
+                      transition={{
+                        duration: 2.5 + (i % 4) * 0.3,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                        delay: i * 0.15,
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Supernova explosion bursts - reduced to 8 */}
+                {[...Array(8)].map((_, i) => {
+                  const angle = (i * 360) / 8;
+                  const radius = size === 'sm' ? 20 : size === 'md' ? 28 : 38.4;
+                  const x = Math.cos((angle * Math.PI) / 180) * radius;
+                  const y = Math.sin((angle * Math.PI) / 180) * radius;
+
+                  return (
+                    <motion.div
+                      key={`burst-${i}`}
+                      className="absolute"
+                      style={{
+                        left: '50%',
+                        top: '50%',
+                        width: '1.6px',
+                        height: '6.4px',
+                        background: 'linear-gradient(to bottom, #fff, #ffbe0b, transparent)',
+                        borderRadius: '50%',
+                        transformOrigin: 'center bottom',
+                        willChange: 'transform, opacity',
+                        transform: 'translateZ(0)',
+                      }}
+                      animate={{
+                        x: [0, x, 0],
+                        y: [0, y, 0],
+                        opacity: [0, 1, 0],
+                        scaleY: [0.5, 2, 0.5],
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: 'easeOut',
+                        delay: i * 0.19,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Avatar - Static with subtle glow */}
+            <div className="w-full h-full rounded-full overflow-hidden relative z-10">
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'radial-gradient(circle at 30% 30%, rgba(167, 139, 250, 0.3), transparent)',
+                  willChange: 'opacity',
+                  transform: 'translateZ(0)',
+                }}
+                animate={{
+                  opacity: [0.2, 0.5, 0.2],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+              {src ? (
+                <img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover relative z-10"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10">
+                  {fallbackText}
+                </div>
               )}
             </div>
           </div>
@@ -882,6 +1144,657 @@ export function AvatarWithFrame({
                 <div 
                   className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10"
                 >
+                  {fallbackText}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'quantum_prism':
+        return (
+          <div className={`${sizeClasses[size]} rounded-full relative`} style={{ padding: '6px' }}>
+            {/* Hexagonal Rotating Frame */}
+            <div 
+              className="absolute"
+              style={{
+                inset: '-8px',
+                overflow: 'visible',
+              }}
+            >
+              {/* Outer 3D Hexagonal Layer - Most outer */}
+              <motion.div
+                className="absolute"
+                style={{
+                  inset: '-2px',
+                  background: 'linear-gradient(135deg, #00ffff 0%, #00d4ff 25%, #0080ff 50%, #00d4ff 75%, #00ffff 100%)',
+                  clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+                  padding: '2px',
+                  filter: 'drop-shadow(0 4px 8px rgba(0, 255, 255, 0.5)) drop-shadow(0 0 12px rgba(0, 212, 255, 0.8))',
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
+                }}
+                animate={{
+                  rotate: [0, 360],
+                }}
+                transition={{
+                  duration: 12,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              >
+                <div 
+                  className="w-full h-full"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(0, 255, 255, 0.3), rgba(0, 128, 255, 0.1))',
+                    clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+                  }}
+                />
+              </motion.div>
+
+              {/* Middle 3D Hexagonal Layer */}
+              <motion.div
+                className="absolute"
+                style={{
+                  inset: '2px',
+                  background: 'linear-gradient(135deg, #00d4ff 0%, #00a8ff 25%, #0080ff 50%, #00d4ff 75%, #00ffff 100%)',
+                  clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+                  padding: '3px',
+                  filter: 'drop-shadow(0 2px 6px rgba(0, 212, 255, 0.7))',
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
+                }}
+                animate={{
+                  rotate: [0, -360],
+                }}
+                transition={{
+                  duration: 18,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              >
+                <div 
+                  className="w-full h-full"
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+                  }}
+                />
+              </motion.div>
+
+              {/* Inner 3D Hexagonal Layer - Closest to avatar */}
+              <motion.div
+                className="absolute"
+                style={{
+                  inset: '6px',
+                  background: 'linear-gradient(225deg, #00ffff 0%, #00d4ff 50%, #0080ff 100%)',
+                  clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+                  padding: '2px',
+                  opacity: 0.8,
+                  filter: 'drop-shadow(0 0 8px rgba(0, 255, 255, 0.6))',
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
+                }}
+                animate={{
+                  rotate: [0, 360],
+                }}
+                transition={{
+                  duration: 14,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              >
+                <div 
+                  className="w-full h-full"
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.9)',
+                    clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+                  }}
+                />
+              </motion.div>
+
+              {/* Floating Geometric Crystals - 8 hexagons evenly distributed */}
+              {[...Array(8)].map((_, i) => {
+                const angle = (i * 360) / 8 + 22.5; // Offset to avoid top/bottom/sides
+                const radius = size === 'sm' ? 22 : size === 'md' ? 30 : 40;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                const crystalSize = size === 'sm' ? 7 : size === 'md' ? 9 : 11;
+
+                return (
+                  <motion.div
+                    key={`crystal-${i}`}
+                    className="absolute z-10"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: `${crystalSize}px`,
+                      height: `${crystalSize}px`,
+                      marginLeft: `-${crystalSize / 2}px`,
+                      marginTop: `-${crystalSize / 2}px`,
+                      transformStyle: 'preserve-3d',
+                      perspective: '1000px',
+                      willChange: 'transform, opacity',
+                      transform: 'translateZ(0)',
+                    }}
+                    animate={{
+                      x: [x, x * 1.1, x],
+                      y: [y, y * 1.1, y],
+                      rotateZ: [0, 360],
+                      rotateY: [0, 180, 360],
+                      scale: [0.9, 1.2, 0.9],
+                    }}
+                    transition={{
+                      duration: 4 + (i % 3) * 0.4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.2,
+                    }}
+                  >
+                    <svg
+                      width={crystalSize}
+                      height={crystalSize}
+                      viewBox="0 0 20 20"
+                      style={{
+                        filter: 'drop-shadow(0 0 3px rgba(0, 212, 255, 0.8))',
+                      }}
+                    >
+                      <polygon
+                        points="10,0 18,5 18,15 10,20 2,15 2,5"
+                        fill="url(#crystalGrad)"
+                        stroke="#00ffff"
+                        strokeWidth="0.5"
+                      />
+                      <defs>
+                        <linearGradient id="crystalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" style={{ stopColor: '#00ffff', stopOpacity: 0.9 }} />
+                          <stop offset="50%" style={{ stopColor: '#00d4ff', stopOpacity: 0.7 }} />
+                          <stop offset="100%" style={{ stopColor: '#0080ff', stopOpacity: 0.9 }} />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </motion.div>
+                );
+              })}
+
+              {/* Light Beams - 6 rays behind border */}
+              {[...Array(6)].map((_, i) => {
+                const angle = (i * 360) / 6 + 30; // Offset for cleaner look
+
+                return (
+                  <motion.div
+                    key={`beam-${i}`}
+                    className="absolute z-0"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: '1.5px',
+                      height: '50%',
+                      background: 'linear-gradient(to top, transparent, rgba(0, 255, 255, 0.4), transparent)',
+                      transformOrigin: 'bottom center',
+                      willChange: 'transform, opacity',
+                      transform: 'translateZ(0)',
+                    }}
+                    animate={{
+                      rotate: [angle, angle + 360],
+                      opacity: [0.2, 0.6, 0.2],
+                    }}
+                    transition={{
+                      duration: 10,
+                      repeat: Infinity,
+                      ease: 'linear',
+                      delay: i * 0.6,
+                    }}
+                  />
+                );
+              })}
+
+              {/* Pulsing Energy Rings - Behind border */}
+              {[...Array(2)].map((_, i) => (
+                <motion.div
+                  key={`ring-${i}`}
+                  className="absolute rounded-full z-0"
+                  style={{
+                    inset: '15%',
+                    border: '1px solid rgba(0, 212, 255, 0.4)',
+                    boxShadow: '0 0 8px rgba(0, 255, 255, 0.3)',
+                    willChange: 'transform, opacity',
+                    transform: 'translateZ(0)',
+                  }}
+                  animate={{
+                    scale: [1, 1.3, 1],
+                    opacity: [0, 0.5, 0],
+                  }}
+                  transition={{
+                    duration: 3.5,
+                    repeat: Infinity,
+                    ease: 'easeOut',
+                    delay: i * 1.75,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Central Star Core - Big and centered */}
+            <motion.div
+              className="absolute rounded-full"
+              style={{
+                left: '50%',
+                top: '50%',
+                width: size === 'sm' ? '24px' : size === 'md' ? '32px' : '40px',
+                height: size === 'sm' ? '24px' : size === 'md' ? '32px' : '40px',
+                marginLeft: size === 'sm' ? '-12px' : size === 'md' ? '-16px' : '-20px',
+                marginTop: size === 'sm' ? '-12px' : size === 'md' ? '-16px' : '-20px',
+                background: 'radial-gradient(circle, #ffffff 0%, #00ffff 30%, #00d4ff 60%, transparent 100%)',
+                filter: 'blur(2px)',
+                zIndex: 5,
+                willChange: 'transform, opacity',
+                transform: 'translateZ(0)',
+              }}
+              animate={{
+                scale: [1, 1.4, 1],
+                opacity: [0.6, 1, 0.6],
+              }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            />
+
+            {/* Star Core Sharp Center */}
+            <motion.div
+              className="absolute rounded-full"
+              style={{
+                left: '50%',
+                top: '50%',
+                width: size === 'sm' ? '12px' : size === 'md' ? '16px' : '20px',
+                height: size === 'sm' ? '12px' : size === 'md' ? '16px' : '20px',
+                marginLeft: size === 'sm' ? '-6px' : size === 'md' ? '-8px' : '-10px',
+                marginTop: size === 'sm' ? '-6px' : size === 'md' ? '-8px' : '-10px',
+                background: 'radial-gradient(circle, #ffffff 0%, #00ffff 50%, #00d4ff 100%)',
+                boxShadow: '0 0 20px rgba(0, 255, 255, 0.9), 0 0 40px rgba(0, 212, 255, 0.6)',
+                zIndex: 6,
+                willChange: 'transform, opacity',
+                transform: 'translateZ(0)',
+              }}
+              animate={{
+                scale: [0.8, 1.2, 0.8],
+                opacity: [0.8, 1, 0.8],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            />
+
+            {/* Avatar with enhanced glow */}
+            <div className="w-full h-full rounded-full overflow-hidden relative z-20">
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.2), transparent 70%)',
+                  willChange: 'opacity',
+                  transform: 'translateZ(0)',
+                }}
+                animate={{
+                  opacity: [0.4, 0.7, 0.4],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+              {src ? (
+                <img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover relative z-10"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10">
+                  {fallbackText}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+    case 'phoenix_immortal':
+        return (
+          <div className={`${sizeClasses[size]} rounded-full relative`} style={{ padding: '6px' }}>
+            {/* Eternal Rebirth Fire Aura - Outermost layer */}
+            <div 
+              className="absolute rounded-full overflow-visible"
+              style={{
+                inset: '-8px',
+              }}
+            >
+              {/* Intense pulsing rebirth glow */}
+              <motion.div
+                className="absolute rounded-full"
+                style={{
+                  inset: '-10px',
+                  background: 'radial-gradient(circle, rgba(255, 140, 0, 0.5) 0%, rgba(255, 69, 0, 0.4) 30%, rgba(255, 215, 0, 0.3) 60%, transparent 100%)',
+                  filter: 'blur(6px)',
+                }}
+                animate={{
+                  scale: [1, 1.15, 1],
+                  opacity: [0.4, 0.8, 0.4],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Phoenix Wing Flames - Left Wing */}
+              {[...Array(8)].map((_, i) => {
+                const angle = 180 + (i * 20) - 70;
+                const radius = size === 'sm' ? 26 + i * 3 : size === 'md' ? 36 + i * 4 : 50 + i * 5;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                const height = size === 'sm' ? 16 - i * 1.5 : size === 'md' ? 22 - i * 2 : 32 - i * 3;
+
+                return (
+                  <motion.div
+                    key={`left-wing-${i}`}
+                    className="absolute"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: '4px',
+                      height: `${height}px`,
+                      background: 'linear-gradient(to bottom, #fff, #ffd700, #ff8c00, #ff4500, transparent)',
+                      borderRadius: '50%',
+                      transformOrigin: 'center bottom',
+                      filter: 'blur(1px)',
+                    }}
+                    animate={{
+                      x: [x * 0.7, x, x * 0.8, x],
+                      y: [y * 0.7, y, y * 0.8, y],
+                      scaleY: [0.8, 1.2, 0.9, 1.2, 0.8],
+                      opacity: [0.6, 1, 0.7, 1, 0.6],
+                      rotate: [angle - 95, angle - 90, angle - 92, angle - 90, angle - 95],
+                    }}
+                    transition={{
+                      duration: 2.5 + i * 0.1,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.05,
+                    }}
+                  />
+                );
+              })}
+
+              {/* Phoenix Wing Flames - Right Wing */}
+              {[...Array(8)].map((_, i) => {
+                const angle = (i * 20) - 70;
+                const radius = size === 'sm' ? 26 + i * 3 : size === 'md' ? 36 + i * 4 : 50 + i * 5;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                const height = size === 'sm' ? 16 - i * 1.5 : size === 'md' ? 22 - i * 2 : 32 - i * 3;
+
+                return (
+                  <motion.div
+                    key={`right-wing-${i}`}
+                    className="absolute"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: '4px',
+                      height: `${height}px`,
+                      background: 'linear-gradient(to bottom, #fff, #ffd700, #ff8c00, #ff4500, transparent)',
+                      borderRadius: '50%',
+                      transformOrigin: 'center bottom',
+                      filter: 'blur(1px)',
+                    }}
+                    animate={{
+                      x: [x * 0.7, x, x * 0.8, x],
+                      y: [y * 0.7, y, y * 0.8, y],
+                      scaleY: [0.8, 1.2, 0.9, 1.2, 0.8],
+                      opacity: [0.6, 1, 0.7, 1, 0.6],
+                      rotate: [angle - 85, angle - 90, angle - 88, angle - 90, angle - 85],
+                    }}
+                    transition={{
+                      duration: 2.5 + i * 0.1,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.05,
+                    }}
+                  />
+                );
+              })}
+
+              {/* Main Fire Border with Rebirth Color Cycle */}
+              <motion.div 
+                className="absolute rounded-full"
+                style={{
+                  inset: '0px',
+                  padding: '3px',
+                }}
+                animate={{
+                  background: [
+                    'linear-gradient(135deg, #ff4500 0%, #ff8c00 25%, #ffd700 50%, #ffed4e 75%, #fff 100%)',
+                    'linear-gradient(135deg, #ffd700 0%, #ffed4e 25%, #fff 50%, #ff8c00 75%, #ff4500 100%)',
+                    'linear-gradient(135deg, #fff 0%, #ffd700 25%, #ff8c00 50%, #ff4500 75%, #ff6347 100%)',
+                    'linear-gradient(135deg, #ff4500 0%, #ff8c00 25%, #ffd700 50%, #ffed4e 75%, #fff 100%)',
+                  ],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              >
+                {/* Spinning flame rings */}
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'conic-gradient(from 0deg, #ff4500, #ff8c00, #ffd700, transparent, #ff4500)',
+                  }}
+                  animate={{
+                    rotate: [0, 360],
+                    opacity: [0.6, 0.9, 0.6],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: 'linear',
+                  }}
+                />
+
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'conic-gradient(from 180deg, transparent, #ffd700, #fff, transparent)',
+                  }}
+                  animate={{
+                    rotate: [360, 0],
+                    opacity: [0.5, 0.8, 0.5],
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: 'linear',
+                  }}
+                />
+              </motion.div>
+
+              {/* Divine Golden Feathers */}
+              {[...Array(24)].map((_, i) => {
+                const angle = (i * 360) / 24;
+                const radius = size === 'sm' ? 20 : size === 'md' ? 28 : 38;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                const featherSize = size === 'sm' ? 8 : size === 'md' ? 11 : 15;
+
+                return (
+                  <motion.div
+                    key={`feather-${i}`}
+                    className="absolute"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: `${featherSize}px`,
+                      height: `${featherSize * 1.8}px`,
+                      marginLeft: `-${featherSize / 2}px`,
+                      marginTop: `-${featherSize * 0.9}px`,
+                    }}
+                    animate={{
+                      x: [x, x * 1.15, x * 0.9, x * 1.1, x],
+                      y: [y, y * 1.15, y * 0.9, y * 1.1, y],
+                      rotate: [angle, angle + 15, angle - 10, angle + 10, angle],
+                      opacity: [0.5, 1, 0.7, 0.9, 0.5],
+                      scale: [0.8, 1.3, 0.9, 1.2, 0.8],
+                    }}
+                    transition={{
+                      duration: 3.5 + (i % 5) * 0.3,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.08,
+                    }}
+                  >
+                    <svg
+                      width={featherSize}
+                      height={featherSize * 1.8}
+                      viewBox="0 0 20 36"
+                      style={{
+                        filter: 'drop-shadow(0 2px 4px rgba(255, 215, 0, 0.6))',
+                      }}
+                    >
+                      <defs>
+                        <linearGradient id={`featherGrad${i}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" style={{ stopColor: '#fff', stopOpacity: 1 }} />
+                          <stop offset="30%" style={{ stopColor: '#ffd700', stopOpacity: 1 }} />
+                          <stop offset="70%" style={{ stopColor: '#ff8c00', stopOpacity: 1 }} />
+                          <stop offset="100%" style={{ stopColor: '#ff4500', stopOpacity: 0.8 }} />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M10 0 Q4 10 2 20 Q4 28 10 36 Q16 28 18 20 Q16 10 10 0 Z"
+                        fill={`url(#featherGrad${i})`}
+                        stroke="#ffd700"
+                        strokeWidth="0.5"
+                      />
+                      <path
+                        d="M10 0 L10 36"
+                        stroke="#ffed4e"
+                        strokeWidth="1"
+                      />
+                    </svg>
+                  </motion.div>
+                );
+              })}
+
+              {/* Floating Embers */}
+              {[...Array(40)].map((_, i) => {
+                const angle = (i * 360) / 40;
+                const radius = size === 'sm' ? 16 + (i % 8) * 2 : size === 'md' ? 22 + (i % 8) * 3 : 32 + (i % 8) * 4;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                const colors = ['#fff', '#ffd700', '#ff8c00', '#ff4500'];
+                const color = colors[i % colors.length];
+
+                return (
+                  <motion.div
+                    key={`ember-${i}`}
+                    className="absolute"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: '2px',
+                      height: '2px',
+                      background: `radial-gradient(circle, ${color}, transparent)`,
+                      borderRadius: '50%',
+                    }}
+                    animate={{
+                      x: [x, x * 1.4, x * 0.6, x * 1.3, x],
+                      y: [y, y * 1.4, y * 0.6, y * 1.3, y],
+                      opacity: [0.3, 1, 0.5, 0.8, 0.3],
+                      scale: [0.5, 2.5, 1, 2, 0.5],
+                    }}
+                    transition={{
+                      duration: 2.5 + (i % 7) * 0.3,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.04,
+                    }}
+                  />
+                );
+              })}
+
+              {/* Rebirth Flame Bursts */}
+              {[...Array(16)].map((_, i) => {
+                const angle = (i * 360) / 16;
+                const radius = size === 'sm' ? 24 : size === 'md' ? 32 : 44;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+
+                return (
+                  <motion.div
+                    key={`burst-${i}`}
+                    className="absolute"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: '3px',
+                      height: '12px',
+                      background: 'linear-gradient(to bottom, #fff, #ffd700, #ff8c00, transparent)',
+                      borderRadius: '50%',
+                      transformOrigin: 'center bottom',
+                    }}
+                    animate={{
+                      x: [0, x * 0.8, 0],
+                      y: [0, y * 0.8, 0],
+                      opacity: [0, 1, 0],
+                      scaleY: [0.5, 2.5, 0.5],
+                      rotate: [angle - 90, angle - 90, angle - 90],
+                    }}
+                    transition={{
+                      duration: 1.8,
+                      repeat: Infinity,
+                      ease: 'easeOut',
+                      delay: i * 0.11,
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Avatar with Phoenix Glow */}
+            <div className="w-full h-full rounded-full overflow-hidden relative z-10">
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'radial-gradient(circle at 40% 40%, rgba(255, 215, 0, 0.4), transparent)',
+                }}
+                animate={{
+                  opacity: [0.3, 0.6, 0.3],
+                  background: [
+                    'radial-gradient(circle at 40% 40%, rgba(255, 215, 0, 0.4), transparent)',
+                    'radial-gradient(circle at 40% 40%, rgba(255, 140, 0, 0.5), transparent)',
+                    'radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.3), transparent)',
+                    'radial-gradient(circle at 40% 40%, rgba(255, 215, 0, 0.4), transparent)',
+                  ],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+              {src ? (
+                <img 
+                  src={src} 
+                  alt={alt}
+                  className="w-full h-full rounded-full object-cover relative z-10"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10">
                   {fallbackText}
                 </div>
               )}

@@ -40,42 +40,72 @@ export async function runMigrations(): Promise<void> {
       );
     `);
     
-    // Create emoji_items table if it doesn't exist
+    // Migrate emoji tables to sticker tables
+    // First check if old emoji tables exist and rename them
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS emoji_items (
+      DO $$ 
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'emoji_items') THEN
+          -- Drop old indexes and constraints first
+          DROP INDEX IF EXISTS unique_user_emoji;
+          
+          -- Rename tables
+          ALTER TABLE IF EXISTS game_emoji_sends RENAME TO game_sticker_sends;
+          ALTER TABLE IF EXISTS user_emojis RENAME TO user_stickers;
+          ALTER TABLE IF EXISTS emoji_items RENAME TO sticker_items;
+          
+          -- Rename columns in sticker_items (add asset_path if needed)
+          ALTER TABLE sticker_items ADD COLUMN IF NOT EXISTS asset_path VARCHAR;
+          
+          -- Rename columns in user_stickers
+          ALTER TABLE user_stickers RENAME COLUMN emoji_id TO sticker_id;
+          
+          -- Rename columns in game_sticker_sends
+          ALTER TABLE game_sticker_sends RENAME COLUMN emoji_id TO sticker_id;
+          
+          -- Recreate unique index with new name
+          CREATE UNIQUE INDEX IF NOT EXISTS unique_user_sticker ON user_stickers(user_id, sticker_id);
+        END IF;
+      END $$;
+    `);
+    
+    // Create sticker_items table if it doesn't exist
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS sticker_items (
         id VARCHAR PRIMARY KEY,
         name VARCHAR NOT NULL,
         description TEXT NOT NULL,
-        price BIGINT NOT NULL,
+        price BIGINT NOT NULL DEFAULT 100000000,
+        asset_path VARCHAR NOT NULL,
         animation_type VARCHAR NOT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
     
-    // Create user_emojis table if it doesn't exist
+    // Create user_stickers table if it doesn't exist
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS user_emojis (
+      CREATE TABLE IF NOT EXISTS user_stickers (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id VARCHAR NOT NULL REFERENCES users(id),
-        emoji_id VARCHAR NOT NULL REFERENCES emoji_items(id),
+        sticker_id VARCHAR NOT NULL REFERENCES sticker_items(id),
         purchased_at TIMESTAMP DEFAULT NOW()
       );
     `);
     
-    // Create unique index on user_emojis if it doesn't exist to prevent duplicate purchases
+    // Create unique index on user_stickers if it doesn't exist to prevent duplicate purchases
     await db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS unique_user_emoji ON user_emojis(user_id, emoji_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS unique_user_sticker ON user_stickers(user_id, sticker_id);
     `);
     
-    // Create game_emoji_sends table if it doesn't exist
+    // Create game_sticker_sends table if it doesn't exist
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS game_emoji_sends (
+      CREATE TABLE IF NOT EXISTS game_sticker_sends (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        game_id VARCHAR NOT NULL REFERENCES games(id),
+        game_id UUID NOT NULL REFERENCES games(id),
         sender_id VARCHAR NOT NULL REFERENCES users(id),
         recipient_id VARCHAR NOT NULL REFERENCES users(id),
-        emoji_id VARCHAR NOT NULL REFERENCES emoji_items(id),
+        sticker_id VARCHAR NOT NULL REFERENCES sticker_items(id),
         sent_at TIMESTAMP DEFAULT NOW()
       );
     `);

@@ -16,7 +16,7 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 import { AnimatedPiece } from '@/components/AnimatedPieces';
 import { AvatarWithFrame } from '@/components/AvatarWithFrame';
-import { EmojiPicker } from '@/components/EmojiPicker';
+import { StickerPicker } from '@/components/StickerPicker';
 
 const VALID_POSITIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
@@ -319,14 +319,14 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Emoji state - similar to player messages
-  const [showEmojiPanel, setShowEmojiPanel] = useState(false);
-  const [playerXEmoji, setPlayerXEmoji] = useState<{ emoji: any; timeout?: NodeJS.Timeout } | null>(null);
-  const [playerOEmoji, setPlayerOEmoji] = useState<{ emoji: any; timeout?: NodeJS.Timeout } | null>(null);
+  // Sticker state - similar to player messages
+  const [showStickerPanel, setShowStickerPanel] = useState(false);
+  const [playerXSticker, setPlayerXSticker] = useState<{ sticker: any; timeout?: NodeJS.Timeout } | null>(null);
+  const [playerOSticker, setPlayerOSticker] = useState<{ sticker: any; timeout?: NodeJS.Timeout } | null>(null);
 
-  // Fetch user's owned emojis
-  const { data: ownedEmojis = [] } = useQuery<Array<{ emoji: any }>>({
-    queryKey: ['/api/emojis/owned'],
+  // Fetch user's owned stickers
+  const { data: ownedStickers = [] } = useQuery<Array<{ sticker: any }>>({
+    queryKey: ['/api/stickers/owned'],
     enabled: gameMode === 'online',
   });
 
@@ -347,11 +347,11 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     enabled: !!game?.playerOId,
   });
 
-  // Emoji send mutation
-  const sendEmojiMutation = useMutation({
-    mutationFn: async ({ emojiId, recipientSymbol }: { emojiId: string; recipientSymbol: string }) => {
+  // Sticker send mutation
+  const sendStickerMutation = useMutation({
+    mutationFn: async ({ stickerId, recipientSymbol }: { stickerId: string; recipientSymbol: string }) => {
       if (!game?.id || !sendMessage || !currentUserSymbol || !game.roomId) {
-        throw new Error('Cannot send emoji in this game mode');
+        throw new Error('Cannot send sticker in this game mode');
       }
 
       // Get the opponent's actual user ID
@@ -362,11 +362,11 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         throw new Error('Opponent not found');
       }
 
-      // Send emoji via API to validate ownership
-      const response = await apiRequest('/api/emojis/send', {
+      // Send sticker via API to validate ownership
+      const response = await apiRequest('/api/stickers/send', {
         method: 'POST',
         body: {
-          emojiId,
+          stickerId,
           gameId: game.id,
           recipientPlayerId: opponentId,
         },
@@ -374,23 +374,23 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
       // Send via WebSocket for real-time animation and database recording
       sendMessage({
-        type: 'send_emoji',
+        type: 'send_sticker',
         roomId: game.roomId,
         gameId: game.id,
-        emojiId,
+        stickerId,
         recipientId: opponentId,
-        emoji: ownedEmojis.find(e => e.emoji.id === emojiId)?.emoji,
+        sticker: ownedStickers.find(s => s.sticker.id === stickerId)?.sticker,
       });
 
       return response;
     },
     onSuccess: () => {
-      setShowEmojiPanel(false);
+      setShowStickerPanel(false);
     },
     onError: (error: any) => {
       toast({
-        title: 'Failed to send emoji',
-        description: error.message || 'Could not send emoji',
+        title: 'Failed to send sticker',
+        description: error.message || 'Could not send sticker',
         variant: 'destructive',
       });
     },
@@ -592,9 +592,9 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       Object.values(messageTimeoutsRef.current).forEach(timeout => {
         if (timeout) clearTimeout(timeout);
       });
-      // Clean up emoji timeouts
-      if (playerXEmoji?.timeout) clearTimeout(playerXEmoji.timeout);
-      if (playerOEmoji?.timeout) clearTimeout(playerOEmoji.timeout);
+      // Clean up sticker timeouts
+      if (playerXSticker?.timeout) clearTimeout(playerXSticker.timeout);
+      if (playerOSticker?.timeout) clearTimeout(playerOSticker.timeout);
     };
   }, []); // Empty dependency array safe because it uses ref
 
@@ -672,37 +672,35 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       });
     }
 
-    // Handle incoming emoji from WebSocket
-    if (lastMessage?.type === 'emoji_sent' && lastMessage?.gameId === game?.id) {
-      const { emoji, senderId } = lastMessage;
+    // Handle incoming sticker from WebSocket
+    if (lastMessage?.type === 'sticker_sent' && lastMessage?.gameId === game?.id) {
+      const { sticker, senderId } = lastMessage;
 
-      if (!emoji) {
+      if (!sticker) {
         return;
       }
 
-      // Determine which player sent the emoji
+      // Determine which player sent the sticker
       const senderSymbol = senderId === game?.playerXId ? 'X' : 'O';
 
       // Clear any existing timeout for this player
-      if (senderSymbol === 'X' && playerXEmoji?.timeout) {
-        clearTimeout(playerXEmoji.timeout);
-      } else if (senderSymbol === 'O' && playerOEmoji?.timeout) {
-        clearTimeout(playerOEmoji.timeout);
+      if (senderSymbol === 'X' && playerXSticker?.timeout) {
+        clearTimeout(playerXSticker.timeout);
+      } else if (senderSymbol === 'O' && playerOSticker?.timeout) {
+        clearTimeout(playerOSticker.timeout);
       }
 
-      // Set emoji for the correct player with auto-clear timeout
+      // Set sticker for the correct player with auto-clear timeout
       if (senderSymbol === 'X') {
-        setPlayerXEmoji({ emoji });
         const timeout = setTimeout(() => {
-          setPlayerXEmoji(null);
+          setPlayerXSticker(null);
         }, 5000);
-        setPlayerXEmoji({ emoji, timeout });
+        setPlayerXSticker({ sticker, timeout });
       } else {
-        setPlayerOEmoji({ emoji });
         const timeout = setTimeout(() => {
-          setPlayerOEmoji(null);
+          setPlayerOSticker(null);
         }, 5000);
-        setPlayerOEmoji({ emoji, timeout });
+        setPlayerOSticker({ sticker, timeout });
       }
     }
   }, [lastMessage, game?.id, game?.roomId, game?.playerXId]);
@@ -1236,7 +1234,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
           {/* Player X - Left Side */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 relative">
   {/* Player X Profile - Vertical Layout */}
   <div className="flex flex-col items-center space-y-2">
     {(gameMode === 'online' && (game?.playerXInfo?.profileImageUrl || game?.playerXInfo?.profilePicture)) ? (
@@ -1275,8 +1273,8 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                  </div>
             </div>
 
-            {/* Chat Message and Emoji for Player X - On RIGHT side */}
-            <AnimatePresence>
+            {/* Chat Message and Sticker for Player X - On RIGHT side */}
+            <AnimatePresence mode="wait">
               {playerXMessage && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.5, x: -20 }}
@@ -1308,46 +1306,38 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   </motion.div>
                 </motion.div>
               )}
-              {playerXEmoji && (
+              {playerXSticker && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.5, x: -20 }}
-                  animate={{ 
-                    opacity: 1, 
-                    scale: [1, 1.3, 1.1, 1.3, 1], 
-                    x: 0,
-                    rotate: [0, 10, -10, 0]
+                  key={`sticker-x-${playerXSticker.sticker.id}`}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute z-[9999]"
+                  style={{
+                    top: '50%',
+                    left: '100%',
+                    transform: 'translateY(-50%)',
+                    marginLeft: '8px'
                   }}
-                  exit={{ opacity: 0, scale: 0.5, x: -20, transition: { duration: 0.5 } }}
-                  transition={{ 
-                    duration: 0.6,
-                    scale: { duration: 1.5, ease: "easeInOut" }
-                  }}
-                  className="relative"
-                  title={playerXEmoji.emoji.name}
+                  title={playerXSticker.sticker.name}
                 >
-                  <motion.div 
-                    className="text-4xl"
-                    animate={{ 
-                      scale: [1, 1.1, 1],
-                      rotateY: [0, 5, -5, 0]
-                    }}
-                    transition={{ 
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    {playerXEmoji.emoji.name.split(' ')[0]}
-                  </motion.div>
+                  <div className="w-20 h-20 drop-shadow-xl">
+                    <img 
+                      src={`/gif/${playerXSticker.sticker.assetPath}`} 
+                      alt={playerXSticker.sticker.name} 
+                      className="w-full h-full object-contain" 
+                    />
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
           {/* Player O - Right Side */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 relative">
             {/* Chat Message and Emoji for Player O - On LEFT side */}
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {playerOMessage && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.5, x: 20 }}
@@ -1379,37 +1369,29 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   </motion.div>
                 </motion.div>
               )}
-              {playerOEmoji && (
+              {playerOSticker && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.5, x: 20 }}
-                  animate={{ 
-                    opacity: 1, 
-                    scale: [1, 1.3, 1.1, 1.3, 1], 
-                    x: 0,
-                    rotate: [0, -10, 10, 0]
+                  key={`sticker-o-${playerOSticker.sticker.id}`}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute z-[9999]"
+                  style={{
+                    top: '50%',
+                    right: '100%',
+                    transform: 'translateY(-50%)',
+                    marginRight: '8px'
                   }}
-                  exit={{ opacity: 0, scale: 0.5, x: 20, transition: { duration: 0.5 } }}
-                  transition={{ 
-                    duration: 0.6,
-                    scale: { duration: 1.5, ease: "easeInOut" }
-                  }}
-                  className="relative"
-                  title={playerOEmoji.emoji.name}
+                  title={playerOSticker.sticker.name}
                 >
-                  <motion.div 
-                    className="text-4xl"
-                    animate={{ 
-                      scale: [1, 1.1, 1],
-                      rotateY: [0, -5, 5, 0]
-                    }}
-                    transition={{ 
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    {playerOEmoji.emoji.name.split(' ')[0]}
-                  </motion.div>
+                  <div className="w-20 h-20 drop-shadow-xl">
+                    <img 
+                      src={`/gif/${playerOSticker.sticker.assetPath}`} 
+                      alt={playerOSticker.sticker.name} 
+                      className="w-full h-full object-contain" 
+                    />
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1544,16 +1526,16 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
             </Button>
           )}
 
-          {/* Send Emoji button - opens emoji picker */}
-          {gameMode === 'online' && !isSpectator && ownedEmojis.length > 0 && (
+          {/* Send Sticker button - opens sticker picker */}
+          {gameMode === 'online' && !isSpectator && ownedStickers.length > 0 && (
             <Button 
               variant="outline"
-              onClick={() => setShowEmojiPanel(!showEmojiPanel)}
+              onClick={() => setShowStickerPanel(!showStickerPanel)}
               className="flex items-center space-x-2"
-              data-testid="button-send-emoji"
+              data-testid="button-send-sticker"
             >
               <Gift className="w-4 h-4" />
-              <span>Send Emoji</span>
+              <span>Send Sticker</span>
             </Button>
           )}
 
@@ -1579,19 +1561,19 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
           />
         </div>
 
-        {/* Emoji Picker Panel */}
+        {/* Sticker Picker Panel */}
         {gameMode === 'online' && (
           <div className="relative">
-            <EmojiPicker
-              isOpen={showEmojiPanel}
-              ownedEmojis={ownedEmojis}
-              onEmojiSelect={(emojiId, recipientSymbol) => {
-                sendEmojiMutation.mutate({ emojiId, recipientSymbol });
-                setShowEmojiPanel(false);
+            <StickerPicker
+              isOpen={showStickerPanel}
+              ownedStickers={ownedStickers}
+              onStickerSelect={(stickerId, recipientSymbol) => {
+                sendStickerMutation.mutate({ stickerId, recipientSymbol });
+                setShowStickerPanel(false);
               }}
-              onClose={() => setShowEmojiPanel(false)}
+              onClose={() => setShowStickerPanel(false)}
               currentUserSymbol={currentUserSymbol}
-              isPending={sendEmojiMutation.isPending}
+              isPending={sendStickerMutation.isPending}
             />
           </div>
         )}

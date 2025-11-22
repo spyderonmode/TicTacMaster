@@ -14,7 +14,6 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { formatNumber } from "@/lib/utils";
-
 interface PieceStyle {
   styleName: string;
   id?: string;
@@ -27,11 +26,12 @@ interface UserData {
   profileImageUrl?: string | null;
 }
 
-interface EmojiItem {
+interface StickerItem {
   id: string;
   name: string;
   description: string;
   price: number;
+  assetPath: string;
   animationType: string;
   isActive: boolean;
 }
@@ -213,7 +213,28 @@ const AVATAR_FRAMES = [
     id: 'royal_zigzag_crown',
     name: 'Royal Golden',
     description: 'Majestic 3D zigzag golden border with floating crown jewels - feel like royalty!',
-    price: 3000000000, // 2 million coins
+    price: 3000000000, // 3 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'celestial_nebula',
+    name: 'Celestial Nebula',
+    description: 'Stunning 3D cosmic nebula with swirling galaxies, floating stardust, and mesmerizing aurora effects - absolutely breathtaking!',
+    price: 5000000000, // 5 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'quantum_prism',
+    name: 'Quantum Prism',
+    description: 'Ultra-modern 3D hexagonal crystal frame with rotating geometric shapes, pulsing energy rings, and clean light beams - the future of style!',
+    price: 6000000000, // 3.5 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'phoenix_immortal',
+    name: 'Phoenix Immortal',
+    description: 'The ultimate legendary frame! Mythical phoenix with majestic flaming wings, eternal rebirth fire cycles, floating ember particles, and divine golden feathers - the rarest and most powerful frame ever created!',
+    price: 10000000000, // 8 billion coins
     isDefault: false,
   },
 ];
@@ -227,14 +248,14 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
-  const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
+  const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pieces");
   const { user } = useAuth();
   
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseDetails, setPurchaseDetails] = useState<{
-    type: "piece" | "emoji" | "frame";
+    type: "piece" | "sticker" | "frame";
     name: string;
     description: string;
     id?: string;
@@ -304,36 +325,36 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
     },
   });
 
-  // Fetch all available emojis
-  const { data: emojis = [] } = useQuery<EmojiItem[]>({
-    queryKey: ['/api/emojis'],
+  // Fetch all available stickers
+  const { data: stickers = [] } = useQuery<StickerItem[]>({
+    queryKey: ['/api/stickers'],
   });
 
-  // Fetch user's owned emojis
-  const { data: ownedEmojisData = [] } = useQuery<Array<{ emojiId: string; emoji: EmojiItem }>>({
-    queryKey: ['/api/emojis/owned'],
+  // Fetch user's owned stickers
+  const { data: ownedStickersData = [] } = useQuery<Array<{ stickerId: string; sticker: StickerItem }>>({
+    queryKey: ['/api/stickers/owned'],
   });
 
-  // Purchase emoji mutation
-  const purchaseEmojiMutation = useMutation({
-    mutationFn: async (emojiId: string) => {
-      return await apiRequest('/api/emojis/purchase', {
+  // Purchase sticker mutation
+  const purchaseStickerMutation = useMutation({
+    mutationFn: async (stickerId: string) => {
+      return await apiRequest('/api/stickers/purchase', {
         method: 'POST',
-        body: { emojiId },
+        body: { stickerId },
       });
     },
-    onSuccess: (_data: any, emojiId: string) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/emojis/owned'] });
+    onSuccess: (_data: any, stickerId: string) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/stickers/owned'] });
       queryClient.invalidateQueries({ queryKey: ['/api/users', user?.userId] });
-      setSelectedEmoji(null);
+      setSelectedSticker(null);
       
-      const emoji = emojis.find(e => e.id === emojiId);
-      if (emoji) {
+      const sticker = stickers.find(s => s.id === stickerId);
+      if (sticker) {
         setPurchaseDetails({
-          type: "emoji",
-          name: emoji.name,
-          description: emoji.description,
-          animation: emoji.animationType,
+          type: "sticker",
+          name: sticker.name,
+          description: sticker.description,
+          animation: sticker.animationType,
         });
         setShowPurchaseModal(true);
       }
@@ -341,7 +362,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
     onError: (error: any) => {
       toast({
         title: 'Purchase Failed',
-        description: error.message || 'Failed to purchase emoji',
+        description: error.message || 'Failed to purchase sticker',
         variant: 'destructive',
       });
     },
@@ -422,8 +443,8 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
     return styleId === "default" || ownedStyles.includes(styleId);
   };
 
-  const isEmojiOwned = (emojiId: string) => {
-    return ownedEmojisData.some(owned => owned.emojiId === emojiId);
+  const isStickerOwned = (stickerId: string) => {
+    return ownedStickersData.some(owned => owned.stickerId === stickerId);
   };
 
   const isFrameOwned = (frameId: string) => {
@@ -477,7 +498,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
             Game Shop
             <Sparkles className="w-8 h-8 text-yellow-400" />
           </h1>
-          <p className="text-slate-300 text-lg" data-testid="text-shop-subtitle">Customize your game with piece styles, emojis, and avatar frames!</p>
+          <p className="text-slate-300 text-lg" data-testid="text-shop-subtitle">Customize your game with piece styles, stickers, and avatar frames!</p>
           
           <div className="mt-4 inline-flex items-center gap-2 bg-slate-800/50 px-6 py-3 rounded-lg border border-yellow-500/30">
             <Coins className="w-6 h-6 text-yellow-400" />
@@ -492,9 +513,9 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
               <Zap className="w-4 h-4 mr-2" />
               Piece Styles
             </TabsTrigger>
-            <TabsTrigger value="emojis" className="text-lg" data-testid="tab-emojis">
+            <TabsTrigger value="stickers" className="text-lg" data-testid="tab-stickers">
               <Gift className="w-4 h-4 mr-2" />
-              Emojis
+              Stickers
             </TabsTrigger>
             <TabsTrigger value="frames" className="text-lg" data-testid="tab-frames">
               <Stars className="w-4 h-4 mr-2" />
@@ -621,16 +642,16 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
             </div>
           </TabsContent>
 
-          <TabsContent value="emojis">
+          <TabsContent value="stickers">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {emojis.map((emoji) => {
-                const owned = isEmojiOwned(emoji.id);
-                const affordable = userCoins >= emoji.price;
-                const isPurchasing = purchaseEmojiMutation.isPending && selectedEmoji === emoji.id;
+              {stickers.map((sticker) => {
+                const owned = isStickerOwned(sticker.id);
+                const affordable = userCoins >= sticker.price;
+                const isPurchasing = purchaseStickerMutation.isPending && selectedSticker === sticker.id;
 
                 return (
                   <Card 
-                    key={emoji.id}
+                    key={sticker.id}
                     className={`relative overflow-hidden transition-all duration-300 ${
                       owned 
                         ? 'bg-green-900/30 border-green-500/50' 
@@ -638,21 +659,23 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                         ? 'bg-slate-800/50 border-purple-500/30 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20'
                         : 'bg-slate-800/30 border-slate-700/30 opacity-60'
                     }`}
-                    data-testid={`card-emoji-${emoji.id}`}
+                    data-testid={`card-sticker-${sticker.id}`}
                   >
                     <CardHeader>
                       <div className="flex justify-between items-start">
-                        <div className="text-5xl mb-2">{emoji.name.split(' ')[0]}</div>
+                        <div className="w-20 h-20 mb-2">
+                          <img src={`/gif/${sticker.assetPath}`} alt={sticker.name} className="w-full h-full object-contain" />
+                        </div>
                         {owned && (
-                          <Badge className="bg-green-600 text-white" data-testid={`badge-owned-${emoji.id}`}>
+                          <Badge className="bg-green-600 text-white" data-testid={`badge-owned-${sticker.id}`}>
                             <Check className="w-3 h-3 mr-1" />
                             Owned
                           </Badge>
                         )}
                       </div>
-                      <CardTitle className="text-white">{emoji.name}</CardTitle>
+                      <CardTitle className="text-white">{sticker.name}</CardTitle>
                       <CardDescription className="text-gray-400">
-                        {emoji.description}
+                        {sticker.description}
                       </CardDescription>
                     </CardHeader>
 
@@ -660,12 +683,12 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                       <div className="flex items-center gap-2">
                         <Coins className="w-4 h-4 text-yellow-400" />
                         <span className={`font-bold ${affordable ? 'text-yellow-400' : 'text-gray-500'}`}>
-                          {formatNumber(emoji.price)} coins
+                          {formatNumber(sticker.price)} coins
                         </span>
                       </div>
                       <div className="mt-2">
                         <Badge variant="outline" className="text-xs text-purple-300 border-purple-400/50">
-                          {emoji.animationType} animation
+                          Animated GIF
                         </Badge>
                       </div>
                     </CardContent>
@@ -675,7 +698,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                         <Button 
                           disabled 
                           className="w-full bg-green-700 hover:bg-green-700 cursor-not-allowed"
-                          data-testid={`button-owned-${emoji.id}`}
+                          data-testid={`button-owned-${sticker.id}`}
                         >
                           <Check className="w-4 h-4 mr-2" />
                           In Your Collection
@@ -683,8 +706,8 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                       ) : (
                         <Button
                           onClick={() => {
-                            setSelectedEmoji(emoji.id);
-                            purchaseEmojiMutation.mutate(emoji.id);
+                            setSelectedSticker(sticker.id);
+                            purchaseStickerMutation.mutate(sticker.id);
                           }}
                           disabled={!affordable || isPurchasing}
                           className={`w-full ${
@@ -692,7 +715,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                               ? 'bg-purple-600 hover:bg-purple-700' 
                               : 'bg-gray-700 cursor-not-allowed'
                           }`}
-                          data-testid={`button-purchase-${emoji.id}`}
+                          data-testid={`button-purchase-${sticker.id}`}
                         >
                           {isPurchasing ? (
                             <>

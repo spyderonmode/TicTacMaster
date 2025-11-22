@@ -145,26 +145,27 @@ export const userPieceStyles = pgTable("user_piece_styles", {
   index("unique_user_piece_style").on(table.userId, table.styleName),
 ]);
 
-// Animated emojis that can be sent during games
-export const emojiItems = pgTable("emoji_items", {
-  id: varchar("id").primaryKey(), // rose, heart, fire, trophy, etc.
+// Animated stickers (GIF) that can be sent during games
+export const stickerItems = pgTable("sticker_items", {
+  id: varchar("id").primaryKey(), // funny-memes, cool-cat, dancing, etc.
   name: varchar("name").notNull(), // Display name
   description: text("description").notNull(),
-  price: bigint("price", { mode: 'number' }).notNull(), // Cost in coins
+  price: bigint("price", { mode: 'number' }).default(100000000).notNull(), // Cost in coins - default 100 million
+  assetPath: varchar("asset_path").notNull(), // Path to GIF file (e.g., 'funny-memes.gif')
   animationType: varchar("animation_type").notNull(), // fly, float, spin, etc.
   isActive: boolean("is_active").default(true), // Can be purchased/used
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// User's purchased emojis
-export const userEmojis = pgTable("user_emojis", {
+// User's purchased stickers
+export const userStickers = pgTable("user_stickers", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  emojiId: varchar("emoji_id").references(() => emojiItems.id).notNull(),
+  stickerId: varchar("sticker_id").references(() => stickerItems.id).notNull(),
   purchasedAt: timestamp("purchased_at").defaultNow(),
 }, (table) => [
-  // Prevent duplicate emoji purchases
-  index("unique_user_emoji").on(table.userId, table.emojiId),
+  // Prevent duplicate sticker purchases
+  index("unique_user_sticker").on(table.userId, table.stickerId),
 ]);
 
 // Avatar frames that can be purchased
@@ -189,13 +190,13 @@ export const userAvatarFrames = pgTable("user_avatar_frames", {
   index("unique_user_frame").on(table.userId, table.frameId),
 ]);
 
-// Track emoji sends during games for real-time animation
-export const gameEmojiSends = pgTable("game_emoji_sends", {
+// Track sticker sends during games for real-time animation
+export const gameStickerSends = pgTable("game_sticker_sends", {
   id: uuid("id").primaryKey().defaultRandom(),
   gameId: uuid("game_id").references(() => games.id).notNull(),
   senderId: varchar("sender_id").references(() => users.id).notNull(),
   recipientId: varchar("recipient_id").references(() => users.id).notNull(),
-  emojiId: varchar("emoji_id").references(() => emojiItems.id).notNull(),
+  stickerId: varchar("sticker_id").references(() => stickerItems.id).notNull(),
   sentAt: timestamp("sent_at").defaultNow(),
 });
 
@@ -360,6 +361,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   achievements: many(achievements),
   unlockedThemes: many(userThemes),
   unlockedPieceStyles: many(userPieceStyles),
+  unlockedStickers: many(userStickers),
   unlockedAvatarFrames: many(userAvatarFrames),
   sentFriendRequests: many(friendRequests, { relationName: "requester" }),
   receivedFriendRequests: many(friendRequests, { relationName: "requested" }),
@@ -419,6 +421,11 @@ export const userThemesRelations = relations(userThemes, ({ one }) => ({
 
 export const userPieceStylesRelations = relations(userPieceStyles, ({ one }) => ({
   user: one(users, { fields: [userPieceStyles.userId], references: [users.id] }),
+}));
+
+export const userStickersRelations = relations(userStickers, ({ one }) => ({
+  user: one(users, { fields: [userStickers.userId], references: [users.id] }),
+  sticker: one(stickerItems, { fields: [userStickers.stickerId], references: [stickerItems.id] }),
 }));
 
 export const userAvatarFramesRelations = relations(userAvatarFrames, ({ one }) => ({
@@ -541,18 +548,19 @@ export const insertUserPieceStyleSchema = createInsertSchema(userPieceStyles).pi
   isActive: true,
 });
 
-export const insertEmojiItemSchema = createInsertSchema(emojiItems).pick({
+export const insertStickerItemSchema = createInsertSchema(stickerItems).pick({
   id: true,
   name: true,
   description: true,
   price: true,
+  assetPath: true,
   animationType: true,
   isActive: true,
 });
 
-export const insertUserEmojiSchema = createInsertSchema(userEmojis).pick({
+export const insertUserStickerSchema = createInsertSchema(userStickers).pick({
   userId: true,
-  emojiId: true,
+  stickerId: true,
 });
 
 export const insertAvatarFrameItemSchema = createInsertSchema(avatarFrameItems).pick({
@@ -569,11 +577,11 @@ export const insertUserAvatarFrameSchema = createInsertSchema(userAvatarFrames).
   isActive: true,
 });
 
-export const insertGameEmojiSendSchema = createInsertSchema(gameEmojiSends).pick({
+export const insertGameStickerSendSchema = createInsertSchema(gameStickerSends).pick({
   gameId: true,
   senderId: true,
   recipientId: true,
-  emojiId: true,
+  stickerId: true,
 });
 
 export const insertFriendRequestSchema = createInsertSchema(friendRequests).pick({
@@ -679,12 +687,12 @@ export type BasicFriendInfo = {
   profileImageUrl: string | null;
 };
 
-export type EmojiItem = typeof emojiItems.$inferSelect;
-export type UserEmoji = typeof userEmojis.$inferSelect;
-export type GameEmojiSend = typeof gameEmojiSends.$inferSelect;
-export type InsertEmojiItem = z.infer<typeof insertEmojiItemSchema>;
-export type InsertUserEmoji = z.infer<typeof insertUserEmojiSchema>;
-export type InsertGameEmojiSend = z.infer<typeof insertGameEmojiSendSchema>;
+export type StickerItem = typeof stickerItems.$inferSelect;
+export type UserSticker = typeof userStickers.$inferSelect;
+export type GameStickerSend = typeof gameStickerSends.$inferSelect;
+export type InsertStickerItem = z.infer<typeof insertStickerItemSchema>;
+export type InsertUserSticker = z.infer<typeof insertUserStickerSchema>;
+export type InsertGameStickerSend = z.infer<typeof insertGameStickerSendSchema>;
 
 export type AvatarFrameItem = typeof avatarFrameItems.$inferSelect;
 export type UserAvatarFrame = typeof userAvatarFrames.$inferSelect;

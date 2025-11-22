@@ -1459,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check gift limit (20M) - unlimited for admin users
       const GIFT_LIMIT = 20000000; // 20M coins
-      const UNLIMITED_USER_IDS = ['c9122c48-3c24-4891-a6b5-f02aa8362af2'];
+      const UNLIMITED_USER_IDS = ["c9122c48-3c24-4891-a6b5-f02aa8362af2","3149a38b-2989-4272-b41e-a70021bccbfb"];
       
       if (!UNLIMITED_USER_IDS.includes(senderId) && amount > GIFT_LIMIT) {
         return res.status(400).json({ 
@@ -1824,42 +1824,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== Emoji Routes =====
+  // ===== Sticker Routes =====
   
-  // Get all available emoji items
-  app.get('/api/emojis', requireAuth, async (req: any, res) => {
+  // Get all available sticker items
+  app.get('/api/stickers', requireAuth, async (req: any, res) => {
     try {
-      const emojis = await storage.getAllEmojiItems();
-      res.json(emojis);
+      const stickers = await storage.getAllStickerItems();
+      res.json(stickers);
     } catch (error) {
-      console.error("Error fetching emojis:", error);
-      res.status(500).json({ message: "Failed to fetch emojis" });
+      console.error("Error fetching stickers:", error);
+      res.status(500).json({ message: "Failed to fetch stickers" });
     }
   });
 
-  // Get user's purchased emojis
-  app.get('/api/emojis/owned', requireAuth, async (req: any, res) => {
+  // Get user's purchased stickers
+  app.get('/api/stickers/owned', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.user.userId;
-      const ownedEmojis = await storage.getUserEmojis(userId);
-      res.json(ownedEmojis);
+      const ownedStickers = await storage.getUserStickers(userId);
+      res.json(ownedStickers);
     } catch (error) {
-      console.error("Error fetching owned emojis:", error);
-      res.status(500).json({ message: "Failed to fetch owned emojis" });
+      console.error("Error fetching owned stickers:", error);
+      res.status(500).json({ message: "Failed to fetch owned stickers" });
     }
   });
 
-  // Purchase an emoji
-  app.post('/api/emojis/purchase', requireAuth, async (req: any, res) => {
+  // Purchase a sticker
+  app.post('/api/stickers/purchase', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.user.userId;
-      const { emojiId } = req.body;
+      const { stickerId } = req.body;
 
-      if (!emojiId) {
-        return res.status(400).json({ message: "Emoji ID is required" });
+      if (!stickerId) {
+        return res.status(400).json({ message: "Sticker ID is required" });
       }
 
-      const result = await storage.purchaseEmoji(userId, emojiId);
+      const result = await storage.purchaseSticker(userId, stickerId);
 
       if (!result.success) {
         return res.status(400).json({ message: result.message });
@@ -1867,44 +1867,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(result);
     } catch (error) {
-      console.error("Error purchasing emoji:", error);
-      res.status(500).json({ message: "Failed to purchase emoji" });
+      console.error("Error purchasing sticker:", error);
+      res.status(500).json({ message: "Failed to purchase sticker" });
     }
   });
 
-  // Send an emoji in a game
-  app.post('/api/emojis/send', requireAuth, async (req: any, res) => {
+  // Send a sticker in a game
+  app.post('/api/stickers/send', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.user.userId;
-      const { emojiId, gameId, recipientPlayerId } = req.body;
+      const { stickerId, gameId, recipientPlayerId } = req.body;
 
-      if (!emojiId || !gameId || !recipientPlayerId) {
-        return res.status(400).json({ message: "Emoji ID, game ID, and recipient player ID are required" });
+      if (!stickerId || !gameId || !recipientPlayerId) {
+        return res.status(400).json({ message: "Sticker ID, game ID, and recipient player ID are required" });
       }
 
       // The API just validates - actual send happens via WebSocket
-      // Check if user owns the emoji
-      const hasEmoji = await storage.hasUserPurchasedEmoji(userId, emojiId);
-      if (!hasEmoji) {
-        return res.status(403).json({ message: "You do not own this emoji" });
+      // Check if user owns the sticker
+      const hasSticker = await storage.hasUserPurchasedSticker(userId, stickerId);
+      if (!hasSticker) {
+        return res.status(403).json({ message: "You do not own this sticker" });
       }
 
-      res.json({ success: true, message: "Emoji will be sent via WebSocket" });
+      res.json({ success: true, message: "Sticker will be sent via WebSocket" });
     } catch (error) {
-      console.error("Error validating emoji send:", error);
-      res.status(500).json({ message: "Failed to validate emoji send" });
+      console.error("Error validating sticker send:", error);
+      res.status(500).json({ message: "Failed to validate sticker send" });
     }
   });
 
-  // Get emojis sent in a game
-  app.get('/api/games/:id/emojis', requireAuth, async (req: any, res) => {
+  // Get stickers sent in a game
+  app.get('/api/games/:id/stickers', requireAuth, async (req: any, res) => {
     try {
       const gameId = req.params.id;
-      const emojiSends = await storage.getGameEmojiSends(gameId);
-      res.json(emojiSends);
+      const stickerSends = await storage.getGameStickerSends(gameId);
+      res.json(stickerSends);
     } catch (error) {
-      console.error("Error fetching game emojis:", error);
-      res.status(500).json({ message: "Failed to fetch game emojis" });
+      console.error("Error fetching game stickers:", error);
+      res.status(500).json({ message: "Failed to fetch game stickers" });
     }
   });
 
@@ -6089,48 +6089,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             break;
 
-          case 'send_emoji':
-            // Handle emoji send and broadcast to room
-            const emojiConnection = connections.get(connectionId);
-            if (emojiConnection) {
+          case 'send_sticker':
+            // Handle sticker send and broadcast to room
+            const stickerConnection = connections.get(connectionId);
+            if (stickerConnection) {
               try {
-                const { roomId: emojiRoomId, gameId: emojiGameId, recipientId, emojiId } = data;
-                const senderId = emojiConnection.userId;
+                const { roomId: stickerRoomId, gameId: stickerGameId, recipientId, stickerId } = data;
+                const senderId = stickerConnection.userId;
 
-                // Validate emoji ownership
-                const hasEmoji = await storage.hasUserPurchasedEmoji(senderId, emojiId);
-                if (!hasEmoji) {
-                  if (emojiConnection.ws.readyState === WebSocket.OPEN) {
-                    emojiConnection.ws.send(JSON.stringify({
-                      type: 'emoji_error',
-                      error: 'You do not own this emoji'
+                // Validate sticker ownership
+                const hasSticker = await storage.hasUserPurchasedSticker(senderId, stickerId);
+                if (!hasSticker) {
+                  if (stickerConnection.ws.readyState === WebSocket.OPEN) {
+                    stickerConnection.ws.send(JSON.stringify({
+                      type: 'sticker_error',
+                      error: 'You do not own this sticker'
                     }));
                   }
                   break;
                 }
 
-                // Get emoji details
-                const emoji = await storage.getEmojiItemById(emojiId);
-                if (!emoji) {
+                // Get sticker details
+                const sticker = await storage.getStickerItemById(stickerId);
+                if (!sticker) {
                   break;
                 }
 
-                // Record the emoji send in database
-                await storage.sendEmojiInGame(emojiGameId, senderId, recipientId, emojiId);
+                // Record the sticker send in database
+                await storage.sendStickerInGame(stickerGameId, senderId, recipientId, stickerId);
 
                 // Get sender info
                 const senderInfo = await storage.getUser(senderId);
 
-                // Broadcast emoji animation to all users in the room
-                const emojiRoomUsers = roomConnections.get(emojiRoomId);
-                if (emojiRoomUsers && emojiRoomUsers.size > 0) {
-                  const emojiMessage = JSON.stringify({
-                    type: 'emoji_sent',
-                    roomId: emojiRoomId,
-                    gameId: emojiGameId,
+                // Broadcast sticker animation to all users in the room
+                const stickerRoomUsers = roomConnections.get(stickerRoomId);
+                if (stickerRoomUsers && stickerRoomUsers.size > 0) {
+                  const stickerMessage = JSON.stringify({
+                    type: 'sticker_sent',
+                    roomId: stickerRoomId,
+                    gameId: stickerGameId,
                     senderId,
                     recipientId,
-                    emoji,
+                    sticker,
                     senderInfo: {
                       userId: senderId,
                       displayName: senderInfo?.displayName || senderInfo?.username || 'Player',
@@ -6139,19 +6139,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     timestamp: Date.now()
                   });
 
-                  emojiRoomUsers.forEach(connId => {
+                  stickerRoomUsers.forEach(connId => {
                     const conn = connections.get(connId);
                     if (conn && conn.ws.readyState === WebSocket.OPEN) {
-                      conn.ws.send(emojiMessage);
+                      conn.ws.send(stickerMessage);
                     }
                   });
                 }
               } catch (error) {
-                console.error('Error sending emoji:', error);
-                if (emojiConnection.ws.readyState === WebSocket.OPEN) {
-                  emojiConnection.ws.send(JSON.stringify({
-                    type: 'emoji_error',
-                    error: 'Failed to send emoji'
+                console.error('Error sending sticker:', error);
+                if (stickerConnection.ws.readyState === WebSocket.OPEN) {
+                  stickerConnection.ws.send(JSON.stringify({
+                    type: 'sticker_error',
+                    error: 'Failed to send sticker'
                   }));
                 }
               }

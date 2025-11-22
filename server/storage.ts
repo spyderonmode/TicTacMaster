@@ -8,9 +8,9 @@ import {
   achievements,
   userThemes,
   userPieceStyles,
-  emojiItems,
-  userEmojis,
-  gameEmojiSends,
+  stickerItems,
+  userStickers,
+  gameStickerSends,
   avatarFrameItems,
   userAvatarFrames,
   friendRequests,
@@ -33,9 +33,9 @@ import {
   type Achievement,
   type UserTheme,
   type UserPieceStyle,
-  type EmojiItem,
-  type UserEmoji,
-  type GameEmojiSend,
+  type StickerItem,
+  type UserSticker,
+  type GameStickerSend,
   type AvatarFrameItem,
   type UserAvatarFrame,
   type FriendRequest,
@@ -219,15 +219,15 @@ export interface IStorage {
   getFailedResets(): Promise<WeeklyResetStatus[]>;
   createWeeklyResetTable(): Promise<void>;
 
-  // Emoji operations
-  getAllEmojiItems(): Promise<EmojiItem[]>;
-  getEmojiItemById(id: string): Promise<EmojiItem | undefined>;
-  getUserEmojis(userId: string): Promise<(UserEmoji & { emoji: EmojiItem })[]>;
-  hasUserPurchasedEmoji(userId: string, emojiId: string): Promise<boolean>;
-  purchaseEmoji(userId: string, emojiId: string): Promise<{ success: boolean; message: string; emoji?: UserEmoji }>;
-  sendEmojiInGame(gameId: string, senderId: string, recipientId: string, emojiId: string): Promise<GameEmojiSend>;
-  getGameEmojiSends(gameId: string): Promise<(GameEmojiSend & { emoji: EmojiItem; sender: User })[]>;
-  createDefaultEmojis(): Promise<void>;
+  // Sticker operations
+  getAllStickerItems(): Promise<StickerItem[]>;
+  getStickerItemById(id: string): Promise<StickerItem | undefined>;
+  getUserStickers(userId: string): Promise<(UserSticker & { sticker: StickerItem })[]>;
+  hasUserPurchasedSticker(userId: string, stickerId: string): Promise<boolean>;
+  purchaseSticker(userId: string, stickerId: string): Promise<{ success: boolean; message: string; sticker?: UserSticker }>;
+  sendStickerInGame(gameId: string, senderId: string, recipientId: string, stickerId: string): Promise<GameStickerSend>;
+  getGameStickerSends(gameId: string): Promise<(GameStickerSend & { sticker: StickerItem; sender: User })[]>;
+  createDefaultStickers(): Promise<void>;
   
   getAllAvatarFrameItems(): Promise<AvatarFrameItem[]>;
   getAvatarFrameItemById(id: string): Promise<AvatarFrameItem | undefined>;
@@ -3835,90 +3835,90 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  // ===== Emoji Operations =====
+  // ===== Sticker Operations =====
   
-  async getAllEmojiItems(): Promise<EmojiItem[]> {
+  async getAllStickerItems(): Promise<StickerItem[]> {
     const items = await db
       .select()
-      .from(emojiItems)
-      .where(eq(emojiItems.isActive, true))
-      .orderBy(emojiItems.price);
+      .from(stickerItems)
+      .where(eq(stickerItems.isActive, true))
+      .orderBy(stickerItems.price);
     return items;
   }
 
-  async getEmojiItemById(id: string): Promise<EmojiItem | undefined> {
+  async getStickerItemById(id: string): Promise<StickerItem | undefined> {
     const [item] = await db
       .select()
-      .from(emojiItems)
-      .where(eq(emojiItems.id, id))
+      .from(stickerItems)
+      .where(eq(stickerItems.id, id))
       .limit(1);
     return item;
   }
 
-  async getUserEmojis(userId: string): Promise<(UserEmoji & { emoji: EmojiItem })[]> {
-    const emojis = await db
+  async getUserStickers(userId: string): Promise<(UserSticker & { sticker: StickerItem })[]> {
+    const stickers = await db
       .select({
-        id: userEmojis.id,
-        userId: userEmojis.userId,
-        emojiId: userEmojis.emojiId,
-        purchasedAt: userEmojis.purchasedAt,
-        emoji: emojiItems,
+        id: userStickers.id,
+        userId: userStickers.userId,
+        stickerId: userStickers.stickerId,
+        purchasedAt: userStickers.purchasedAt,
+        sticker: stickerItems,
       })
-      .from(userEmojis)
-      .innerJoin(emojiItems, eq(userEmojis.emojiId, emojiItems.id))
-      .where(eq(userEmojis.userId, userId));
+      .from(userStickers)
+      .innerJoin(stickerItems, eq(userStickers.stickerId, stickerItems.id))
+      .where(eq(userStickers.userId, userId));
     
-    return emojis.map(e => ({
-      id: e.id,
-      userId: e.userId,
-      emojiId: e.emojiId,
-      purchasedAt: e.purchasedAt,
-      emoji: e.emoji,
+    return stickers.map(s => ({
+      id: s.id,
+      userId: s.userId,
+      stickerId: s.stickerId,
+      purchasedAt: s.purchasedAt,
+      sticker: s.sticker,
     }));
   }
 
-  async hasUserPurchasedEmoji(userId: string, emojiId: string): Promise<boolean> {
+  async hasUserPurchasedSticker(userId: string, stickerId: string): Promise<boolean> {
     const [result] = await db
-      .select({ id: userEmojis.id })
-      .from(userEmojis)
+      .select({ id: userStickers.id })
+      .from(userStickers)
       .where(
         and(
-          eq(userEmojis.userId, userId),
-          eq(userEmojis.emojiId, emojiId)
+          eq(userStickers.userId, userId),
+          eq(userStickers.stickerId, stickerId)
         )
       )
       .limit(1);
     return !!result;
   }
 
-  async purchaseEmoji(userId: string, emojiId: string): Promise<{ success: boolean; message: string; emoji?: UserEmoji }> {
+  async purchaseSticker(userId: string, stickerId: string): Promise<{ success: boolean; message: string; sticker?: UserSticker }> {
     try {
-      // Check if emoji exists
-      const emoji = await this.getEmojiItemById(emojiId);
-      if (!emoji) {
-        return { success: false, message: 'Emoji not found' };
+      // Check if sticker exists
+      const sticker = await this.getStickerItemById(stickerId);
+      if (!sticker) {
+        return { success: false, message: 'Sticker not found' };
       }
 
-      if (!emoji.isActive) {
-        return { success: false, message: 'This emoji is not available for purchase' };
+      if (!sticker.isActive) {
+        return { success: false, message: 'This sticker is not available for purchase' };
       }
 
       // Check if already purchased
-      const alreadyOwned = await this.hasUserPurchasedEmoji(userId, emojiId);
+      const alreadyOwned = await this.hasUserPurchasedSticker(userId, stickerId);
       if (alreadyOwned) {
-        return { success: false, message: 'You already own this emoji' };
+        return { success: false, message: 'You already own this sticker' };
       }
 
       // Check user's coins
       const currentCoins = await this.getUserCoins(userId);
-      if (currentCoins < emoji.price) {
+      if (currentCoins < sticker.price) {
         return { success: false, message: 'Insufficient coins' };
       }
 
       // Deduct coins and record purchase (transaction)
       await db.transaction(async (tx) => {
         // Deduct coins
-        const newBalance = currentCoins - emoji.price;
+        const newBalance = currentCoins - sticker.price;
         await tx
           .update(users)
           .set({ coins: newBalance })
@@ -3927,180 +3927,158 @@ export class DatabaseStorage implements IStorage {
         // Record coin transaction
         await tx.insert(coinTransactions).values({
           userId,
-          amount: -emoji.price,
-          type: 'emoji_purchase',
+          amount: -sticker.price,
+          type: 'sticker_purchase',
           balanceBefore: currentCoins,
           balanceAfter: newBalance,
         });
 
-        // Add emoji to user's collection
-        await tx.insert(userEmojis).values({
+        // Add sticker to user's collection
+        await tx.insert(userStickers).values({
           userId,
-          emojiId,
+          stickerId,
         });
       });
 
-      const [purchasedEmoji] = await db
+      const [purchasedSticker] = await db
         .select()
-        .from(userEmojis)
+        .from(userStickers)
         .where(
           and(
-            eq(userEmojis.userId, userId),
-            eq(userEmojis.emojiId, emojiId)
+            eq(userStickers.userId, userId),
+            eq(userStickers.stickerId, stickerId)
           )
         )
         .limit(1);
 
       return {
         success: true,
-        message: `Successfully purchased ${emoji.name}!`,
-        emoji: purchasedEmoji,
+        message: `Successfully purchased ${sticker.name}!`,
+        sticker: purchasedSticker,
       };
     } catch (error) {
-      console.error('Error purchasing emoji:', error);
-      return { success: false, message: 'Failed to purchase emoji' };
+      console.error('Error purchasing sticker:', error);
+      return { success: false, message: 'Failed to purchase sticker' };
     }
   }
 
-  async sendEmojiInGame(gameId: string, senderId: string, recipientId: string, emojiId: string): Promise<GameEmojiSend> {
-    const [emojiSend] = await db
-      .insert(gameEmojiSends)
+  async sendStickerInGame(gameId: string, senderId: string, recipientId: string, stickerId: string): Promise<GameStickerSend> {
+    const [stickerSend] = await db
+      .insert(gameStickerSends)
       .values({
         gameId,
         senderId,
         recipientId,
-        emojiId,
+        stickerId,
       })
       .returning();
 
-    return emojiSend;
+    return stickerSend;
   }
 
-  async getGameEmojiSends(gameId: string): Promise<(GameEmojiSend & { emoji: EmojiItem; sender: User })[]> {
+  async getGameStickerSends(gameId: string): Promise<(GameStickerSend & { sticker: StickerItem; sender: User })[]> {
     const sends = await db
       .select({
-        id: gameEmojiSends.id,
-        gameId: gameEmojiSends.gameId,
-        senderId: gameEmojiSends.senderId,
-        recipientId: gameEmojiSends.recipientId,
-        emojiId: gameEmojiSends.emojiId,
-        sentAt: gameEmojiSends.sentAt,
-        emoji: emojiItems,
+        id: gameStickerSends.id,
+        gameId: gameStickerSends.gameId,
+        senderId: gameStickerSends.senderId,
+        recipientId: gameStickerSends.recipientId,
+        stickerId: gameStickerSends.stickerId,
+        sentAt: gameStickerSends.sentAt,
+        sticker: stickerItems,
         sender: users,
       })
-      .from(gameEmojiSends)
-      .innerJoin(emojiItems, eq(gameEmojiSends.emojiId, emojiItems.id))
-      .innerJoin(users, eq(gameEmojiSends.senderId, users.id))
-      .where(eq(gameEmojiSends.gameId, gameId));
+      .from(gameStickerSends)
+      .innerJoin(stickerItems, eq(gameStickerSends.stickerId, stickerItems.id))
+      .innerJoin(users, eq(gameStickerSends.senderId, users.id))
+      .where(eq(gameStickerSends.gameId, gameId));
 
     return sends.map(s => ({
       id: s.id,
       gameId: s.gameId,
       senderId: s.senderId,
       recipientId: s.recipientId,
-      emojiId: s.emojiId,
+      stickerId: s.stickerId,
       sentAt: s.sentAt,
-      emoji: s.emoji,
+      sticker: s.sticker,
       sender: s.sender,
     }));
   }
 
-  async createDefaultEmojis(): Promise<void> {
-    const defaultEmojis = [
+  async createDefaultStickers(): Promise<void> {
+    const defaultStickers = [
       {
-        id: 'kiss',
-        name: '😘 Kiss',
-        description: 'Blow a kiss to your opponent',
-        price: 2000000,
-        animationType: '😘',
+        id: 'funny-memes',
+        name: 'Enjoy',
+        description: 'Send hilarious meme reactions',
+        price: 100000000,
+        assetPath: 'funny-memes.gif',
+        animationType: 'none',
       },
       {
-        id: 'heart',
-        name: '❤️ Heart',
-        description: 'Show some love with a heart',
-        price: 2000000,
-        animationType: '❤️',
+        id: '200w',
+        name: 'Victory Dance',
+        description: 'Celebrate your wins with style',
+        price: 100000000,
+        assetPath: '200w.gif',
+        animationType: 'none',
       },
       {
-        id: 'unamused',
-        name: '😒 Unamused',
-        description: 'Show your disapproval',
-        price: 2000000,
-        animationType: '😒',
+        id: '2754b56ef8822c96677a529827edfdcb',
+        name: 'Epic Reaction',
+        description: 'Show your epic reaction',
+        price: 100000000,
+        assetPath: '2754b56ef8822c96677a529827edfdcb.gif',
+        animationType: 'none',
       },
       {
-        id: 'pensive',
-        name: '😔 Pensive',
-        description: 'A thoughtful reaction',
-        price: 2000000,
-        animationType: '😔',
+        id: '50782c2081d0743376207ba172523866',
+        name: 'Mind Blown',
+        description: 'When your opponent makes an amazing move',
+        price: 100000000,
+        assetPath: '50782c2081d0743376207ba172523866.gif',
+        animationType: 'none',
       },
       {
-        id: 'cool',
-        name: '😎 Cool',
-        description: 'You\'re so cool!',
-        price: 2000000,
-        animationType: '😎',
+        id: 'c3c38d9d92142e045c30c40487b69abc',
+        name: 'Celebration Time',
+        description: 'Time to celebrate your victory',
+        price: 100000000,
+        assetPath: 'c3c38d9d92142e045c30c40487b69abc.gif',
+        animationType: 'none',
       },
       {
-        id: 'smirk',
-        name: '😏 Smirk',
-        description: 'Send a smirk to your opponent',
-        price: 2000000,
-        animationType: '😏',
-      },
-      {
-        id: 'thumbs_up',
-        name: '👍 Thumbs Up',
-        description: 'Show your approval',
-        price: 2000000,
-        animationType: '👍',
-      },
-      {
-        id: 'raised_eyebrow',
-        name: '🤨 Raised Eyebrow',
-        description: 'Show your suspicion',
-        price: 2000000,
-        animationType: '🤨',
+        id: 'd1712b1d2c1169c8d01c70530f88874d',
+        name: 'Game On',
+        description: 'Let the games begin',
+        price: 100000000,
+        assetPath: 'd1712b1d2c1169c8d01c70530f88874d.gif',
+        animationType: 'none',
       },
     ];
 
     try {
-      // Remove old emojis that are no longer used
-      const oldEmojiIds = ['rose', 'fire', 'trophy', 'star', 'clap', 'sparkles'];
-      
-      // Mark these emojis as inactive instead of deleting them
-      // This way they won't show in the shop but preserve purchase history
-      for (const oldId of oldEmojiIds) {
-        try {
-          await db.update(emojiItems)
-            .set({ isActive: false })
-            .where(eq(emojiItems.id, oldId));
-        } catch (e) {
-          // Ignore if emoji doesn't exist
-        }
-      }
-
-      // Insert or update current emojis
-      for (const emoji of defaultEmojis) {
-        const existing = await this.getEmojiItemById(emoji.id);
+      // Insert or update current stickers
+      for (const sticker of defaultStickers) {
+        const existing = await this.getStickerItemById(sticker.id);
         if (!existing) {
-          await db.insert(emojiItems).values(emoji);
+          await db.insert(stickerItems).values(sticker);
         } else {
-          // Update existing emoji with new values
-          await db.update(emojiItems)
+          // Update existing sticker with new values
+          await db.update(stickerItems)
             .set({
-              name: emoji.name,
-              description: emoji.description,
-              price: emoji.price,
-              animationType: emoji.animationType,
+              name: sticker.name,
+              description: sticker.description,
+              price: sticker.price,
+              assetPath: sticker.assetPath,
+              animationType: sticker.animationType,
             })
-            .where(eq(emojiItems.id, emoji.id));
+            .where(eq(stickerItems.id, sticker.id));
         }
       }
-      console.log('✅ Default emojis initialized');
+      console.log('✅ Default stickers initialized');
     } catch (error) {
-      console.error('Error creating default emojis:', error);
+      console.error('Error creating default stickers:', error);
     }
   }
 
@@ -4304,7 +4282,7 @@ export class DatabaseStorage implements IStorage {
         id: 'firestorm',
         name: 'Fire Storm',
         description: 'Blazing 3D fire frame with intense flames erupting outside the border',
-        price: 2000000000, // 1 billion coins
+        price: 1000000000, // 1 billion coins
       },
       {
         id: 'level_100_master',
@@ -4364,7 +4342,25 @@ export class DatabaseStorage implements IStorage {
         id: 'royal_zigzag_crown',
         name: 'Royal Golden',
         description: 'Majestic 3D zigzag golden border with floating crown jewels - feel like royalty!',
-        price: 3000000000, // 2 million coins
+        price: 3000000000, // 3 billion coins
+      },
+      {
+        id: 'celestial_nebula',
+        name: 'Celestial Nebula',
+        description: 'Stunning 3D cosmic nebula with swirling galaxies, floating stardust, and mesmerizing aurora effects - absolutely breathtaking!',
+        price: 5000000000, // 5 billion coins
+      },
+      {
+        id: 'quantum_prism',
+        name: 'Quantum Prism',
+        description: 'Ultra-modern 3D hexagonal crystal frame with rotating geometric shapes, pulsing energy rings, and clean light beams - the future of style!',
+        price: 6000000000, // 3.5 billion coins
+      },
+      {
+        id: 'phoenix_immortal',
+        name: 'Phoenix Immortal',
+        description: 'The ultimate legendary frame! Mythical phoenix with majestic flaming wings, eternal rebirth fire cycles, floating ember particles, and divine golden feathers - the rarest and most powerful frame ever created!',
+        price: 10000000000, // 8 billion coins
       },
     ];
 
