@@ -247,7 +247,7 @@ const WeeklyRankPopup = ({
                     
                     {/* Name below emoji - clean separation */}
                     <div className="text-center">
-                      <h3 className="text-base sm:text-lg font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent" data-testid="user-display-name">
+                      <h3 className="text-base sm:text-lg font-bold text-white" data-testid="user-display-name">
                         {userDisplayName}
                       </h3>
                       <div className="flex items-center justify-center gap-1 mt-1">

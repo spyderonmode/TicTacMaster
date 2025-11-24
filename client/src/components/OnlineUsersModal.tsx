@@ -41,9 +41,21 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
     refetchOnWindowFocus: false,
   });
 
+  // Fetch outgoing friend requests (sent by current user)
+  const { data: outgoingRequests = [] } = useQuery<any[]>({
+    queryKey: ['/api/friends/requests/outgoing'],
+    enabled: open,
+    refetchOnWindowFocus: false,
+  });
+
   // Helper function to check if a user is already a friend
   const isAlreadyFriend = (userId: string) => {
     return friends.some((friend: any) => friend.id === userId);
+  };
+
+  // Helper function to check if there's a pending outgoing request to a user
+  const hasPendingOutgoingRequest = (userId: string) => {
+    return outgoingRequests.some((request: any) => request.requestedId === userId);
   };
 
   // Function to send friend requests with per-user pending state
@@ -66,6 +78,7 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
       // Invalidate friend-related queries to update UI
       queryClient.invalidateQueries({ queryKey: ['/api/friends'] });
       queryClient.invalidateQueries({ queryKey: ['/api/friends/requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/friends/requests/outgoing'] });
     } catch (error: any) {
       toast({
         title: t('error'),
@@ -162,12 +175,16 @@ export function OnlineUsersModal({ open, onClose, currentRoom, user }: OnlineUse
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleSendFriendRequest(onlineUser.userId)}
-                                  disabled={pendingFriendRequestId === onlineUser.userId}
+                                  disabled={pendingFriendRequestId === onlineUser.userId || hasPendingOutgoingRequest(onlineUser.userId)}
                                   className="ml-2"
                                   data-testid={`button-add-friend-${onlineUser.userId}`}
                                 >
                                   <UserPlus className="h-3 w-3 mr-1" />
-                                  {pendingFriendRequestId === onlineUser.userId ? t('loading') : t('addFriend') || 'Add Friend'}
+                                  {pendingFriendRequestId === onlineUser.userId 
+                                    ? t('loading') 
+                                    : hasPendingOutgoingRequest(onlineUser.userId) 
+                                    ? t('pending') || 'Pending'
+                                    : t('addFriend') || 'Add Friend'}
                                 </Button>
                               )}
                             </div>

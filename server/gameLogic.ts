@@ -46,13 +46,13 @@ export function makeMove(board: GameBoard, position: number, player: string): Ga
 }
 
 export function checkHorizontalWin(board: GameBoard, player: string): boolean {
-  // Row 1 and Row 3: Check for 4 consecutive tokens
-  const edgeRows = [
-    [1, 2, 3, 4, 5],      // Row 1
-    [11, 12, 13, 14, 15]  // Row 3
+  // Row 1 and Row 2: Check for 4 consecutive tokens
+  const topAndMiddleRows = [
+    [1, 2, 3, 4, 5],      // Row 1 (top)
+    [6, 7, 8, 9, 10]      // Row 2 (middle)
   ];
   
-  for (const row of edgeRows) {
+  for (const row of topAndMiddleRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
       if (positions.every(pos => board[pos.toString()] === player)) {
@@ -61,9 +61,9 @@ export function checkHorizontalWin(board: GameBoard, player: string): boolean {
     }
   }
   
-  // Row 2 (middle): Check for ALL 5 consecutive tokens
-  const middleRow = [6, 7, 8, 9, 10];
-  if (middleRow.every(pos => board[pos.toString()] === player)) {
+  // Row 3 (bottom): Check for ALL 5 consecutive tokens
+  const bottomRow = [11, 12, 13, 14, 15];
+  if (bottomRow.every(pos => board[pos.toString()] === player)) {
     return true;
   }
   
@@ -147,13 +147,13 @@ export function checkWin(board: GameBoard, player: string): { winner: boolean; c
 }
 
 function checkHorizontalWinWithPositions(board: GameBoard, player: string): { winner: boolean; positions?: number[] } {
-  // Row 1 and Row 3: Check for 4 consecutive tokens
-  const edgeRows = [
-    [1, 2, 3, 4, 5],      // Row 1
-    [11, 12, 13, 14, 15]  // Row 3
+  // Row 1 and Row 2: Check for 4 consecutive tokens
+  const topAndMiddleRows = [
+    [1, 2, 3, 4, 5],      // Row 1 (top)
+    [6, 7, 8, 9, 10]      // Row 2 (middle)
   ];
   
-  for (const row of edgeRows) {
+  for (const row of topAndMiddleRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
       if (positions.every(pos => board[pos.toString()] === player)) {
@@ -162,10 +162,10 @@ function checkHorizontalWinWithPositions(board: GameBoard, player: string): { wi
     }
   }
   
-  // Row 2 (middle): Check for ALL 5 consecutive tokens
-  const middleRow = [6, 7, 8, 9, 10];
-  if (middleRow.every(pos => board[pos.toString()] === player)) {
-    return { winner: true, positions: middleRow };
+  // Row 3 (bottom): Check for ALL 5 consecutive tokens
+  const bottomRow = [11, 12, 13, 14, 15];
+  if (bottomRow.every(pos => board[pos.toString()] === player)) {
+    return { winner: true, positions: bottomRow };
   }
   
   return { winner: false };

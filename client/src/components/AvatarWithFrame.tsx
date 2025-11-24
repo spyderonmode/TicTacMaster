@@ -1472,27 +1472,8 @@ export function AvatarWithFrame({
                 inset: '-8px',
               }}
             >
-              {/* Intense pulsing rebirth glow */}
-              <motion.div
-                className="absolute rounded-full"
-                style={{
-                  inset: '-10px',
-                  background: 'radial-gradient(circle, rgba(255, 140, 0, 0.5) 0%, rgba(255, 69, 0, 0.4) 30%, rgba(255, 215, 0, 0.3) 60%, transparent 100%)',
-                  filter: 'blur(6px)',
-                }}
-                animate={{
-                  scale: [1, 1.15, 1],
-                  opacity: [0.4, 0.8, 0.4],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-              />
-
               {/* Phoenix Wing Flames - Left Wing */}
-              {[...Array(8)].map((_, i) => {
+              {[...Array(6)].map((_, i) => {
                 const angle = 180 + (i * 20) - 70;
                 const radius = size === 'sm' ? 26 + i * 3 : size === 'md' ? 36 + i * 4 : 50 + i * 5;
                 const x = Math.cos((angle * Math.PI) / 180) * radius;
@@ -1521,17 +1502,17 @@ export function AvatarWithFrame({
                       rotate: [angle - 95, angle - 90, angle - 92, angle - 90, angle - 95],
                     }}
                     transition={{
-                      duration: 2.5 + i * 0.1,
+                      duration: 3.75 + i * 0.15,
                       repeat: Infinity,
                       ease: 'easeInOut',
-                      delay: i * 0.05,
+                      delay: i * 0.075,
                     }}
                   />
                 );
               })}
 
               {/* Phoenix Wing Flames - Right Wing */}
-              {[...Array(8)].map((_, i) => {
+              {[...Array(6)].map((_, i) => {
                 const angle = (i * 20) - 70;
                 const radius = size === 'sm' ? 26 + i * 3 : size === 'md' ? 36 + i * 4 : 50 + i * 5;
                 const x = Math.cos((angle * Math.PI) / 180) * radius;
@@ -1560,10 +1541,10 @@ export function AvatarWithFrame({
                       rotate: [angle - 85, angle - 90, angle - 88, angle - 90, angle - 85],
                     }}
                     transition={{
-                      duration: 2.5 + i * 0.1,
+                      duration: 3.75 + i * 0.15,
                       repeat: Infinity,
                       ease: 'easeInOut',
-                      delay: i * 0.05,
+                      delay: i * 0.075,
                     }}
                   />
                 );
@@ -1585,7 +1566,7 @@ export function AvatarWithFrame({
                   ],
                 }}
                 transition={{
-                  duration: 4,
+                  duration: 6,
                   repeat: Infinity,
                   ease: 'easeInOut',
                 }}
@@ -1601,7 +1582,7 @@ export function AvatarWithFrame({
                     opacity: [0.6, 0.9, 0.6],
                   }}
                   transition={{
-                    duration: 3,
+                    duration: 4.5,
                     repeat: Infinity,
                     ease: 'linear',
                   }}
@@ -1617,7 +1598,7 @@ export function AvatarWithFrame({
                     opacity: [0.5, 0.8, 0.5],
                   }}
                   transition={{
-                    duration: 4,
+                    duration: 6,
                     repeat: Infinity,
                     ease: 'linear',
                   }}
@@ -1625,8 +1606,8 @@ export function AvatarWithFrame({
               </motion.div>
 
               {/* Divine Golden Feathers */}
-              {[...Array(24)].map((_, i) => {
-                const angle = (i * 360) / 24;
+              {[...Array(12)].map((_, i) => {
+                const angle = (i * 360) / 12;
                 const radius = size === 'sm' ? 20 : size === 'md' ? 28 : 38;
                 const x = Math.cos((angle * Math.PI) / 180) * radius;
                 const y = Math.sin((angle * Math.PI) / 180) * radius;
@@ -1652,10 +1633,10 @@ export function AvatarWithFrame({
                       scale: [0.8, 1.3, 0.9, 1.2, 0.8],
                     }}
                     transition={{
-                      duration: 3.5 + (i % 5) * 0.3,
+                      duration: 5.25 + (i % 5) * 0.45,
                       repeat: Infinity,
                       ease: 'easeInOut',
-                      delay: i * 0.08,
+                      delay: i * 0.12,
                     }}
                   >
                     <svg
@@ -1691,8 +1672,8 @@ export function AvatarWithFrame({
               })}
 
               {/* Floating Embers */}
-              {[...Array(40)].map((_, i) => {
-                const angle = (i * 360) / 40;
+              {[...Array(24)].map((_, i) => {
+                const angle = (i * 360) / 24;
                 const radius = size === 'sm' ? 16 + (i % 8) * 2 : size === 'md' ? 22 + (i % 8) * 3 : 32 + (i % 8) * 4;
                 const x = Math.cos((angle * Math.PI) / 180) * radius;
                 const y = Math.sin((angle * Math.PI) / 180) * radius;
@@ -1718,18 +1699,18 @@ export function AvatarWithFrame({
                       scale: [0.5, 2.5, 1, 2, 0.5],
                     }}
                     transition={{
-                      duration: 2.5 + (i % 7) * 0.3,
+                      duration: 3.75 + (i % 7) * 0.45,
                       repeat: Infinity,
                       ease: 'easeInOut',
-                      delay: i * 0.04,
+                      delay: i * 0.06,
                     }}
                   />
                 );
               })}
 
               {/* Rebirth Flame Bursts */}
-              {[...Array(16)].map((_, i) => {
-                const angle = (i * 360) / 16;
+              {[...Array(12)].map((_, i) => {
+                const angle = (i * 360) / 12;
                 const radius = size === 'sm' ? 24 : size === 'md' ? 32 : 44;
                 const x = Math.cos((angle * Math.PI) / 180) * radius;
                 const y = Math.sin((angle * Math.PI) / 180) * radius;
@@ -1755,10 +1736,10 @@ export function AvatarWithFrame({
                       rotate: [angle - 90, angle - 90, angle - 90],
                     }}
                     transition={{
-                      duration: 1.8,
+                      duration: 2.7,
                       repeat: Infinity,
                       ease: 'easeOut',
-                      delay: i * 0.11,
+                      delay: i * 0.165,
                     }}
                   />
                 );
@@ -1782,7 +1763,7 @@ export function AvatarWithFrame({
                   ],
                 }}
                 transition={{
-                  duration: 4,
+                  duration: 6,
                   repeat: Infinity,
                   ease: 'easeInOut',
                 }}
@@ -1798,6 +1779,218 @@ export function AvatarWithFrame({
                   {fallbackText}
                 </div>
               )}
+            </div>
+          </div>
+        );
+
+      case 'lovers_eternal':
+        return (
+          <div
+            className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}
+            style={{
+              background: 'linear-gradient(135deg, #9333ea 0%, #c026d3 50%, #fbbf24 100%)',
+            }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-purple-600 via-fuchsia-500 to-amber-400 p-[3px] relative overflow-visible">
+
+              {/* Cupid Arrows */}
+              {[...Array(12)].map((_, i) => {
+                const angle = (i * 360) / 12;
+                const radius = size === 'sm' ? 24 : size === 'md' ? 32 : 44;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                const arrowSize = size === 'sm' ? 12 : size === 'md' ? 16 : 20;
+
+                return (
+                  <motion.div
+                    key={`arrow-${i}`}
+                    className="absolute z-0"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: `${arrowSize}px`,
+                      height: `${arrowSize * 0.5}px`,
+                      marginLeft: `-${arrowSize / 2}px`,
+                      marginTop: `-${arrowSize * 0.25}px`,
+                    }}
+                    animate={{
+                      x: [x * 0.85, x * 1.1, x * 0.9, x * 1.05, x * 0.85],
+                      y: [y * 0.85, y * 1.1, y * 0.9, y * 1.05, y * 0.85],
+                      rotate: [angle, angle + 10, angle - 5, angle + 5, angle],
+                      opacity: [0.6, 1, 0.8, 0.9, 0.6],
+                      scale: [0.9, 1.3, 1, 1.2, 0.9],
+                    }}
+                    transition={{
+                      duration: 4.5 + (i % 4) * 0.5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.2,
+                    }}
+                  >
+                    <svg
+                      width={arrowSize}
+                      height={arrowSize * 0.5}
+                      viewBox="0 0 40 20"
+                      style={{
+                        filter: 'drop-shadow(0 2px 3px rgba(147, 51, 234, 0.5))',
+                      }}
+                    >
+                      <defs>
+                        <linearGradient id={`arrowGrad${i}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" style={{ stopColor: '#fbbf24', stopOpacity: 1 }} />
+                          <stop offset="50%" style={{ stopColor: '#c026d3', stopOpacity: 1 }} />
+                          <stop offset="100%" style={{ stopColor: '#9333ea', stopOpacity: 1 }} />
+                        </linearGradient>
+                      </defs>
+                      {/* Arrow shaft */}
+                      <line
+                        x1="2"
+                        y1="10"
+                        x2="32"
+                        y2="10"
+                        stroke={`url(#arrowGrad${i})`}
+                        strokeWidth="2"
+                      />
+                      {/* Arrow head */}
+                      <polygon
+                        points="32,10 28,7 28,13"
+                        fill={`url(#arrowGrad${i})`}
+                      />
+                      {/* Feathers */}
+                      <path
+                        d="M6 7 L2 10 L6 13"
+                        stroke="#fbbf24"
+                        strokeWidth="1.5"
+                        fill="none"
+                      />
+                    </svg>
+                  </motion.div>
+                );
+              })}
+
+              {/* Floating Hearts */}
+              {[...Array(16)].map((_, i) => {
+                const angle = (i * 360) / 16 + 15;
+                const radius = size === 'sm' ? 20 : size === 'md' ? 28 : 38;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+                const heartSize = size === 'sm' ? 6 : size === 'md' ? 9 : 12;
+
+                return (
+                  <motion.div
+                    key={`heart-${i}`}
+                    className="absolute z-0"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: `${heartSize}px`,
+                      height: `${heartSize}px`,
+                      marginLeft: `-${heartSize / 2}px`,
+                      marginTop: `-${heartSize / 2}px`,
+                    }}
+                    animate={{
+                      x: [x, x * 1.15, x * 0.9, x * 1.08, x],
+                      y: [y, y * 1.15, y * 0.9, y * 1.08, y],
+                      scale: [0.7, 1.4, 0.9, 1.2, 0.7],
+                      rotate: [0, 360],
+                      opacity: [0.5, 1, 0.7, 0.9, 0.5],
+                    }}
+                    transition={{
+                      duration: 5 + (i % 5) * 0.4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.18,
+                    }}
+                  >
+                    <svg
+                      width={heartSize}
+                      height={heartSize}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      style={{
+                        filter: 'drop-shadow(0 2px 4px rgba(192, 38, 211, 0.6))',
+                      }}
+                    >
+                      <path
+                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                        fill="url(#loveEternalGradient)"
+                      />
+                      <defs>
+                        <linearGradient id="loveEternalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" style={{ stopColor: '#9333ea', stopOpacity: 1 }} />
+                          <stop offset="50%" style={{ stopColor: '#c026d3', stopOpacity: 1 }} />
+                          <stop offset="100%" style={{ stopColor: '#fbbf24', stopOpacity: 1 }} />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </motion.div>
+                );
+              })}
+
+              {/* Golden Sparkles */}
+              {[...Array(20)].map((_, i) => {
+                const angle = (i * 360) / 20;
+                const radius = size === 'sm' ? 18 + (i % 6) * 1.5 : size === 'md' ? 24 + (i % 6) * 2 : 34 + (i % 6) * 3;
+                const x = Math.cos((angle * Math.PI) / 180) * radius;
+                const y = Math.sin((angle * Math.PI) / 180) * radius;
+
+                return (
+                  <motion.div
+                    key={`sparkle-${i}`}
+                    className="absolute"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: '3px',
+                      height: '3px',
+                      background: 'radial-gradient(circle, #fbbf24, transparent)',
+                      borderRadius: '50%',
+                    }}
+                    animate={{
+                      x: [x, x * 1.3, x * 0.7, x * 1.2, x],
+                      y: [y, y * 1.3, y * 0.7, y * 1.2, y],
+                      opacity: [0.4, 1, 0.6, 0.9, 0.4],
+                      scale: [0.6, 2, 1, 1.8, 0.6],
+                    }}
+                    transition={{
+                      duration: 4 + (i % 6) * 0.4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.1,
+                    }}
+                  />
+                );
+              })}
+
+              <div className="w-full h-full rounded-full overflow-hidden relative z-10">
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'radial-gradient(circle at 40% 40%, rgba(192, 38, 211, 0.3), transparent)',
+                  }}
+                  animate={{
+                    opacity: [0.3, 0.6, 0.3],
+                  }}
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
+                {src ? (
+                  <img 
+                    src={src} 
+                    alt={alt}
+                    className="w-full h-full rounded-full object-cover relative z-10"
+                  />
+                ) : (
+                  <div 
+                    className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10"
+                  >
+                    {fallbackText}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );

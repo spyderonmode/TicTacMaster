@@ -155,6 +155,7 @@ export interface IStorage {
   // Friend operations
   sendFriendRequest(requesterId: string, requestedId: string): Promise<FriendRequest>;
   getFriendRequests(userId: string): Promise<(FriendRequest & { requester: User; requested: User })[]>;
+  getOutgoingFriendRequests(userId: string): Promise<(FriendRequest & { requester: User; requested: User })[]>;
   respondToFriendRequest(requestId: string, response: 'accepted' | 'rejected'): Promise<void>;
   getFriends(userId: string): Promise<BasicFriendInfo[]>;
   removeFriend(userId: string, friendId: string): Promise<void>;
@@ -2415,6 +2416,49 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(friendRequests.sentAt));
   }
 
+  async getOutgoingFriendRequests(userId: string): Promise<(FriendRequest & { requester: User; requested: User })[]> {
+    return await db
+      .select({
+        id: friendRequests.id,
+        requesterId: friendRequests.requesterId,
+        requestedId: friendRequests.requestedId,
+        status: friendRequests.status,
+        sentAt: friendRequests.sentAt,
+        respondedAt: friendRequests.respondedAt,
+        requester: {
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          wins: users.wins,
+          losses: users.losses,
+          draws: users.draws,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        },
+        requested: {
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          wins: users.wins,
+          losses: users.losses,
+          draws: users.draws,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        },
+      })
+      .from(friendRequests)
+      .leftJoin(users, eq(friendRequests.requestedId, users.id))
+      .where(and(
+        eq(friendRequests.requesterId, userId),
+        eq(friendRequests.status, 'pending')
+      ))
+      .orderBy(desc(friendRequests.sentAt));
+  }
+
   async respondToFriendRequest(requestId: string, response: 'accepted' | 'rejected'): Promise<void> {
     const [request] = await db
       .select()
@@ -4319,6 +4363,12 @@ export class DatabaseStorage implements IStorage {
         name: 'Lovers Heart 3D',
         description: 'Romantic 3D hearts floating around your avatar - for lovers only!',
         price: 1000000000, // 1 billion coins
+      },
+      {
+        id: 'lovers_eternal',
+        name: 'Lovers Eternal',
+        description: 'Cupid\'s arrows and romantic hearts in purple-gold glory - eternal love personified!',
+        price: 2000000000, // 1.2 billion coins
       },
       {
         id: 'diamond_luxury',

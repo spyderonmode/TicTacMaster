@@ -132,12 +132,12 @@ export const translations = {
     id: 'Aturan Permainan',
   },
   horizontalWin: {
-    en: 'Horizontal Win: Get 4 symbols in top/bottom rows, or 5 symbols in middle row',
-    ar: 'الفوز الأفقي: احصل على 4 رموز في الصفوف العلوية/السفلية، أو 5 رموز في الصف الأوسط',
-    bn: 'অনুভূমিক জয়: উপরের/নিচের সারিতে 4টি চিহ্ন বা মাঝের সারিতে 5টি চিহ্ন পান',
-    hi: 'क्षैतिज जीत: ऊपरी/निचली पंक्तियों में 4 प्रतीक, या मध्य पंक्ति में 5 प्रतीक प्राप्त करें',
-    es: 'Victoria Horizontal: Consigue 4 símbolos en filas superior/inferior, o 5 símbolos en fila media',
-    id: 'Kemenangan Horizontal: Dapatkan 4 simbol di baris atas/bawah, atau 5 simbol di baris tengah',
+    en: 'Horizontal Win: Get 4 symbols in top/middle rows, or 5 symbols in bottom row',
+    ar: 'الفوز الأفقي: احصل على 4 رموز في الصفوف العلوية/الوسطى، أو 5 رموز في الصف السفلي',
+    bn: 'অনুভূমিক জয়: উপরের/মাঝের সারিতে 4টি চিহ্ন বা নিচের সারিতে 5টি চিহ্ন পান',
+    hi: 'क्षैतिज जीत: ऊपरी/मध्य पंक्तियों में 4 प्रतीक, या निचली पंक्ति में 5 प्रतीक प्राप्त करें',
+    es: 'Victoria Horizontal: Consigue 4 símbolos en filas superior/media, o 5 símbolos en fila inferior',
+    id: 'Kemenangan Horizontal: Dapatkan 4 simbol di baris atas/tengah, atau 5 simbol di baris bawah',
   },
   verticalWin: {
     en: 'Vertical Win: Get 3 symbols in a column vertically',
@@ -2326,6 +2326,14 @@ export const translations = {
     hi: 'मित्रता का अनুरोध भেজা गया',
     es: 'Solicitud de Amistad Enviada',
     id: 'Permintaan Pertemanan Dikirim',
+  },
+  pending: {
+    en: 'Pending',
+    ar: 'قيد الانتظار',
+    bn: 'মুলতুবি',
+    hi: 'लंबित',
+    es: 'Pendiente',
+    id: 'Tertunda',
   },
   friendRequestSentSuccessfully: {
     en: 'Friend request has been sent successfully',

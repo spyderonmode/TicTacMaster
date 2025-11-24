@@ -149,13 +149,13 @@ const renderAchievementBorder = (borderType: string | null, playerName: string, 
 
 // Function to get winning positions for highlighting
 const getWinningPositions = (board: Record<string, string>, player: string): number[] => {
-  // Check horizontal wins: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
-  const edgeRows = [
-    [1, 2, 3, 4, 5],      // Row 1
-    [11, 12, 13, 14, 15]  // Row 3
+  // Check horizontal wins: Row 1 and Row 2 need 4 consecutive, Row 3 (bottom) needs all 5
+  const topAndMiddleRows = [
+    [1, 2, 3, 4, 5],      // Row 1 (top)
+    [6, 7, 8, 9, 10]      // Row 2 (middle)
   ];
 
-  for (const row of edgeRows) {
+  for (const row of topAndMiddleRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
       if (positions.every(pos => board[pos.toString()] === player)) {
@@ -164,10 +164,10 @@ const getWinningPositions = (board: Record<string, string>, player: string): num
     }
   }
 
-  // Row 2 (middle): Check for ALL 5 consecutive tokens
-  const middleRow = [6, 7, 8, 9, 10];
-  if (middleRow.every(pos => board[pos.toString()] === player)) {
-    return middleRow;
+  // Row 3 (bottom): Check for ALL 5 consecutive tokens
+  const bottomRow = [11, 12, 13, 14, 15];
+  if (bottomRow.every(pos => board[pos.toString()] === player)) {
+    return bottomRow;
   }
 
   // Check vertical wins
@@ -245,13 +245,13 @@ const findBestMoveHard = (board: Record<string, string>, availableMoves: number[
 };
 
 const checkWinSimple = (board: Record<string, string>, player: string): boolean => {
-  // Check horizontal: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
-  const edgeRows = [
-    [1, 2, 3, 4, 5],      // Row 1
-    [11, 12, 13, 14, 15]  // Row 3
+  // Check horizontal: Row 1 and Row 2 need 4 consecutive, Row 3 (bottom) needs all 5
+  const topAndMiddleRows = [
+    [1, 2, 3, 4, 5],      // Row 1 (top)
+    [6, 7, 8, 9, 10]      // Row 2 (middle)
   ];
 
-  for (const row of edgeRows) {
+  for (const row of topAndMiddleRows) {
     for (let i = 0; i <= row.length - 4; i++) {
       const positions = row.slice(i, i + 4);
       if (positions.every(pos => board[pos.toString()] === player)) {
@@ -260,9 +260,9 @@ const checkWinSimple = (board: Record<string, string>, player: string): boolean 
     }
   }
 
-  // Row 2 (middle): Check for ALL 5 consecutive tokens
-  const middleRow = [6, 7, 8, 9, 10];
-  if (middleRow.every(pos => board[pos.toString()] === player)) {
+  // Row 3 (bottom): Check for ALL 5 consecutive tokens
+  const bottomRow = [11, 12, 13, 14, 15];
+  if (bottomRow.every(pos => board[pos.toString()] === player)) {
     return true;
   }
 
@@ -307,13 +307,28 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   // Removed winningLine state - now derived from game prop
   const [lastMove, setLastMove] = useState<number | null>(null);
 
-  const [opponent, setOpponent] = useState<any>(null);
+  // Derive opponent using useMemo to prevent unnecessary renders
+  const opponent = useMemo(() => {
+    if (gameMode === 'online' && game && user) {
+      const userIsPlayerX = game.playerXId === (user.userId || user.id);
+      const userIsPlayerO = game.playerOId === (user.userId || user.id);
+
+      if (userIsPlayerX && game.playerOInfo) {
+        return game.playerOInfo;
+      } else if (userIsPlayerO && game.playerXInfo) {
+        return game.playerXInfo;
+      }
+    }
+    return null;
+  }, [gameMode, game?.playerXId, game?.playerOId, game?.playerXInfo, game?.playerOInfo, user?.userId, user?.id]);
 
   // Player chat message state
   const [playerXMessage, setPlayerXMessage] = useState<PlayerMessage | null>(null);
   const [playerOMessage, setPlayerOMessage] = useState<PlayerMessage | null>(null);
-  const [messageTimeouts, setMessageTimeouts] = useState<{ X?: NodeJS.Timeout; O?: NodeJS.Timeout }>({});
   const [showChatPanel, setShowChatPanel] = useState(false);
+  
+  // Use ref to track timeouts to avoid unnecessary renders
+  const messageTimeoutsRef = useRef<{ X?: NodeJS.Timeout; O?: NodeJS.Timeout }>({});
 
   // Profile modal state
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -500,27 +515,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   // WebSocket now handled by parent component
   const queryClient = useQueryClient();
 
-  // Determine opponent for online games
-  useEffect(() => {
-    if (gameMode === 'online' && game && user) {
-      const userIsPlayerX = game.playerXId === (user.userId || user.id);
-      const userIsPlayerO = game.playerOId === (user.userId || user.id);
-
-      if (userIsPlayerX && game.playerOInfo) {
-        setOpponent(game.playerOInfo);
-      } else if (userIsPlayerO && game.playerXInfo) {
-        setOpponent(game.playerXInfo);
-      }
-    }
-  }, [game, user, gameMode]);
-
   // Player message functions
   const setPlayerMessage = (player: 'X' | 'O', messageText: string) => {
     const message = QUICK_CHAT_MESSAGES.find(msg => msg.text === messageText) || { text: messageText, duration: 3000 };
 
     // Clear existing timeout
-    if (messageTimeouts[player]) {
-      clearTimeout(messageTimeouts[player]);
+    if (messageTimeoutsRef.current[player]) {
+      clearTimeout(messageTimeoutsRef.current[player]);
     }
 
     // Set new message
@@ -537,10 +538,10 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       } else {
         setPlayerOMessage(null);
       }
-      setMessageTimeouts(prev => ({ ...prev, [player]: undefined }));
+      messageTimeoutsRef.current[player] = undefined;
     }, message.duration);
 
-    setMessageTimeouts(prev => ({ ...prev, [player]: timeout }));
+    messageTimeoutsRef.current[player] = timeout;
   };
 
   const handleMessageClick = (messageText: string) => {
@@ -582,9 +583,6 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     setShowChatPanel(false);
   };
 
-  // Use ref to track timeouts to avoid dependency issues
-  const messageTimeoutsRef = useRef<{ X?: NodeJS.Timeout; O?: NodeJS.Timeout }>({});
-
   // Cleanup timeouts on unmount using ref
   useEffect(() => {
     return () => {
@@ -614,7 +612,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       const gameBoard = game.board || {};
       const isNewGame = Object.keys(gameBoard).length === 0;
       const currentBoardState = gameBoardKeys + '|' + gameBoardValues;
-      const syncKey = `${currentBoardState}|${game.syncTimestamp}|${game.timestamp}`;
+      const syncKey = `${currentBoardState}|${game.syncTimestamp}`;
 
       // For local games, only set board if it's truly empty (new game)
       if (game.id && game.id.startsWith('local-game')) {
@@ -637,7 +635,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         }
       }
     }
-  }, [game?.id, gameBoardKeys, gameBoardValues, game?.currentPlayer, game?.lastMove, game?.syncTimestamp, game?.timestamp]);
+  }, [game?.id, gameBoardKeys, gameBoardValues, game?.currentPlayer, game?.lastMove, game?.syncTimestamp]);
 
   // Remove WebSocket handling from GameBoard - it's now handled in Home component
   // This prevents double handling and state conflicts
@@ -791,13 +789,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
     // Check for win condition with winning line detection
     const checkWin = (board: Record<string, string>, player: string) => {
-      // Check horizontal: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
-      const edgeRows = [
-        [1, 2, 3, 4, 5],      // Row 1
-        [11, 12, 13, 14, 15]  // Row 3
+      // Check horizontal: Row 1 and Row 2 need 4 consecutive, Row 3 (bottom) needs all 5
+      const topAndMiddleRows = [
+        [1, 2, 3, 4, 5],      // Row 1 (top)
+        [6, 7, 8, 9, 10]      // Row 2 (middle)
       ];
 
-      for (const row of edgeRows) {
+      for (const row of topAndMiddleRows) {
         for (let i = 0; i <= row.length - 4; i++) {
           const positions = row.slice(i, i + 4);
           if (positions.every(pos => board[pos.toString()] === player)) {
@@ -807,9 +805,9 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         }
       }
 
-      // Row 2 (middle): Check for ALL 5 consecutive tokens
-      const middleRow = [6, 7, 8, 9, 10];
-      if (middleRow.every(pos => board[pos.toString()] === player)) {
+      // Row 3 (bottom): Check for ALL 5 consecutive tokens
+      const bottomRow = [11, 12, 13, 14, 15];
+      if (bottomRow.every(pos => board[pos.toString()] === player)) {
         return true;
       }
 
@@ -939,13 +937,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
     // Check for AI win using same logic
     const checkWin = (board: Record<string, string>, player: string) => {
-      // Check horizontal: Row 1 and Row 3 need 4 consecutive, Row 2 (middle) needs all 5
-      const edgeRows = [
-        [1, 2, 3, 4, 5],      // Row 1
-        [11, 12, 13, 14, 15]  // Row 3
+      // Check horizontal: Row 1 and Row 2 need 4 consecutive, Row 3 (bottom) needs all 5
+      const topAndMiddleRows = [
+        [1, 2, 3, 4, 5],      // Row 1 (top)
+        [6, 7, 8, 9, 10]      // Row 2 (middle)
       ];
 
-      for (const row of edgeRows) {
+      for (const row of topAndMiddleRows) {
         for (let i = 0; i <= row.length - 4; i++) {
           const positions = row.slice(i, i + 4);
           if (positions.every(pos => board[pos.toString()] === player)) {
@@ -954,9 +952,9 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         }
       }
 
-      // Row 2 (middle): Check for ALL 5 consecutive tokens
-      const middleRow = [6, 7, 8, 9, 10];
-      if (middleRow.every(pos => board[pos.toString()] === player)) {
+      // Row 3 (bottom): Check for ALL 5 consecutive tokens
+      const bottomRow = [11, 12, 13, 14, 15];
+      if (bottomRow.every(pos => board[pos.toString()] === player)) {
         return true;
       }
 
@@ -1177,7 +1175,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   ? (symbol === 'X' 
                       ? (game?.playerXInfo?.activePieceStyle || 'default') 
                       : (game?.playerOInfo?.activePieceStyle || 'default'))
-                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb"))
+                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb" || currentUserPieceStyle === "moonstar"))
                     ? currentUserPieceStyle
                     : "default"
               }
@@ -1187,7 +1185,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                       (symbol === 'O' && game?.playerOInfo?.activePieceStyle && game?.playerOInfo?.activePieceStyle !== 'default'))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
-                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb"))
+                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb" || currentUserPieceStyle === "moonstar"))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
               }

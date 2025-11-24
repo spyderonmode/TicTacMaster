@@ -2663,7 +2663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get friend requests
+  // Get friend requests (incoming)
   app.get('/api/friends/requests', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.user.userId;
@@ -2672,6 +2672,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting friend requests:", error);
       res.status(500).json({ message: "Failed to get friend requests" });
+    }
+  });
+
+  // Get outgoing friend requests (sent by current user)
+  app.get('/api/friends/requests/outgoing', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const outgoingRequests = await storage.getOutgoingFriendRequests(userId);
+      res.json(outgoingRequests);
+    } catch (error) {
+      console.error("Error getting outgoing friend requests:", error);
+      res.status(500).json({ message: "Failed to get outgoing friend requests" });
     }
   });
 

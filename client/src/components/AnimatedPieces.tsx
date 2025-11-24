@@ -4,7 +4,7 @@ import "./AnimatedPieces.css";
 
 interface AnimatedPieceProps {
   symbol: "X" | "O";
-  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb";
+  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar";
   className?: string;
   position?: number;
 }
@@ -130,6 +130,14 @@ export function AnimatedPiece({ symbol, style = "default", className = "", posit
       <BulbX className={className} uniqueId={uniqueId} />
     ) : (
       <BulbO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "moonstar") {
+    return symbol === "X" ? (
+      <MoonStarX className={className} uniqueId={uniqueId} />
+    ) : (
+      <MoonStarO className={className} uniqueId={uniqueId} />
     );
   }
 
@@ -4823,6 +4831,243 @@ function BulbO({ className = "", uniqueId }: { className?: string; uniqueId: str
         <path d="M 48 81 L 48 87 M 52 81 L 52 87" stroke="rgb(180, 180, 180)" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
         <rect x="45" y="10" width="10" height="4" rx="1" fill="rgb(150, 150, 150)" opacity="0.6" />
         <rect x="45" y="86" width="10" height="4" rx="1" fill="rgb(150, 150, 150)" opacity="0.6" />
+      </svg>
+    </motion.div>
+  );
+}
+
+function MoonStarX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotate: -180 }}
+      animate={{ scale: 1, rotate: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          filter: "drop-shadow(0 3px 10px rgba(168, 85, 247, 0.5))",
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <linearGradient id={`moonGradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "rgb(196, 181, 253)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(168, 85, 247)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(126, 34, 206)", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`starGradient-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(253, 224, 71)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(234, 179, 8)", stopOpacity: 0.8 }} />
+          </radialGradient>
+        </defs>
+
+        {/* X lines forming the base */}
+        <motion.path
+          d="M 20 20 L 80 80"
+          stroke={`url(#moonGradient-${uniqueId})`}
+          strokeWidth="14"
+          strokeLinecap="round"
+          fill="none"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+
+        <motion.path
+          d="M 80 20 L 20 80"
+          stroke={`url(#moonGradient-${uniqueId})`}
+          strokeWidth="14"
+          strokeLinecap="round"
+          fill="none"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
+        />
+
+        {/* Crescent Moon */}
+        <motion.g
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <path
+            d="M 30 50 Q 30 30, 45 25 Q 40 40, 40 50 Q 40 60, 45 75 Q 30 70, 30 50 Z"
+            fill={`url(#moonGradient-${uniqueId})`}
+            opacity="0.9"
+          />
+        </motion.g>
+
+        {/* Twinkling Stars */}
+        <motion.g
+          animate={{
+            opacity: [0.6, 1, 0.6],
+          }}
+          transition={{
+            duration: 1.5,
+            ease: "easeInOut"
+          }}
+        >
+          <path
+            d="M 60 20 L 62 25 L 67 26 L 63 30 L 64 35 L 60 32 L 56 35 L 57 30 L 53 26 L 58 25 Z"
+            fill={`url(#starGradient-${uniqueId})`}
+            opacity="0.9"
+          />
+        </motion.g>
+
+        <motion.g
+          animate={{
+            opacity: [0.8, 1, 0.8],
+          }}
+          transition={{
+            duration: 1.8,
+            delay: 0.3,
+            ease: "easeInOut"
+          }}
+        >
+          <path
+            d="M 70 45 L 71.5 48 L 74.5 48.5 L 72 51 L 72.5 54 L 70 52.5 L 67.5 54 L 68 51 L 65.5 48.5 L 68.5 48 Z"
+            fill={`url(#starGradient-${uniqueId})`}
+            opacity="0.85"
+          />
+        </motion.g>
+
+        <motion.g
+          animate={{
+            opacity: [0.7, 1, 0.7],
+          }}
+          transition={{
+            duration: 2,
+            delay: 0.6,
+            ease: "easeInOut"
+          }}
+        >
+          <path
+            d="M 55 65 L 56.5 68 L 59.5 68.5 L 57 71 L 57.5 74 L 55 72.5 L 52.5 74 L 53 71 L 50.5 68.5 L 53.5 68 Z"
+            fill={`url(#starGradient-${uniqueId})`}
+            opacity="0.8"
+          />
+        </motion.g>
+      </svg>
+    </motion.div>
+  );
+}
+
+function MoonStarO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotate: 180 }}
+      animate={{ scale: 1, rotate: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "1000px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ 
+          filter: "drop-shadow(0 3px 10px rgba(236, 72, 153, 0.5))",
+          transformStyle: "preserve-3d"
+        }}
+      >
+        <defs>
+          <radialGradient id={`moonOGradient-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(251, 207, 232)", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "rgb(236, 72, 153)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(219, 39, 119)", stopOpacity: 1 }} />
+          </radialGradient>
+          <radialGradient id={`starOGradient-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "rgb(253, 224, 71)", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "rgb(234, 179, 8)", stopOpacity: 0.8 }} />
+          </radialGradient>
+        </defs>
+
+        {/* O circle base */}
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="30"
+          stroke={`url(#moonOGradient-${uniqueId})`}
+          strokeWidth="14"
+          fill="none"
+          initial={{ pathLength: 0, rotate: -90 }}
+          animate={{ pathLength: 1, rotate: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          style={{ originX: "50%", originY: "50%" }}
+        />
+
+        {/* Crescent Moon */}
+        <motion.g
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <path
+            d="M 65 50 Q 65 35, 73 32 Q 70 43, 70 50 Q 70 57, 73 68 Q 65 65, 65 50 Z"
+            fill={`url(#moonOGradient-${uniqueId})`}
+            opacity="0.9"
+          />
+        </motion.g>
+
+        {/* Twinkling Stars */}
+        <motion.g
+          animate={{
+            opacity: [0.6, 1, 0.6],
+          }}
+          transition={{
+            duration: 1.5,
+            ease: "easeInOut"
+          }}
+        >
+          <path
+            d="M 28 25 L 30 29 L 34 30 L 30.5 33 L 31 37 L 28 35 L 25 37 L 25.5 33 L 22 30 L 26 29 Z"
+            fill={`url(#starOGradient-${uniqueId})`}
+            opacity="0.9"
+          />
+        </motion.g>
+
+        <motion.g
+          animate={{
+            opacity: [0.8, 1, 0.8],
+          }}
+          transition={{
+            duration: 1.8,
+            delay: 0.3,
+            ease: "easeInOut"
+          }}
+        >
+          <path
+            d="M 20 55 L 21.5 58 L 24.5 58.5 L 22 61 L 22.5 64 L 20 62.5 L 17.5 64 L 18 61 L 15.5 58.5 L 18.5 58 Z"
+            fill={`url(#starOGradient-${uniqueId})`}
+            opacity="0.85"
+          />
+        </motion.g>
+
+        <motion.g
+          animate={{
+            opacity: [0.7, 1, 0.7],
+          }}
+          transition={{
+            duration: 2,
+            delay: 0.6,
+            ease: "easeInOut"
+          }}
+        >
+          <path
+            d="M 35 70 L 36.5 73 L 39.5 73.5 L 37 76 L 37.5 79 L 35 77.5 L 32.5 79 L 33 76 L 30.5 73.5 L 33.5 73 Z"
+            fill={`url(#starOGradient-${uniqueId})`}
+            opacity="0.8"
+          />
+        </motion.g>
       </svg>
     </motion.div>
   );
