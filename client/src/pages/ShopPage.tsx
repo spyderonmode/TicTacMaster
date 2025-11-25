@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users, Palette, Bird, Lightbulb, Moon } from "lucide-react";
 import { AnimatedPiece } from "@/components/AnimatedPieces";
 import { PurchaseSuccessModal } from "@/components/PurchaseSuccessModal";
@@ -265,6 +266,10 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
   const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pieces");
+  const [previewModal, setPreviewModal] = useState<{
+    type: "piece" | "frame";
+    item: any;
+  } | null>(null);
   const { user } = useAuth();
   
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -575,11 +580,9 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                 className={`bg-gradient-to-br from-purple-900/90 to-black/95 border-2 transition-all duration-300 cursor-pointer hover:scale-[1.05] hover:shadow-2xl backdrop-blur-sm ${
                   isActive 
                     ? "border-cyan-400 shadow-lg shadow-cyan-500/50" 
-                    : selectedStyle === style.id 
-                    ? "border-purple-400 shadow-lg shadow-purple-500/50" 
                     : "border-purple-400/60 hover:border-purple-400"
                 }`}
-                onClick={() => setSelectedStyle(style.id)}
+                onClick={() => setPreviewModal({ type: "piece", item: style })}
                 data-testid={`card-style-${style.id}`}
               >
                 <CardHeader className="p-2 pb-1">
@@ -618,20 +621,9 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                 </CardHeader>
                 
                 <CardContent className="p-2 pt-0">
-                  <div className="bg-purple-800/70 rounded-lg p-2 mb-1.5 flex items-center justify-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center">
-                      <AnimatedPiece 
-                        symbol="X" 
-                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar"} 
-                        className={style.id === "default" ? "text-xl text-blue-400 font-bold" : "text-blue-400"}
-                      />
-                    </div>
-                    <div className="w-8 h-8 flex items-center justify-center">
-                      <AnimatedPiece 
-                        symbol="O" 
-                        style={style.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar"} 
-                        className={style.id === "default" ? "text-xl text-red-400 font-bold" : "text-red-400"}
-                      />
+                  <div className="bg-purple-800/70 rounded-lg p-2 mb-1.5 flex items-center justify-center gap-3 relative min-h-[3rem]">
+                    <div className="text-sm text-gray-400 font-medium">
+                      Click to preview
                     </div>
                   </div>
 
@@ -795,7 +787,8 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                 return (
                   <Card 
                     key={frame.id}
-                    className={`relative overflow-hidden transition-all duration-300 backdrop-blur-sm border-2 ${
+                    onClick={() => setPreviewModal({ type: "frame", item: frame })}
+                    className={`relative overflow-hidden transition-all duration-300 backdrop-blur-sm border-2 cursor-pointer ${
                       isActive 
                         ? 'bg-gradient-to-br from-purple-900/90 to-black/95 border-cyan-400 shadow-lg shadow-cyan-500/30' 
                         : owned
@@ -830,16 +823,10 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                     </CardHeader>
 
                     <CardContent className="p-2 pt-0 space-y-1.5">
-                      <div className="flex justify-center py-1">
-                        {user && (
-                          <AvatarWithFrame
-                            src={userData?.profileImageUrl || user.profileImageUrl || undefined}
-                            alt="Preview"
-                            size="sm"
-                            borderType={frame.id}
-                            fallbackText={user.username?.[0]?.toUpperCase() || user.displayName?.[0]?.toUpperCase() || '?'}
-                          />
-                        )}
+                      <div className="flex justify-center py-1 min-h-[4rem] items-center">
+                        <div className="text-sm text-gray-400 font-medium">
+                          Click to preview
+                        </div>
                       </div>
 
                       {!frame.isDefault && (
@@ -860,13 +847,17 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                           className="w-full border-gray-600 text-xs"
                           disabled
                           data-testid={`button-default-${frame.id}`}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           Default
                         </Button>
                       ) : owned ? (
                         isActive ? (
                           <Button
-                            onClick={() => setActiveFrameMutation.mutate(null)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveFrameMutation.mutate(null);
+                            }}
                             variant="outline"
                             size="sm"
                             className="w-full border-red-500 text-red-400 hover:bg-red-500/10 text-xs py-1 h-auto"
@@ -876,7 +867,10 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                           </Button>
                         ) : (
                           <Button
-                            onClick={() => setActiveFrameMutation.mutate(frame.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveFrameMutation.mutate(frame.id);
+                            }}
                             size="sm"
                             className="w-full bg-blue-600 hover:bg-blue-700 text-xs py-1 h-auto"
                             data-testid={`button-activate-${frame.id}`}
@@ -887,7 +881,8 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                         )
                       ) : (
                         <Button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedFrame(frame.id);
                             purchaseFrameMutation.mutate(frame.id);
                           }}
@@ -1002,6 +997,199 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
           itemId={purchaseDetails.id}
           stickerAnimation={purchaseDetails.animation}
         />
+      )}
+
+      {/* Preview Modal */}
+      {previewModal && (
+        <Dialog open={!!previewModal} onOpenChange={() => setPreviewModal(null)}>
+          <DialogContent className="sm:max-w-lg bg-gradient-to-br from-purple-950/98 via-black/95 to-purple-950/98 border-4 border-purple-400/60 shadow-2xl shadow-purple-500/50 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-yellow-400 flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-yellow-400 animate-pulse" />
+                {previewModal.item.name}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="py-6">
+              {previewModal.type === "piece" ? (
+                <div className="space-y-4">
+                  <p className="text-blue-600 text-center text-sm mb-6">
+                    {previewModal.item.description}
+                  </p>
+                  
+                  {/* Large Preview Animation */}
+                  <div className="bg-black rounded-2xl p-8 border-2 border-purple-400/40 shadow-inner">
+                    <div className="flex items-center justify-center gap-8">
+                      <div className="w-20 h-20 flex items-center justify-center transform hover:scale-110 transition-transform">
+                        <AnimatedPiece 
+                          symbol="X" 
+                          style={previewModal.item.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar"} 
+                          className={previewModal.item.id === "default" ? "text-5xl text-blue-400 font-bold" : "text-blue-400 text-5xl"}
+                        />
+                      </div>
+                      <div className="text-3xl text-purple-400 font-bold">VS</div>
+                      <div className="w-20 h-20 flex items-center justify-center transform hover:scale-110 transition-transform">
+                        <AnimatedPiece 
+                          symbol="O" 
+                          style={previewModal.item.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar"} 
+                          className={previewModal.item.id === "default" ? "text-5xl text-red-400 font-bold" : "text-red-400 text-5xl"}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Price and Actions */}
+                  <div className="flex flex-col gap-3 pt-4">
+                    {!previewModal.item.isDefault && !isStyleOwned(previewModal.item.id) && (
+                      <div className="flex items-center justify-center gap-2 text-yellow-400 text-lg font-bold">
+                        <Coins className="w-5 h-5" />
+                        <span>{formatNumber(previewModal.item.price)}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      {previewModal.item.isDefault || isStyleOwned(previewModal.item.id) ? (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetActive(previewModal.item.id);
+                            setPreviewModal(null);
+                          }}
+                          disabled={activeStyle === previewModal.item.id || setActiveMutation.isPending}
+                          className={`flex-1 ${activeStyle === previewModal.item.id 
+                            ? "bg-green-600 hover:bg-green-700" 
+                            : "bg-purple-600 hover:bg-purple-700"
+                          }`}
+                        >
+                          {activeStyle === previewModal.item.id ? (
+                            <>
+                              <Check className="w-4 h-4 mr-2" />
+                              Active
+                            </>
+                          ) : (
+                            "Activate"
+                          )}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePurchase(previewModal.item.id, previewModal.item.price);
+                            setPreviewModal(null);
+                          }}
+                          disabled={userCoins < previewModal.item.price || purchaseMutation.isPending}
+                          className="flex-1 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50"
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          {purchaseMutation.isPending ? "Buying..." : "Purchase"}
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => setPreviewModal(null)}
+                        variant="outline"
+                        className="flex-1 border-gray-600 hover:bg-gray-800"
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-blue-600 text-center text-sm mb-6">
+                    {previewModal.item.description}
+                  </p>
+                  
+                  {/* Large Avatar Preview */}
+                  <div className="bg-black rounded-2xl p-8 border-2 border-purple-400/40 shadow-inner">
+                    <div className="flex justify-center">
+                      {user && (
+                        <div className="transform hover:scale-110 transition-transform">
+                          <AvatarWithFrame
+                            src={userData?.profileImageUrl || user.profileImageUrl || undefined}
+                            alt="Preview"
+                            size="lg"
+                            borderType={previewModal.item.id}
+                            fallbackText={user.username?.[0]?.toUpperCase() || user.displayName?.[0]?.toUpperCase() || '?'}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Price and Actions */}
+                  <div className="flex flex-col gap-3 pt-4">
+                    {!previewModal.item.isDefault && !isFrameOwned(previewModal.item.id) && (
+                      <div className="flex items-center justify-center gap-2 text-yellow-400 text-lg font-bold">
+                        <Coins className="w-5 h-5" />
+                        <span>{formatNumber(previewModal.item.price)}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      {previewModal.item.isDefault ? (
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-gray-600"
+                          disabled
+                        >
+                          Default Frame
+                        </Button>
+                      ) : isFrameOwned(previewModal.item.id) ? (
+                        getActiveFrame() === previewModal.item.id ? (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveFrameMutation.mutate(null);
+                              setPreviewModal(null);
+                            }}
+                            variant="outline"
+                            className="flex-1 border-red-500 text-red-400 hover:bg-red-500/10"
+                          >
+                            Remove Frame
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveFrameMutation.mutate(previewModal.item.id);
+                              setPreviewModal(null);
+                            }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Activate
+                          </Button>
+                        )
+                      ) : (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFrame(previewModal.item.id);
+                            purchaseFrameMutation.mutate(previewModal.item.id);
+                            setPreviewModal(null);
+                          }}
+                          disabled={userCoins < previewModal.item.price || purchaseFrameMutation.isPending}
+                          className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          {purchaseFrameMutation.isPending ? "Buying..." : "Purchase"}
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => setPreviewModal(null)}
+                        variant="outline"
+                        className="flex-1 border-gray-600 hover:bg-gray-800"
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

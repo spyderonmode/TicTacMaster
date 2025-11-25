@@ -284,7 +284,7 @@ const WeeklyRankPopup = ({
 
                 {/* Rank Message - Reduced font sizes to base/sm */}
                 <div className="space-y-1 px-2">
-                  <h3 className="text-lg font-black bg-gradient-to-r from-yellow-200 via-white to-yellow-200 bg-clip-text text-transparent">
+                  <h3 className="text-lg font-black text-yellow-200">
                     {rankMessage.title}
                   </h3>
                   <p className="text-sm text-gray-300 font-medium leading-relaxed">

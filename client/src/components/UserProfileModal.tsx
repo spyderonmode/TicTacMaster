@@ -3,7 +3,8 @@ import { X, Trophy, Zap, Crown, Coins, TrendingUp, Swords, ChevronRight } from '
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { apiRequest } from '@/lib/queryClient';
-import { AvatarWithFrame } from './AvatarWithFrame'; 
+import { AvatarWithFrame } from './AvatarWithFrame';
+import { getWinsRequiredForCurrentLevel, getProgressInCurrentLevel } from '../../../shared/level'; 
 
 // 🎯 Utility function for large number formatting 
 const formatLargeNumber = (num: number): string => {
@@ -79,8 +80,7 @@ export function UserProfileModal({
     const [error, setError] = useState<string | null>(null);
     const [activeAvatarFrame, setActiveAvatarFrame] = useState<string | null>(null);
 
-    const profileImage = profileImageUrl || profilePicture;
-    const WINS_PER_LEVEL = 50; 
+    const profileImage = profileImageUrl || profilePicture; 
     
     useEffect(() => {
         if (open && userId) {
@@ -141,8 +141,9 @@ export function UserProfileModal({
     };
 
     const getLevelProgress = (s: PlayerStats) => {
-        const winsNeeded = s.winsToNextLevel > 0 ? s.winsToNextLevel : WINS_PER_LEVEL;
-        return ((WINS_PER_LEVEL - winsNeeded) / WINS_PER_LEVEL) * 100;
+        const winsRequiredForLevel = getWinsRequiredForCurrentLevel(s.level);
+        const progressInLevel = getProgressInCurrentLevel(s.wins);
+        return (progressInLevel / winsRequiredForLevel) * 100;
     };
 
 
@@ -264,7 +265,7 @@ export function UserProfileModal({
                                             <Trophy className="w-4 h-4 text-cyan-400"/> LEVEL STATUS
                                         </span>
                                         <span className="text-[10px] text-gray-500 font-mono">
-                                            {WINS_PER_LEVEL - stats.winsToNextLevel}/{WINS_PER_LEVEL} (Next Lvl)
+                                            {getProgressInCurrentLevel(stats.wins)}/{getWinsRequiredForCurrentLevel(stats.level)} (Next Lv{stats.level + 1})
                                         </span>
                                     </div>
                                     <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
