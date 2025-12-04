@@ -121,7 +121,7 @@ export interface IStorage {
   // Statistics
   updateUserStats(userId: string, result: 'win' | 'loss' | 'draw'): Promise<void>;
   getUserStats(userId: string): Promise<{ wins: number; losses: number; draws: number }>;
-  getOnlineGameStats(userId: string): Promise<{ wins: number; losses: number; draws: number; totalGames: number; currentWinStreak: number; bestWinStreak: number; level: number; winsToNextLevel: number; coins: number; selectedAchievementBorder?: string | null; achievementsUnlocked: number }>;
+  getOnlineGameStats(userId: string): Promise<{ wins: number; losses: number; draws: number; totalGames: number; currentWinStreak: number; bestWinStreak: number; level: number; winsToNextLevel: number; coins: number; totalEarnings: number; selectedAchievementBorder?: string | null; achievementsUnlocked: number }>;
 
   // Blocked Users
   blockUser(blockerId: string, blockedId: string): Promise<BlockedUser>;
@@ -1253,12 +1253,12 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getOnlineGameStats(userId: string): Promise<{ wins: number; losses: number; draws: number; totalGames: number; currentWinStreak: number; bestWinStreak: number; level: number; winsToNextLevel: number; coins: number; selectedAchievementBorder?: string | null; achievementsUnlocked: number }> {
+  async getOnlineGameStats(userId: string): Promise<{ wins: number; losses: number; draws: number; totalGames: number; currentWinStreak: number; bestWinStreak: number; level: number; winsToNextLevel: number; coins: number; totalEarnings: number; selectedAchievementBorder?: string | null; achievementsUnlocked: number }> {
     // Since we're properly updating user stats in the database, just return the user's stats
     // This represents their online game performance since we only update stats for online games
     const user = await this.getUser(userId);
     if (!user) {
-      return { wins: 0, losses: 0, draws: 0, totalGames: 0, currentWinStreak: 0, bestWinStreak: 0, level: 0, winsToNextLevel: 10, coins: 2000, selectedAchievementBorder: null, achievementsUnlocked: 0 };
+      return { wins: 0, losses: 0, draws: 0, totalGames: 0, currentWinStreak: 0, bestWinStreak: 0, level: 0, winsToNextLevel: 10, coins: 2000, totalEarnings: 0, selectedAchievementBorder: null, achievementsUnlocked: 0 };
     }
 
     const wins = user.wins || 0;
@@ -1274,6 +1274,9 @@ export class DatabaseStorage implements IStorage {
     // Get current coin balance using the same method as coin gifts
     const coins = await this.getUserCoins(userId);
 
+    // Get total earnings (sum of all positive coin transactions)
+    const totalEarnings = await this.getTotalEarnings(userId);
+
     // Get achievements count
     const userAchievements = await this.getUserAchievements(userId);
     const achievementsUnlocked = userAchievements.length;
@@ -1288,6 +1291,7 @@ export class DatabaseStorage implements IStorage {
       level,
       winsToNextLevel,
       coins,
+      totalEarnings,
       selectedAchievementBorder: user.selectedAchievementBorder,
       achievementsUnlocked
     };
@@ -2856,6 +2860,24 @@ export class DatabaseStorage implements IStorage {
     }).where(eq(users.id, userId));
   }
 
+  async getTotalEarnings(userId: string): Promise<number> {
+    try {
+      const result = await db
+        .select({ total: sql<number>`COALESCE(SUM(${coinTransactions.amount}), 0)` })
+        .from(coinTransactions)
+        .where(
+          and(
+            eq(coinTransactions.userId, userId),
+            sql`${coinTransactions.amount} > 0`
+          )
+        );
+      return result[0]?.total || 0;
+    } catch (error) {
+      console.error('Error calculating total earnings:', error);
+      return 0;
+    }
+  }
+
   async processCoinTransaction(userId: string, amount: number, type: string, gameId?: string): Promise<void> {
     const currentCoins = await this.getUserCoins(userId);
     const newBalance = currentCoins + amount;
@@ -3045,6 +3067,7 @@ export class DatabaseStorage implements IStorage {
     draws: number;
     totalGames: number;
     coins: number;
+    totalEarnings: number;
     level: number;
     winsToNextLevel: number;
     currentWinStreak: number;
@@ -3084,6 +3107,7 @@ export class DatabaseStorage implements IStorage {
       const wins = userData.wins || 0;
       const level = getLevelFromWins(wins);
       const winsToNextLevel = getWinsToNextLevel(wins);
+      const totalEarnings = await this.getTotalEarnings(playerId);
 
       return {
         id: userData.id,
@@ -3095,6 +3119,7 @@ export class DatabaseStorage implements IStorage {
         draws: userData.draws || 0,
         totalGames,
         coins: userData.coins ?? 2000,
+        totalEarnings,
         level: level,
         winsToNextLevel: winsToNextLevel,
         currentWinStreak: userData.currentWinStreak || 0,

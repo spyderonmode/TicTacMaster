@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useId } from "react";
+import { useId, memo } from "react";
 import "./AnimatedPieces.css";
 
 interface AnimatedPieceProps {
@@ -9,7 +9,7 @@ interface AnimatedPieceProps {
   position?: number;
 }
 
-export function AnimatedPiece({ symbol, style = "default", className = "", position }: AnimatedPieceProps) {
+const AnimatedPieceComponent = ({ symbol, style = "default", className = "", position }: AnimatedPieceProps) => {
   const fallbackId = useId();
   const uniqueId = position ? `piece-${position}` : fallbackId;
   
@@ -142,7 +142,17 @@ export function AnimatedPiece({ symbol, style = "default", className = "", posit
   }
 
   return <span className={className}>{symbol}</span>;
-}
+};
+
+// Export memoized version to prevent unnecessary re-renders
+export const AnimatedPiece = memo(AnimatedPieceComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.symbol === nextProps.symbol &&
+    prevProps.style === nextProps.style &&
+    prevProps.position === nextProps.position &&
+    prevProps.className === nextProps.className
+  );
+});
 
 function ThunderX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
   return (

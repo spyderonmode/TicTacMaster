@@ -17,18 +17,40 @@ export function useAuth() {
     retry: false,
   });
 
+  // Prefetch user stats during loading screen so they're ready when homepage shows
+  const { isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/users", (user as any)?.userId, "online-stats"],
+    enabled: !!user && !!(user as any)?.userId,
+    retry: false,
+  });
 
   const [isLoading, setIsLoading] = useState(true);
   const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
-    // Always show loading for at least 2.5 seconds, then stop regardless of query state
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, []);
+    // Show loading for minimum 500ms, then wait for BOTH auth AND stats to complete
+    const minLoadTime = 500;
+    const elapsed = Date.now() - startTimeRef.current;
+    
+    // Check if we should wait for stats: only if user is authenticated
+    const shouldWaitForStats = !!user && !!(user as any)?.userId;
+    
+    // Determine if all required queries are complete
+    const allQueriesComplete = !userLoading && (!shouldWaitForStats || !statsLoading);
+    
+    if (allQueriesComplete) {
+      // All queries finished, check if minimum time has passed
+      if (elapsed >= minLoadTime) {
+        setIsLoading(false);
+      } else {
+        // Wait for remaining time
+        const timer = setTimeout(() => {
+          setIsLoading(false);
+        }, minLoadTime - elapsed);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [userLoading, statsLoading, user]);
 
   // Store user data in localStorage as backup for session issues
   useEffect(() => {

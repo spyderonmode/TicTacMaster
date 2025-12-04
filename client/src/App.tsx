@@ -83,24 +83,10 @@ function Router() {
   useEffect(() => {
     if (!isLoading && !hasInitiallyLoaded) {
       setHasInitiallyLoaded(true);
-      // Set a flag to indicate we've moved past the initial load - faster for better performance
-      setTimeout(() => {
-        setIsInitialLoad(false);
-      }, 100);
+      // Hide loading screen immediately once auth completes
+      setIsInitialLoad(false);
     }
   }, [isLoading, hasInitiallyLoaded]);
-
-  // Force loading to complete after 1.5 seconds to prevent infinite loading - faster startup
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!hasInitiallyLoaded) {
-        setHasInitiallyLoaded(true);
-        setIsInitialLoad(false);
-      }
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [hasInitiallyLoaded]);
 
   // Prevent loading screen from showing on navigations (room exits, page refreshes, etc)
   useEffect(() => {

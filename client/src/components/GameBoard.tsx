@@ -1248,13 +1248,12 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         <AvatarWithFrame
           src={game.playerXInfo.profileImageUrl || game.playerXInfo.profilePicture}
           alt="Player X"
-          size="lg" // <-- CHANGE: Increased size
+          size="lg"
           borderType={playerXAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerXInfo)}
           fallbackText={game.playerXInfo.firstName?.charAt(0) || game.playerXInfo.displayName?.charAt(0) || game.playerXInfo.username?.charAt(0) || 'X'}
         />
       </div>
     ) : (
-      // CHANGE: Updated placeholder size
       <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center"> 
         <span className="text-xl text-white font-bold">X</span>
       </div>
@@ -1409,13 +1408,12 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   <AvatarWithFrame
                     src={game.playerOInfo.profileImageUrl || game.playerOInfo.profilePicture}
                     alt="Player O"
-                    size="lg" // <-- CHANGE: Increased size
+                    size="lg"
                     borderType={playerOAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerOInfo)}
                     fallbackText={game.playerOInfo.firstName?.charAt(0) || game.playerOInfo.displayName?.charAt(0) || game.playerOInfo.username?.charAt(0) || 'O'}
                   />
                 </div>
               ) : (
-                // CHANGE: Updated placeholder size
                 <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center">
                   <span className="text-xl text-white font-bold">O</span>
                 </div>
