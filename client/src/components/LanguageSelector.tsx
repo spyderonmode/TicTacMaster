@@ -8,6 +8,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { UserPlus, Users, Send, Check } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { BasicFriendInfo } from '@shared/schema';
+import { CachedProfileImage } from './CachedProfileImage';
 
 interface InviteFriendsModalProps {
   open: boolean;
@@ -129,17 +130,13 @@ export function InviteFriendsModal({ open, onClose, roomId, roomName }: InviteFr
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          {friend.profileImageUrl ? (
-                            <img
-                              src={friend.profileImageUrl}
-                              alt={friend.displayName || friend.username || 'Friend'}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                              {(friend.displayName || friend.username || '?').charAt(0).toUpperCase()}
-                            </div>
-                          )}
+                          <CachedProfileImage
+                            src={friend.profileImageUrl}
+                            alt={friend.displayName || friend.username || 'Friend'}
+                            className="w-10 h-10 rounded-full object-cover"
+                            fallbackClassName="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center"
+                            fallbackIconClassName="w-5 h-5 text-white"
+                          />
                           <div>
                             <p className="font-medium text-sm">
                               {friend.displayName || friend.username}

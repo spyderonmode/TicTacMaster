@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -27,27 +27,40 @@ export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
+  const lastMutationRef = useRef<number>(0);
+  const pendingInvalidateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch room invitations only when authenticated
-  // Only fetch on mount, not on interval - invitations will trigger via WebSocket
   const { data: invitations = [] } = useQuery({
     queryKey: ['/api/room-invitations'],
     enabled: isAuthenticated,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
+    staleTime: 10000,
+    gcTime: 60000,
   });
 
-  // Listen for WebSocket room invitation events
   useEffect(() => {
     const handleRoomInvitation = (event: any) => {
-      console.log('🔔 Room invitation received via WebSocket:', event.detail);
-      // Immediately refetch invitations to show the new invitation
-      queryClient.invalidateQueries({ queryKey: ['/api/room-invitations'] });
+      if (Date.now() - lastMutationRef.current < 3000) {
+        return;
+      }
+      
+      if (pendingInvalidateRef.current) {
+        clearTimeout(pendingInvalidateRef.current);
+      }
+      
+      pendingInvalidateRef.current = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/room-invitations'] });
+        pendingInvalidateRef.current = null;
+      }, 1000);
     };
 
     window.addEventListener('room_invitation_received', handleRoomInvitation as EventListener);
     return () => {
       window.removeEventListener('room_invitation_received', handleRoomInvitation as EventListener);
+      if (pendingInvalidateRef.current) {
+        clearTimeout(pendingInvalidateRef.current);
+      }
     };
   }, [queryClient]);
 
@@ -70,6 +83,7 @@ export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
       return response.json();
     },
     onSuccess: (data, variables) => {
+      lastMutationRef.current = Date.now();
       if (variables.response === 'accepted') {
         onRoomJoin(data.room);
         toast({
@@ -82,8 +96,10 @@ export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
           description: t('youDeclinedInvitation'),
         });
       }
-      queryClient.invalidateQueries({ queryKey: ['/api/room-invitations'] });
       setVisibleInvitation(null);
+      queryClient.setQueryData(['/api/room-invitations'], (old: any[]) => 
+        old ? old.filter((inv: any) => inv.id !== variables.invitationId) : []
+      );
     },
     onError: (error: any) => {
       // Check if it's an insufficient coins error

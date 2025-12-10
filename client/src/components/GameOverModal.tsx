@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatNumber } from "@/lib/utils";
+import { CachedProfileImage } from "./CachedProfileImage";
 
 interface GameOverModalProps {
   open: boolean;
@@ -544,10 +545,12 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                       position: 'relative'
                     }}>
                       {isOnlineGame && (winnerInfo?.profilePicture || winnerInfo?.profileImageUrl) ? (
-                        <img
+                        <CachedProfileImage
                           src={winnerInfo.profilePicture || winnerInfo.profileImageUrl}
-                          alt={winnerName}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          alt={winnerName || 'Winner'}
+                          className="w-full h-full rounded-full object-cover"
+                          fallbackClassName="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center"
+                          fallbackIconClassName="w-10 h-10 text-white"
                         />
                       ) : (
                         <span style={{ 
@@ -622,10 +625,12 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                       filter: 'grayscale(50%)'
                     }}>
                       {isOnlineGame && (loserInfo?.profilePicture || loserInfo?.profileImageUrl) ? (
-                        <img
+                        <CachedProfileImage
                           src={loserInfo.profilePicture || loserInfo.profileImageUrl}
-                          alt={loserName}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          alt={loserName || 'Loser'}
+                          className="w-full h-full rounded-full object-cover"
+                          fallbackClassName="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center"
+                          fallbackIconClassName="w-10 h-10 text-white"
                         />
                       ) : (
                         <span style={{ 

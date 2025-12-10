@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, staticDataQueryOptions, userDataQueryOptions } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -266,6 +266,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
   const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pieces");
+  const [activatingStyleId, setActivatingStyleId] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<{
     type: "piece" | "frame";
     item: any;
@@ -284,10 +285,12 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
   const { data: userData } = useQuery<UserData>({
     queryKey: ["/api/users", user?.userId],
     enabled: !!user?.userId,
+    ...userDataQueryOptions,
   });
 
   const { data: pieceStylesData } = useQuery<{ pieceStyles: PieceStyle[]; activeStyle: string }>({
     queryKey: ["/api/piece-styles"],
+    ...userDataQueryOptions,
   });
 
   const purchaseMutation = useMutation({
@@ -323,6 +326,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
 
   const setActiveMutation = useMutation({
     mutationFn: async (styleName: string) => {
+      setActivatingStyleId(styleName);
       return await apiRequest("/api/piece-styles/set-active", {
         method: "POST",
         body: { styleName },
@@ -330,12 +334,14 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/piece-styles"] });
+      setActivatingStyleId(null);
       toast({
         title: "Style Activated!",
         description: "Your piece style has been changed.",
       });
     },
     onError: (error: any) => {
+      setActivatingStyleId(null);
       toast({
         title: "Failed to Change Style",
         description: error.message || "Could not change piece style",
@@ -344,14 +350,14 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
     },
   });
 
-  // Fetch all available stickers
   const { data: stickers = [] } = useQuery<StickerItem[]>({
     queryKey: ['/api/stickers'],
+    ...staticDataQueryOptions,
   });
 
-  // Fetch user's owned stickers
   const { data: ownedStickersData = [] } = useQuery<Array<{ stickerId: string; sticker: StickerItem }>>({
     queryKey: ['/api/stickers/owned'],
+    ...userDataQueryOptions,
   });
 
   // Purchase sticker mutation
@@ -387,14 +393,14 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
     },
   });
 
-  // Fetch all available avatar frames
   const { data: avatarFrames = [] } = useQuery<AvatarFrameItem[]>({
     queryKey: ['/api/avatar-frames'],
+    ...staticDataQueryOptions,
   });
 
-  // Fetch user's owned avatar frames
   const { data: ownedFramesData = [] } = useQuery<Array<{ frameId: string; frame: AvatarFrameItem; isActive: boolean }>>({
     queryKey: ['/api/avatar-frames/owned'],
+    ...userDataQueryOptions,
   });
 
   // Purchase avatar frame mutation
@@ -634,7 +640,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                           e.stopPropagation();
                           handleSetActive(style.id);
                         }}
-                        disabled={isActive || setActiveMutation.isPending}
+                        disabled={isActive || activatingStyleId === style.id}
                         size="sm"
                         className={`text-xs py-1 h-auto ${isActive 
                           ? "bg-green-600 hover:bg-green-700" 
@@ -642,7 +648,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                         }`}
                         data-testid={`button-activate-${style.id}`}
                       >
-                        {isActive ? "Active" : "Activate"}
+                        {activatingStyleId === style.id ? "Activating..." : isActive ? "Active" : "Activate"}
                       </Button>
                     ) : (
                       <>

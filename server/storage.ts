@@ -3442,6 +3442,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWeeklyLeaderboard(weekNumber: number, year: number, limit: number = 50): Promise<Array<WeeklyLeaderboard & { user: User; rank: number }>> {
+    // Optimized query - only fetch essential fields for leaderboard display
     const leaderboard = await db
       .select({
         id: weeklyLeaderboard.id,
@@ -3449,36 +3450,13 @@ export class DatabaseStorage implements IStorage {
         weekNumber: weeklyLeaderboard.weekNumber,
         year: weeklyLeaderboard.year,
         weeklyWins: weeklyLeaderboard.weeklyWins,
-        weeklyLosses: weeklyLeaderboard.weeklyLosses,
-        weeklyDraws: weeklyLeaderboard.weeklyDraws,
-        weeklyGames: weeklyLeaderboard.weeklyGames,
-        weeklyWinStreak: weeklyLeaderboard.weeklyWinStreak,
-        bestWeeklyWinStreak: weeklyLeaderboard.bestWeeklyWinStreak,
         coinsEarned: weeklyLeaderboard.coinsEarned,
-        rewardReceived: weeklyLeaderboard.rewardReceived,
-        finalRank: weeklyLeaderboard.finalRank,
-        rewardAmount: weeklyLeaderboard.rewardAmount,
-        createdAt: weeklyLeaderboard.createdAt,
-        updatedAt: weeklyLeaderboard.updatedAt,
         user: {
           id: users.id,
-          email: users.email,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          displayName: users.displayName,
           username: users.username,
+          displayName: users.displayName,
           profileImageUrl: users.profileImageUrl,
-          isGuest: users.isGuest,
-          guestSessionExpiry: users.guestSessionExpiry,
-          wins: users.wins,
-          losses: users.losses,
-          draws: users.draws,
-          coins: users.coins,
-          currentWinStreak: users.currentWinStreak,
-          bestWinStreak: users.bestWinStreak,
           selectedAchievementBorder: users.selectedAchievementBorder,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt,
         },
       })
       .from(weeklyLeaderboard)
@@ -3492,10 +3470,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(
         desc(weeklyLeaderboard.coinsEarned),
-        desc(weeklyLeaderboard.weeklyWins),
-        desc(weeklyLeaderboard.weeklyGames),
-        desc(weeklyLeaderboard.bestWeeklyWinStreak),
-        weeklyLeaderboard.userId // Final deterministic tie-breaker
+        desc(weeklyLeaderboard.weeklyWins)
       )
       .limit(limit);
 

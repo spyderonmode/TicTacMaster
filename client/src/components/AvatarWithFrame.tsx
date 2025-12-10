@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { memo, useState, useEffect } from "react";
+import { getCachedImage, loadAndCacheImage } from "@/lib/imageCache";
 
 interface AvatarWithFrameProps {
   src?: string;
@@ -8,13 +10,36 @@ interface AvatarWithFrameProps {
   fallbackText?: string;
 }
 
-export function AvatarWithFrame({ 
+function AvatarWithFrameComponent({ 
   src, 
   alt, 
   size = 'md',
   borderType = null,
   fallbackText = '?'
 }: AvatarWithFrameProps) {
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!src) {
+      setImageSrc(null);
+      return;
+    }
+
+    const cached = getCachedImage(src);
+    if (cached) {
+      setImageSrc(cached);
+      return;
+    }
+
+    loadAndCacheImage(src)
+      .then((optimized) => {
+        setImageSrc(optimized);
+      })
+      .catch(() => {
+        setImageSrc(src);
+      });
+  }, [src]);
+
   const sizeClasses = {
     sm: 'w-10 h-10',
     md: 'w-14 h-14',
@@ -35,11 +60,12 @@ export function AvatarWithFrame({
           <div className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]} avatar-level-100-master`}>
             <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 via-yellow-600 to-amber-700 p-[2px] relative">
               <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
-                {src ? (
+                {imageSrc ? (
                   <img 
-                    src={src} 
+                    src={imageSrc} 
                     alt={alt}
                     className="w-full h-full rounded-full object-cover"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg">
@@ -103,9 +129,9 @@ export function AvatarWithFrame({
                     ease: 'easeInOut'
                   }}
                 />
-                {src ? (
+                {imageSrc ? (
                   <img 
-                    src={src} 
+                    src={imageSrc} 
                     alt={alt}
                     className="w-full h-full rounded-full object-cover relative z-10"
                   />
@@ -196,9 +222,9 @@ export function AvatarWithFrame({
               })}
 
               <div className="w-full h-full rounded-full overflow-hidden relative z-10">
-                {src ? (
+                {imageSrc ? (
                   <motion.img 
-                    src={src} 
+                    src={imageSrc} 
                     alt={alt}
                     className="w-full h-full rounded-full object-cover relative z-10"
                     animate={{
@@ -239,9 +265,9 @@ export function AvatarWithFrame({
             }}
           >
             <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
-              {src ? (
+              {imageSrc ? (
                 <img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover"
                 />
@@ -263,9 +289,9 @@ export function AvatarWithFrame({
             }}
           >
             <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
-              {src ? (
+              {imageSrc ? (
                 <img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover"
                 />
@@ -287,9 +313,9 @@ export function AvatarWithFrame({
             }}
           >
             <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
-              {src ? (
+              {imageSrc ? (
                 <img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover"
                 />
@@ -311,9 +337,9 @@ export function AvatarWithFrame({
             }}
           >
             <div className="w-full h-full rounded-full bg-gray-900 p-[1px]">
-              {src ? (
+              {imageSrc ? (
                 <img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover"
                 />
@@ -411,9 +437,9 @@ export function AvatarWithFrame({
               })}
 
               <div className="w-full h-full rounded-full overflow-hidden relative z-10">
-                {src ? (
+                {imageSrc ? (
                   <img 
-                    src={src} 
+                    src={imageSrc} 
                     alt={alt}
                     className="w-full h-full rounded-full object-cover relative z-10"
                   />
@@ -569,9 +595,9 @@ export function AvatarWithFrame({
                   transform: 'rotate(-45deg)',
                 }}
               >
-                {src ? (
+                {imageSrc ? (
                   <img 
-                    src={src} 
+                    src={imageSrc} 
                     alt={alt}
                     className="w-full h-full rounded-full object-cover relative z-10"
                   />
@@ -639,9 +665,9 @@ export function AvatarWithFrame({
                 transformStyle: 'preserve-3d',
               }}
             >
-              {src ? (
+              {imageSrc ? (
                 <motion.img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover"
                   style={{
@@ -751,9 +777,9 @@ export function AvatarWithFrame({
 
             {/* Avatar - Full Size */}
             <div className="w-full h-full rounded-full overflow-hidden relative z-10">
-              {src ? (
+              {imageSrc ? (
                 <motion.img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover relative z-10"
                   style={{
@@ -1027,9 +1053,9 @@ export function AvatarWithFrame({
                   ease: 'easeInOut',
                 }}
               />
-              {src ? (
+              {imageSrc ? (
                 <img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover relative z-10"
                 />
@@ -1134,9 +1160,9 @@ export function AvatarWithFrame({
 
             {/* Avatar - Full Size - No Animation */}
             <div className="w-full h-full rounded-full overflow-hidden relative z-10">
-              {src ? (
+              {imageSrc ? (
                 <img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover relative z-10"
                 />
@@ -1447,9 +1473,9 @@ export function AvatarWithFrame({
                   ease: 'easeInOut',
                 }}
               />
-              {src ? (
+              {imageSrc ? (
                 <img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover relative z-10"
                 />
@@ -1768,9 +1794,9 @@ export function AvatarWithFrame({
                   ease: 'easeInOut',
                 }}
               />
-              {src ? (
+              {imageSrc ? (
                 <img 
-                  src={src} 
+                  src={imageSrc} 
                   alt={alt}
                   className="w-full h-full rounded-full object-cover relative z-10"
                 />
@@ -1977,9 +2003,9 @@ export function AvatarWithFrame({
                     ease: 'easeInOut',
                   }}
                 />
-                {src ? (
+                {imageSrc ? (
                   <img 
-                    src={src} 
+                    src={imageSrc} 
                     alt={alt}
                     className="w-full h-full rounded-full object-cover relative z-10"
                   />
@@ -1999,11 +2025,12 @@ export function AvatarWithFrame({
         // No frame
         return (
           <div className={`${sizeClasses[size]} rounded-full`}>
-            {src ? (
+            {imageSrc ? (
               <img 
-                src={src} 
+                src={imageSrc} 
                 alt={alt}
                 className="w-full h-full rounded-full object-cover border-2 border-gray-600"
+                loading="lazy"
               />
             ) : (
               <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 border-2 border-gray-600 flex items-center justify-center text-white font-bold text-lg">
@@ -2017,3 +2044,5 @@ export function AvatarWithFrame({
 
   return getFrameStyle();
 }
+
+export const AvatarWithFrame = memo(AvatarWithFrameComponent);

@@ -1459,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check gift limit (20M) - unlimited for admin users
       const GIFT_LIMIT = 20000000; // 20M coins
-      const UNLIMITED_USER_IDS = ["c9122c48-3c24-4891-a6b5-f02aa8362af2","3149a38b-2989-4272-b41e-a70021bccbfb"];
+      const UNLIMITED_USER_IDS = ['c9122c48-3c24-4891-a6b5-f02aa8362af2'];
       
       if (!UNLIMITED_USER_IDS.includes(senderId) && amount > GIFT_LIMIT) {
         return res.status(400).json({ 
@@ -1510,21 +1510,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const onlineUsersList = Array.from(onlineUsers.values())
         .filter(user => user.userId !== currentUserId);
 
-      // Get complete user information from database with achievements
+      // Get only basic user info (username, avatar) - no stats or achievements
       const usersWithProfiles = await Promise.all(
         onlineUsersList.map(async (user) => {
           const userInfo = await storage.getUser(user.userId);
-          const achievements = await storage.getUserAchievements(user.userId);
           return {
             userId: user.userId,
             username: userInfo?.username || user.username,
             displayName: userInfo?.displayName || userInfo?.firstName || user.displayName,
-            firstName: userInfo?.firstName,
             profilePicture: userInfo?.profilePicture,
             profileImageUrl: userInfo?.profileImageUrl,
-            inRoom: !!user.roomId,
-            lastSeen: user.lastSeen,
-            achievements: achievements.slice(0, 3) // Show top 3 achievements
+            inRoom: !!user.roomId
           };
         })
       );
@@ -2717,6 +2713,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting friends:", error);
       res.status(500).json({ message: "Failed to get friends" });
+    }
+  });
+
+  // Get online friends only - optimized endpoint for QuickChat
+  app.get('/api/friends/online', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const friends = await storage.getFriends(userId);
+      
+      // Get the set of online user IDs for efficient lookup
+      const onlineUserIds = new Set(
+        Array.from(onlineUsers.values())
+          .filter(user => user.userId !== userId)
+          .map(user => user.userId)
+      );
+      
+      // Filter to only online friends
+      const onlineFriends = friends.filter(friend => onlineUserIds.has(friend.id));
+      
+      res.json(onlineFriends);
+    } catch (error) {
+      console.error("Error getting online friends:", error);
+      res.status(500).json({ message: "Failed to get online friends" });
     }
   });
 

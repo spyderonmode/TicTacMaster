@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { UserPlus, Users, Send, Check } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { BasicFriendInfo } from '@shared/schema';
+import { CachedProfileImage } from './CachedProfileImage';
 
 interface InviteFriendsModalProps {
   open: boolean;
@@ -19,8 +20,8 @@ interface InviteFriendsModalProps {
 export function InviteFriendsModal({ open, onClose, roomId, roomName }: InviteFriendsModalProps) {
   const { t } = useTranslation();
   const [invitedFriends, setInvitedFriends] = useState<Set<string>>(new Set());
+  const [invitingId, setInvitingId] = useState<string | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Fetch friends list
   const { data: friends = [], isLoading: friendsLoading } = useQuery<BasicFriendInfo[]>({
@@ -28,27 +29,34 @@ export function InviteFriendsModal({ open, onClose, roomId, roomName }: InviteFr
     enabled: open,
   });
 
-  // Send invitation mutation
+  // Send invitation mutation (per-friend loading fix)
   const sendInvitationMutation = useMutation({
     mutationFn: async (friendId: string) => {
+      setInvitingId(friendId); // ⭐ track which friend is being invited
+
       const response = await apiRequest(`/api/rooms/${roomId}/invite`, {
         method: 'POST',
-        body: { invitedId: friendId }
+        body: { invitedId: friendId },
       });
+
       return response.json();
     },
     onSuccess: (_, friendId) => {
-      setInvitedFriends(prev => new Set([...Array.from(prev), friendId]));
+      setInvitedFriends((prev) => new Set(prev).add(friendId));
+      setInvitingId(null); // clear loading state
+
       toast({
         title: t('invitationSent'),
         description: t('friendInvitedToRoom'),
       });
     },
     onError: (error: any) => {
+      setInvitingId(null); // clear loading state
+
       toast({
         title: t('error'),
         description: error.message || t('failedToSendInvitation'),
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -59,6 +67,7 @@ export function InviteFriendsModal({ open, onClose, roomId, roomName }: InviteFr
 
   const handleClose = () => {
     setInvitedFriends(new Set());
+    setInvitingId(null);
     onClose();
   };
 
@@ -68,10 +77,10 @@ export function InviteFriendsModal({ open, onClose, roomId, roomName }: InviteFr
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-blue-500" />
-{t('inviteFriendsTo')} {roomName}
+            {t('inviteFriendsTo')} {roomName}
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           {friendsLoading ? (
             <div className="text-center py-8">
@@ -82,36 +91,30 @@ export function InviteFriendsModal({ open, onClose, roomId, roomName }: InviteFr
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
               <h3 className="font-medium text-lg mb-2">{t('noFriendsFound')}</h3>
-              <p className="text-sm">
-                {t('addFriendsFirstToInvite')}
-              </p>
+              <p className="text-sm">{t('addFriendsFirstToInvite')}</p>
             </div>
           ) : (
             <div className="space-y-3">
               <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                 {t('selectFriendsToInvite')}
               </div>
-              
+
               {friends.map((friend) => {
                 const isInvited = invitedFriends.has(friend.id);
-                const isInviting = sendInvitationMutation.isPending;
-                
+                const isInviting = invitingId === friend.id;
+
                 return (
                   <Card key={friend.id} className="border border-gray-200 dark:border-gray-700">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          {friend.profileImageUrl ? (
-                            <img
-                              src={friend.profileImageUrl}
-                              alt={friend.displayName || friend.username || 'Friend'}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                              {(friend.displayName || friend.username || '?').charAt(0).toUpperCase()}
-                            </div>
-                          )}
+                          <CachedProfileImage
+                            src={friend.profileImageUrl}
+                            alt={friend.displayName || friend.username || 'Friend'}
+                            className="w-10 h-10 rounded-full object-cover"
+                            fallbackClassName="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center"
+                            fallbackIconClassName="w-5 h-5 text-white"
+                          />
                           <div>
                             <p className="font-medium text-sm">
                               {friend.displayName || friend.username}
@@ -121,7 +124,7 @@ export function InviteFriendsModal({ open, onClose, roomId, roomName }: InviteFr
                             </div>
                           </div>
                         </div>
-                        
+
                         <div>
                           {isInvited ? (
                             <Button
@@ -152,12 +155,9 @@ export function InviteFriendsModal({ open, onClose, roomId, roomName }: InviteFr
               })}
             </div>
           )}
-          
+
           <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-            >
+            <Button variant="outline" onClick={handleClose}>
               {t('close')}
             </Button>
           </div>

@@ -16,7 +16,6 @@ import { GameOverModal } from "@/components/GameOverModal";
 import { PlayAgainRequestDialog } from "@/components/PlayAgainRequestDialog";
 import { EmailVerificationModal } from "@/components/EmailVerificationModal";
 import { MatchmakingModal } from "@/components/MatchmakingModal";
-import { OnlineUsersModal } from "@/components/OnlineUsersModal";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { AchievementModal } from "@/components/AchievementModal";
 import { LevelUpModal } from "@/components/LevelUpModal";
@@ -37,12 +36,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { GamepadIcon, LogOut, User, Zap, Loader2, Users, Settings, Menu, X, Palette, Trophy, Languages, BookOpen, ShoppingBag } from "lucide-react";
+import { GamepadIcon, LogOut, User, Zap, Loader2, Users, Settings, Menu, X, Palette, Trophy, Languages, BookOpen, ShoppingBag, Play } from "lucide-react";
 import { logout } from "@/lib/firebase";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { CustomLanguageSelector } from "@/components/CustomLanguageSelector";
 import { useLocation } from "wouter";
 import { formatNumber } from "@/lib/utils";
+import { CachedProfileImage } from "@/components/CachedProfileImage";
 
 
 export default function Home() {
@@ -65,8 +65,6 @@ export default function Home() {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showMatchmaking, setShowMatchmaking] = useState(false);
   const [isMatchmaking, setIsMatchmaking] = useState(false);
-  const [showOnlineUsers, setShowOnlineUsers] = useState(false);
-  const [onlineUserCount, setOnlineUserCount] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
   const [showHeaderSidebar, setShowHeaderSidebar] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
@@ -94,6 +92,9 @@ export default function Home() {
   const hasCheckedDailyReward = useRef(false);
   const headerSidebarRef = useRef<HTMLDivElement>(null);
   const gameBoardRef = useRef<HTMLDivElement>(null);
+  const lastStatsRefreshRef = useRef<number>(0);
+  const lastLevelUpCheckRef = useRef<number>(0);
+  const pendingLevelUpCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playAgainRequestRef = useRef<any>(null);
   const showPlayAgainRequestRef = useRef<boolean>(false);
@@ -106,7 +107,46 @@ export default function Home() {
   const { data: userStats } = useQuery({
     queryKey: ["/api/users", (user as any)?.userId, "online-stats"],
     enabled: !!user && !!(user as any)?.userId,
+    staleTime: 5000,
   });
+
+  const refreshUserStats = () => {
+    const now = Date.now();
+    if (now - lastStatsRefreshRef.current < 3000) {
+      return;
+    }
+    lastStatsRefreshRef.current = now;
+    console.log('📊 Throttled stats refresh triggered');
+    queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
+    queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
+  };
+
+  const checkPendingLevelUps = async () => {
+    if (!user || showGameOver) return;
+    
+    const now = Date.now();
+    if (now - lastLevelUpCheckRef.current < 2000) {
+      return;
+    }
+    lastLevelUpCheckRef.current = now;
+
+    try {
+      const response = await fetch('/api/level-ups/pending', {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const levelUps = await response.json();
+        if (levelUps.length > 0) {
+          const latestLevelUp = levelUps[0];
+          setLevelUpData(latestLevelUp);
+          setShowLevelUp(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for level ups:', error);
+    }
+  };
 
   // Get current user's role in the room (to check if they're a spectator)
   const { data: roomParticipants = [] } = useQuery({
@@ -130,7 +170,7 @@ export default function Home() {
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           return await response.json();
         },
-        staleTime: 60000,
+        staleTime: 0,
       });
       queryClient.prefetchQuery({
         queryKey: ['/api/leaderboard/time-left'],
@@ -280,33 +320,11 @@ export default function Home() {
     }
   }, [user]);
 
-  // Check for pending level ups when user loads home
   useEffect(() => {
-    const checkPendingLevelUps = async () => {
-      if (!user) return;
-      if (showGameOver) return; // Don't show level up if game over modal is showing
-
-      try {
-        const response = await fetch('/api/level-ups/pending', {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const levelUps = await response.json();
-          if (levelUps.length > 0) {
-            // Show the most recent level up
-            const latestLevelUp = levelUps[0];
-            setLevelUpData(latestLevelUp);
-            setShowLevelUp(true);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking for level ups:', error);
-      }
-    };
-
-    checkPendingLevelUps();
-  }, [user, showGameOver]);
+    if (user && !showGameOver) {
+      checkPendingLevelUps();
+    }
+  }, [user]);
 
   // Check for pending monthly rank popup when user loads home
   useEffect(() => {
@@ -338,7 +356,6 @@ export default function Home() {
     checkPendingRankPopup();
   }, [user, toast]);
 
-  // Handle level up acknowledgment
   const handleLevelUpAcknowledge = async () => {
     if (!levelUpData) return;
 
@@ -351,52 +368,18 @@ export default function Home() {
       if (response.ok) {
         setShowLevelUp(false);
         setLevelUpData(null);
-
-        // Check if there are more level ups to show
-        const pendingResponse = await fetch('/api/level-ups/pending', {
-          credentials: 'include'
-        });
-
-        if (pendingResponse.ok) {
-          const remainingLevelUps = await pendingResponse.json();
-          if (remainingLevelUps.length > 0) {
-            // Show the next level up
-            const nextLevelUp = remainingLevelUps[0];
-            setLevelUpData(nextLevelUp);
-            setShowLevelUp(true);
-          }
-        }
+        lastLevelUpCheckRef.current = 0;
+        setTimeout(() => checkPendingLevelUps(), 500);
       }
     } catch (error) {
       console.error('Error acknowledging level up:', error);
     }
   };
 
-  // Handle game over modal close - check for pending level ups after closing
-  const handleGameOverClose = async () => {
+  const handleGameOverClose = () => {
     setShowGameOver(false);
-
-    // Small delay to ensure smooth transition before checking for level ups
-    setTimeout(async () => {
-      if (!user) return;
-
-      try {
-        const response = await fetch('/api/level-ups/pending', {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const levelUps = await response.json();
-          if (levelUps.length > 0) {
-            const latestLevelUp = levelUps[0];
-            setLevelUpData(latestLevelUp);
-            setShowLevelUp(true);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking for level ups after game over:', error);
-      }
-    }, 300); // 300ms delay for smooth transition
+    lastLevelUpCheckRef.current = 0;
+    setTimeout(() => checkPendingLevelUps(), 500);
   };
 
   // Close header sidebar when clicking outside or via custom event
@@ -543,7 +526,7 @@ export default function Home() {
       console.log('🚪 Room closed event received:', event.detail);
       try {
         const { triggeredBy, reason } = event.detail;
-        
+
         // Clear all game and room state
         setCurrentGame(null);
         setCurrentRoom(null);
@@ -831,16 +814,6 @@ export default function Home() {
 
           // No notification needed for game start
 
-          // Scroll to game board
-          setTimeout(() => {
-            const gameBoard = document.getElementById('tic-tac-toe-board');
-            if (gameBoard) {
-              gameBoard.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center'
-              });
-            }
-          }, 100);
         }
       }
     };
@@ -889,9 +862,6 @@ export default function Home() {
       // Home received WebSocket message
       // Message type being processed
       switch (lastMessage.type) {
-        case 'online_users_update':
-          setOnlineUserCount(lastMessage.count);
-          break;
         case 'chat_message_received':
           // Event is already dispatched by useWebSocket hook, no need to dispatch again
           break;
@@ -975,24 +945,6 @@ export default function Home() {
                 });
               }
 
-              // Auto-scroll to game board when game starts - fixed timing issues
-              console.log('🔄 About to trigger auto-scroll to game board');
-              // Use requestAnimationFrame to ensure DOM is ready, then scroll
-              requestAnimationFrame(() => {
-                setTimeout(() => {
-                  console.log('📍 Attempting to scroll to game board, ref exists:', !!gameBoardRef.current);
-                  if (gameBoardRef.current) {
-                    console.log('📍 GameBoardRef element:', gameBoardRef.current);
-                    gameBoardRef.current.scrollIntoView({ 
-                      behavior: 'smooth', 
-                      block: 'start' 
-                    });
-                    console.log('✅ Successfully scrolled to game board');
-                  } else {
-                    console.warn('⚠️ GameBoard ref not found, scroll failed');
-                  }
-                }, 150); // Single timeout with optimized delay
-              });
             }, 100); // Ensure proper state synchronization
 
             // Invalidate queries to refresh room data
@@ -1191,35 +1143,9 @@ export default function Home() {
             //console.log('🎮 Setting complete game result:', gameResult);
             setGameResult(gameResult);
 
-            // Invalidate stats cache to update user stats immediately
-            console.log('📊 Game ended - refreshing user stats cache');
-            queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
-            queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
-
-            // Call individual stats API to ensure immediate update
-            if (userId) {
-              console.log(`📊 Fetching updated stats for user: ${userId}`);
-              fetch(`/api/users/${userId}/stats`, {
-                credentials: 'include'
-              }).then(response => {
-                if (response.ok) {
-                  return response.json();
-                } else {
-                  throw new Error('Failed to fetch stats');
-                }
-              }).then(stats => {
-                console.log('✅ User stats fetched and updated:', stats);
-                // Force re-invalidate after successful fetch
-                queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
-                queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
-              }).catch(error => {
-                console.error('❌ Error fetching user stats:', error);
-              });
-            }
+            refreshUserStats();
 
             // Close all modals to prevent blocking the game over modal
-            setShowOnlineUsers(false);
             setShowProfile(false);
             setShowAchievements(false);
             setShowLeaderboard(false);
@@ -1775,11 +1701,7 @@ export default function Home() {
       setGameResult(enrichedResult);
       setShowGameOver(true);
 
-      // Refresh user stats cache for online games
-      console.log('📊 Online game ended - refreshing user stats cache');
-      queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
+      refreshUserStats();
     };
 
     window.addEventListener('websocket_game_over', handleWebSocketGameOver);
@@ -1899,11 +1821,7 @@ export default function Home() {
       }
     }
 
-    // Invalidate stats cache for local games too
-    console.log('📊 Local game ended - refreshing user stats cache');
-    queryClient.invalidateQueries({ queryKey: ["/api/users", (user as any)?.userId, "online-stats"] });
-    queryClient.invalidateQueries({ queryKey: ['/api/users/online'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
+    refreshUserStats();
   };
 
   const handlePlayAgain = async () => {
@@ -2106,17 +2024,13 @@ export default function Home() {
 
                 {/* Main Profile Picture Container - Slightly larger sizing */}
                 <div className="relative w-11 h-11 sm:w-14 sm:h-14 md:w-20 md:h-20 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-full p-0.5 sm:p-1 shadow-2xl">
-                  {user?.profilePicture ? (
-                    <img 
-                      src={user.profilePicture} 
-                      alt="Profile" 
-                      className="w-full h-full rounded-full object-cover border-2 border-white/30 shadow-lg"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 rounded-full flex items-center justify-center border-2 border-white/30">
-                      <User className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-white" />
-                    </div>
-                  )}
+                  <CachedProfileImage
+                    src={user?.profilePicture}
+                    alt="Profile"
+                    className="w-full h-full rounded-full object-cover border-2 border-white/30 shadow-lg"
+                    fallbackClassName="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 rounded-full flex items-center justify-center border-2 border-white/30"
+                    fallbackIconClassName="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-white"
+                  />
 
                   {/* Online Status with Enhanced Glow - Mobile responsive */}
                   <div className={`absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-3 h-3 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 sm:border-3 border-slate-800 ${actualOnlineStatus ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-red-500 shadow-lg shadow-red-500/50'} animate-pulse`}></div>
@@ -2255,25 +2169,6 @@ export default function Home() {
                       <Friends />
                     </div>
 
-                    {/* Online Players */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-300">{t('onlineUsers')}</span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowOnlineUsers(true);
-                          setShowHeaderSidebar(false);
-                        }}
-                        className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600 text-xs"
-                      >
-                        {onlineUserCount} {t('playersLabel')}
-                      </Button>
-                    </div>
-
                     {/* Achievements */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -2400,6 +2295,21 @@ export default function Home() {
               </div>
             )}
 
+            {/* Room Management - Positioned after GameBoard for online mode */}
+            {selectedMode === 'online' && (
+              <div className="mt-4 sm:mt-6">
+                <RoomManager 
+                  currentRoom={currentRoom}
+                  onRoomJoin={handleRoomJoin}
+                  onRoomLeave={handleRoomLeave}
+                  onCreateRoom={() => setShowCreateRoom(true)}
+                  onGameStart={handleGameStart}
+                  gameMode={selectedMode}
+                  user={user}
+                />
+              </div>
+            )}
+
             {/* Game Rules - Small Trigger Card */}
             <Card 
               className="mt-4 sm:mt-6 bg-gradient-to-r from-blue-600 to-purple-600 border-blue-500/50 cursor-pointer hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg hover:shadow-blue-500/25" 
@@ -2497,19 +2407,6 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Room Management */}
-            {selectedMode === 'online' && (
-              <RoomManager 
-                currentRoom={currentRoom}
-                onRoomJoin={handleRoomJoin}
-                onRoomLeave={handleRoomLeave}
-                onCreateRoom={() => setShowCreateRoom(true)}
-                onGameStart={handleGameStart}
-                gameMode={selectedMode}
-                user={user}
-              />
             )}
 
             {/* Players & Spectators */}
@@ -2696,13 +2593,6 @@ export default function Home() {
         leaveRoom={leaveRoom}
       />
 
-      <OnlineUsersModal 
-        open={showOnlineUsers}
-        onClose={() => setShowOnlineUsers(false)}
-        currentRoom={currentRoom}
-        user={user}
-      />
-
       <LevelUpModal 
         open={showLevelUp}
         onClose={handleLevelUpAcknowledge}
@@ -2724,7 +2614,7 @@ export default function Home() {
           onClose={() => {
             setShowMonthlyRankPopup(false);
             setMonthlyRankData(null);
-            
+
             // If daily reward is pending, trigger it to show
             if (hasPendingDailyReward) {
               setHasPendingDailyReward(false);

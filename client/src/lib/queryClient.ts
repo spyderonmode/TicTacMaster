@@ -1,9 +1,39 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export const CACHE_TIMES = {
+  STATIC_DATA: 6 * 60 * 60 * 1000,
+  SEMI_STATIC: 30 * 60 * 1000,
+  DYNAMIC_DATA: 5 * 60 * 1000,
+  USER_DATA: 2 * 60 * 1000,
+  REAL_TIME: 30 * 1000,
+} as const;
+
+export const staticDataQueryOptions = {
+  staleTime: CACHE_TIMES.STATIC_DATA,
+  gcTime: CACHE_TIMES.STATIC_DATA * 2,
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+};
+
+export const semiStaticQueryOptions = {
+  staleTime: CACHE_TIMES.SEMI_STATIC,
+  gcTime: CACHE_TIMES.SEMI_STATIC * 2,
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
+};
+
+export const userDataQueryOptions = {
+  staleTime: CACHE_TIMES.USER_DATA,
+  gcTime: CACHE_TIMES.DYNAMIC_DATA,
+  refetchOnMount: true,
+  refetchOnWindowFocus: false,
+};
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    
+
     // Try to parse JSON error response to extract the message field
     try {
       const errorData = JSON.parse(text);
@@ -28,7 +58,7 @@ export async function apiRequest(
 ): Promise<Response> {
   const method = options?.method || 'GET';
   const data = options?.body;
-  
+
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},

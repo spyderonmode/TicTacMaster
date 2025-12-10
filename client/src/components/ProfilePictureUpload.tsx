@@ -12,6 +12,38 @@ interface ProfilePictureUploadProps {
   user: any;
 }
 
+const resizeImageTo256 = (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      
+      const size = Math.min(img.width, img.height);
+      const x = (img.width - size) / 2;
+      const y = (img.height - size) / 2;
+      
+      ctx.drawImage(img, x, y, size, size, 0, 0, 256, 256);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to create blob'));
+        }
+      }, 'image/png');
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 export function ProfilePictureUpload({ user }: ProfilePictureUploadProps) {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
@@ -20,11 +52,11 @@ export function ProfilePictureUpload({ user }: ProfilePictureUploadProps) {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
-    // Check file size (max 1MB)
-    if (file.size > 1 * 1024 * 1024) {
+    // Check file size (max 5MB for original, will be resized)
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Please select an image smaller than 1MB",
+        description: "Please select an image smaller than 5MB",
         variant: "destructive",
       });
       return;
@@ -43,11 +75,14 @@ export function ProfilePictureUpload({ user }: ProfilePictureUploadProps) {
     try {
       setUploading(true);
       
-      // Create a storage reference
-      const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+      // Resize image to 256x256 PNG before upload
+      const resizedBlob = await resizeImageTo256(file);
       
-      // Upload the file
-      await uploadBytes(storageRef, file);
+      // Create a storage reference
+      const storageRef = ref(storage, `profile-pictures/${user.uid}.png`);
+      
+      // Upload the resized file
+      await uploadBytes(storageRef, resizedBlob, { contentType: 'image/png' });
       
       // Get the download URL
       const downloadURL = await getDownloadURL(storageRef);

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { User, Eye, Users, Crown } from "lucide-react";
+import { CachedProfileImage } from "@/components/CachedProfileImage";
 
 interface PlayerListProps {
   roomId: string;
@@ -16,7 +17,7 @@ export function PlayerList({ roomId }: PlayerListProps) {
   const { t } = useTranslation();
   const { lastMessage } = useWebSocket();
   const [participants, setParticipants] = useState<any[]>([]);
-  
+
   // Initial fetch of participants via API
   const { data: initialParticipants = [], isLoading } = useQuery({
     queryKey: ["/api/rooms", roomId, "participants"],
@@ -39,7 +40,7 @@ export function PlayerList({ roomId }: PlayerListProps) {
     if (!lastMessage) return;
 
     const message = lastMessage;
-    
+
     // Handle join_room_success events (for the user who just joined)
     if (message.type === 'join_room_success' && message.room?.id === roomId) {
       // Update participants with the fresh data from server
@@ -47,24 +48,24 @@ export function PlayerList({ roomId }: PlayerListProps) {
         setParticipants(message.room.participants);
       }
     }
-    
+
     // Handle room_participant_joined events (for other users in the room)
     if (message.type === 'room_participant_joined' && message.roomId === roomId) {
       if (message.participants) {
         setParticipants(message.participants);
       }
     }
-    
+
     // Handle room_participants_updated events (if server sends these)
     if (message.type === 'room_participants_updated' && message.roomId === roomId) {
       setParticipants(message.participants);
     }
-    
+
     // Handle user_left_room events
     if (message.type === 'user_left_room' && message.roomId === roomId) {
       setParticipants(prev => prev.filter(p => p.userId !== message.userId));
     }
-    
+
   }, [lastMessage, roomId]);
 
   if (isLoading) {
@@ -105,7 +106,7 @@ export function PlayerList({ roomId }: PlayerListProps) {
               backgroundSize: '16px 16px'
             }}></div>
           </div>
-          
+
           <div className="relative z-10">
             <h4 className="text-sm font-semibold text-blue-300 mb-3 flex items-center gap-2">
               <Crown className="w-4 h-4 text-yellow-400" />
@@ -121,17 +122,13 @@ export function PlayerList({ roomId }: PlayerListProps) {
                   <div key={participant.id} className="relative overflow-hidden flex items-center justify-between p-3 bg-slate-700/50 backdrop-blur-sm rounded-lg border border-slate-600/50 hover:bg-slate-700/70 transition-all duration-300">
                     <div className="flex items-center space-x-3">
                       <div className="relative">
-                        {participant.user.profileImageUrl ? (
-                          <img 
-                            src={participant.user.profileImageUrl} 
-                            alt={t('playerAvatar')} 
-                            className="w-10 h-10 rounded-full object-cover border-2 border-blue-400/50"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center border-2 border-blue-400/50">
-                            <User className="w-5 h-5 text-white" />
-                          </div>
-                        )}
+                        <CachedProfileImage
+                          src={participant.user.profileImageUrl}
+                          alt={t('playerAvatar')}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-blue-400/50"
+                          fallbackClassName="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center border-2 border-blue-400/50"
+                          fallbackIconClassName="w-5 h-5 text-white"
+                        />
                         {/* Player number badge */}
                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-black border border-yellow-300">
                           {index + 1}
@@ -168,7 +165,7 @@ export function PlayerList({ roomId }: PlayerListProps) {
               backgroundSize: '16px 16px'
             }}></div>
           </div>
-          
+
           <div className="relative z-10">
             <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
               <Eye className="w-4 h-4 text-cyan-400" />
@@ -183,17 +180,13 @@ export function PlayerList({ roomId }: PlayerListProps) {
                 spectators.map((participant) => (
                   <div key={participant.id} className="flex items-center justify-between p-3 bg-slate-700/50 backdrop-blur-sm rounded-lg border border-slate-600/50 hover:bg-slate-700/70 transition-all duration-300">
                     <div className="flex items-center space-x-3">
-                      {participant.user.profileImageUrl ? (
-                        <img 
-                          src={participant.user.profileImageUrl} 
-                          alt={t('spectatorAvatar')} 
-                          className="w-9 h-9 rounded-full object-cover border-2 border-cyan-400/30"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center border-2 border-cyan-400/30">
-                          <User className="w-4 h-4 text-gray-300" />
-                        </div>
-                      )}
+                      <CachedProfileImage
+                        src={participant.user.profileImageUrl}
+                        alt={t('spectatorAvatar')}
+                        className="w-9 h-9 rounded-full object-cover border-2 border-cyan-400/30"
+                        fallbackClassName="w-9 h-9 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center border-2 border-cyan-400/30"
+                        fallbackIconClassName="w-4 h-4 text-gray-300"
+                      />
                       <span className="text-sm text-gray-200">
                         {participant.user.firstName || participant.user.username || t('anonymous')}
                       </span>

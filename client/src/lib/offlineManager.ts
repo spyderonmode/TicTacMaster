@@ -7,9 +7,6 @@ export class OfflineManager {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.handleOnline);
       window.addEventListener('offline', this.handleOffline);
-      
-      this.checkConnectivity();
-      setInterval(() => this.checkConnectivity(), 30000);
     }
   }
 
@@ -30,32 +27,11 @@ export class OfflineManager {
     this.notifyListeners();
   };
 
-  private async checkConnectivity() {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch('/api/health', {
-        method: 'HEAD',
-        cache: 'no-cache',
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      const wasOnline = this.isOnline;
-      this.isOnline = response.ok;
-      
-      if (wasOnline !== this.isOnline) {
-        this.notifyListeners();
-      }
-    } catch (error) {
-      const wasOnline = this.isOnline;
-      this.isOnline = false;
-      
-      if (wasOnline !== this.isOnline) {
-        this.notifyListeners();
-      }
+  setOnlineStatus(status: boolean) {
+    const wasOnline = this.isOnline;
+    this.isOnline = status;
+    if (wasOnline !== this.isOnline) {
+      this.notifyListeners();
     }
   }
 

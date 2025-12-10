@@ -12,6 +12,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import { BasicFriendInfo } from '@shared/schema';
 import { motion, AnimatePresence } from 'framer-motion';
 import { parseErrorMessage } from '@/lib/errorUtils';
+import { CachedProfileImage } from './CachedProfileImage';
 
 interface ChatMessage {
   fromMe: boolean;
@@ -32,34 +33,20 @@ export function QuickChat() {
   const [chatHistory, setChatHistory] = useState<Map<string, ChatMessage[]>>(new Map());
   const [unreadMessages, setUnreadMessages] = useState<Map<string, number>>(new Map());
 
-  // Fetch friends list
-  const { data: friends = [] } = useQuery<BasicFriendInfo[]>({
-    queryKey: ['/api/friends'],
+  // Fetch only online friends - optimized single API call
+  const { data: onlineFriendsData = [] } = useQuery<BasicFriendInfo[]>({
+    queryKey: ['/api/friends/online'],
     enabled: !!user,
-    staleTime: 30000,
+    refetchInterval: 30000,
+    staleTime: 15000,
   });
 
-  // Fetch online users
-  const { data: onlineUsersData } = useQuery<{ total: number; users: any[] }>({
-    queryKey: ['/api/users/online'],
-    enabled: !!user,
-    refetchInterval: 60000,
-    staleTime: 30000,
+  // Sort online friends by unread messages (friends with messages appear first)
+  const onlineFriends = [...onlineFriendsData].sort((a, b) => {
+    const aUnread = unreadMessages.get(a.id) || 0;
+    const bUnread = unreadMessages.get(b.id) || 0;
+    return bUnread - aUnread; // Sort by unread count (descending)
   });
-
-  // Helper function to check if a friend is online
-  const isUserOnline = (friendId: string) => {
-    return onlineUsersData?.users?.some(onlineUser => onlineUser.userId === friendId) || false;
-  };
-
-  // Get online friends, sorted by unread messages (friends with messages appear first)
-  const onlineFriends = friends
-    .filter(friend => isUserOnline(friend.id))
-    .sort((a, b) => {
-      const aUnread = unreadMessages.get(a.id) || 0;
-      const bUnread = unreadMessages.get(b.id) || 0;
-      return bUnread - aUnread; // Sort by unread count (descending)
-    });
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -190,8 +177,8 @@ export function QuickChat() {
   // Calculate total unread messages
   const totalUnreadMessages = Array.from(unreadMessages.values()).reduce((sum, count) => sum + count, 0);
 
-  // Don't render if no friends
-  if (friends.length === 0) {
+  // Don't render if no online friends
+  if (onlineFriendsData.length === 0) {
     return null;
   }
 
@@ -230,17 +217,13 @@ export function QuickChat() {
                       data-testid={`quick-chat-friend-${friend.id}`}
                     >
                       <div className="relative">
-                        {friend.profileImageUrl ? (
-                          <img
-                            src={friend.profileImageUrl}
-                            alt={friend.displayName || friend.firstName || undefined}
-                            className="w-6 h-6 rounded-full"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs">
-                            {friend.firstName?.[0] || '?'}
-                          </div>
-                        )}
+                        <CachedProfileImage
+                          src={friend.profileImageUrl}
+                          alt={friend.displayName || friend.firstName || 'Friend'}
+                          className="w-6 h-6 rounded-full object-cover"
+                          fallbackClassName="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
+                          fallbackIconClassName="w-3 h-3 text-white"
+                        />
                         <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 border border-slate-800 rounded-full"></div>
                       </div>
                       <span className="text-xs text-white hidden sm:inline">
@@ -305,17 +288,13 @@ export function QuickChat() {
                       data-testid={`expanded-chat-friend-${friend.id}`}
                     >
                       <div className="relative">
-                        {friend.profileImageUrl ? (
-                          <img
-                            src={friend.profileImageUrl}
-                            alt={friend.displayName || friend.firstName || undefined}
-                            className="w-5 h-5 rounded-full"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs">
-                            {friend.firstName?.[0] || '?'}
-                          </div>
-                        )}
+                        <CachedProfileImage
+                          src={friend.profileImageUrl}
+                          alt={friend.displayName || friend.firstName || 'Friend'}
+                          className="w-5 h-5 rounded-full object-cover"
+                          fallbackClassName="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
+                          fallbackIconClassName="w-2.5 h-2.5 text-white"
+                        />
                         <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 border-2 border-slate-800 rounded-full"></div>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -342,17 +321,13 @@ export function QuickChat() {
         <DialogContent className="sm:max-w-[500px]" data-testid="chat-dialog">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {selectedChatFriend?.profileImageUrl ? (
-                <img
-                  src={selectedChatFriend.profileImageUrl}
-                  alt={selectedChatFriend.displayName || selectedChatFriend.firstName || undefined}
-                  className="w-8 h-8 rounded-full"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm">
-                  {selectedChatFriend?.firstName?.[0] || '?'}
-                </div>
-              )}
+              <CachedProfileImage
+                src={selectedChatFriend?.profileImageUrl}
+                alt={selectedChatFriend?.displayName || selectedChatFriend?.firstName || 'Friend'}
+                className="w-8 h-8 rounded-full object-cover"
+                fallbackClassName="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
+                fallbackIconClassName="w-4 h-4 text-white"
+              />
               <span>
                 {selectedChatFriend?.displayName || `${selectedChatFriend?.firstName || ''} ${selectedChatFriend?.lastName || ''}`.trim()}
               </span>

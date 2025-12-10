@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Users, UserPlus, UserCheck, UserX, Trophy, TrendingUp, Calendar, Loader2, Eye, Coins, Sparkles, Crown, Star } from 'lucide-react';
+import { Users, UserPlus, UserCheck, UserX, Calendar, Loader2, Eye, Coins, Sparkles, Crown, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { User } from '@shared/schema';
@@ -17,6 +17,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import { BasicFriendInfo } from '@shared/schema';
 import { UserProfileModal } from './UserProfileModal';
 import { CoinGiftModal } from './CoinGiftModal';
+import { CachedProfileImage } from './CachedProfileImage';
 
 interface FriendRequest {
   id: string;
@@ -29,26 +30,12 @@ interface FriendRequest {
   requested: User;
 }
 
-interface HeadToHeadStats {
-  totalGames: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  winRate: number;
-  recentGames: Array<{
-    id: string;
-    result: 'win' | 'loss' | 'draw';
-    playedAt: string;
-  }>;
-}
-
 export function Friends() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { isOnline } = useOnlineStatus();
   const [isOpen, setIsOpen] = useState(false);
   const [searchName, setSearchName] = useState('');
-  const [selectedFriend, setSelectedFriend] = useState<BasicFriendInfo | null>(null);
   const [profileUser, setProfileUser] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedGiftFriend, setSelectedGiftFriend] = useState<BasicFriendInfo | null>(null);
@@ -84,18 +71,10 @@ export function Friends() {
     staleTime: 30000,
   });
 
-  // Fetch head-to-head stats for selected friend
-  const { data: headToHeadStats, isLoading: headToHeadLoading, error: headToHeadError } = useQuery<HeadToHeadStats>({
-    queryKey: ['/api/head-to-head', (user as any)?.userId, selectedFriend?.id],
-    enabled: !!selectedFriend && !!selectedFriend?.id && !!(user as any)?.userId,
-    retry: 1,
-  });
-
-  // Fetch online users for online status indicators
-  const { data: onlineUsersData } = useQuery<{ total: number; users: any[] }>({
-    queryKey: ['/api/users/online'],
+  // Fetch online friends only (optimized - not all users)
+  const { data: onlineFriendsData } = useQuery<{ total: number; friends: { odaId: string; odaUsername: string }[] }>({
+    queryKey: ['/api/friends/online'],
     enabled: isOpen,
-    refetchInterval: 60000,
     staleTime: 30000,
   });
 
@@ -148,7 +127,6 @@ export function Friends() {
         description: "Friend removed successfully",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/friends'] });
-      setSelectedFriend(null);
     },
     onError: (error: any) => {
       showUserFriendlyError(error, toast);
@@ -173,7 +151,7 @@ export function Friends() {
 
   // Helper function to check if a friend is online
   const isUserOnline = (friendId: string) => {
-    return onlineUsersData?.users?.some(onlineUser => onlineUser.userId === friendId) || false;
+    return onlineFriendsData?.friends?.some(friend => friend.odaId === friendId) || false;
   };
 
   // Helper function to check if there's a pending outgoing request to a user
@@ -292,8 +270,7 @@ export function Friends() {
                     .map((friend) => (
                     <div
                       key={friend.id}
-                      className="group relative flex items-center justify-between p-2.5 rounded-lg border border-purple-100 dark:border-purple-900/50 bg-gradient-to-r from-white to-purple-50/50 dark:from-gray-800 dark:to-purple-950/20 hover:shadow-lg hover:scale-[1.01] hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 cursor-pointer overflow-hidden"
-                      onClick={() => setSelectedFriend(friend)}
+                      className="group relative flex items-center justify-between p-2.5 rounded-lg border border-purple-100 dark:border-purple-900/50 bg-gradient-to-r from-white to-purple-50/50 dark:from-gray-800 dark:to-purple-950/20 hover:shadow-lg hover:scale-[1.01] hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 overflow-hidden"
                     >
                       {/* Premium background gradient on hover */}
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-blue-500/0 to-purple-500/0 group-hover:from-purple-500/5 group-hover:via-blue-500/5 group-hover:to-purple-500/5 transition-all duration-500"></div>
@@ -301,10 +278,10 @@ export function Friends() {
                       <div className="flex items-center gap-2.5 relative z-10">
                         <div className="relative">
                           {friend.profileImageUrl ? (
-                            <img
+                            <CachedProfileImage
                               src={friend.profileImageUrl}
                               alt={friend.displayName || `${friend.firstName} ${friend.lastName || ''}`.trim()}
-                              className="w-9 h-9 rounded-full ring-2 ring-purple-200 dark:ring-purple-800 group-hover:ring-purple-400 dark:group-hover:ring-purple-600 transition-all duration-300"
+                              className="w-9 h-9 rounded-full ring-2 ring-purple-200 dark:ring-purple-800 group-hover:ring-purple-400 dark:group-hover:ring-purple-600 transition-all duration-300 object-cover"
                             />
                           ) : (
                             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold ring-2 ring-purple-200 dark:ring-purple-800 group-hover:ring-purple-400 dark:group-hover:ring-purple-600 transition-all duration-300 shadow-lg">
@@ -400,10 +377,10 @@ export function Friends() {
                     >
                       <div className="flex items-center gap-4">
                         {request.requester.profileImageUrl ? (
-                          <img
+                          <CachedProfileImage
                             src={request.requester.profileImageUrl}
                             alt={request.requester.displayName || `${request.requester.firstName} ${request.requester.lastName || ''}`.trim()}
-                            className="w-14 h-14 rounded-full ring-4 ring-blue-200 dark:ring-blue-800 group-hover:ring-blue-400 dark:group-hover:ring-blue-600 transition-all duration-300 shadow-lg"
+                            className="w-14 h-14 rounded-full ring-4 ring-blue-200 dark:ring-blue-800 group-hover:ring-blue-400 dark:group-hover:ring-blue-600 transition-all duration-300 shadow-lg object-cover"
                           />
                         ) : (
                           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center text-white text-lg font-bold ring-4 ring-blue-200 dark:ring-blue-800 group-hover:ring-blue-400 dark:group-hover:ring-blue-600 transition-all duration-300 shadow-lg">
@@ -492,10 +469,10 @@ export function Friends() {
                         >
                           <div className="flex items-center gap-4">
                             {user.profileImageUrl ? (
-                              <img
+                              <CachedProfileImage
                                 src={user.profileImageUrl}
                                 alt={user.displayName || `${user.firstName} ${user.lastName || ''}`.trim()}
-                                className="w-12 h-12 rounded-full ring-4 ring-purple-200 dark:ring-purple-800 group-hover:ring-purple-400 dark:group-hover:ring-purple-600 transition-all duration-300 shadow-lg"
+                                className="w-12 h-12 rounded-full ring-4 ring-purple-200 dark:ring-purple-800 group-hover:ring-purple-400 dark:group-hover:ring-purple-600 transition-all duration-300 shadow-lg object-cover"
                               />
                             ) : (
                               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 flex items-center justify-center text-white text-base font-bold ring-4 ring-purple-200 dark:ring-purple-800 group-hover:ring-purple-400 dark:group-hover:ring-purple-600 transition-all duration-300 shadow-lg">
@@ -545,82 +522,6 @@ export function Friends() {
             profileImageUrl={profileUser.profileImageUrl}
             selectedAchievementBorder={profileUser.selectedAchievementBorder}
           />
-        )}
-        
-        {/* Head-to-head stats modal */}
-        {selectedFriend && (
-          <Dialog open={!!selectedFriend} onOpenChange={() => setSelectedFriend(null)}>
-            <DialogContent className="sm:max-w-[550px] bg-gradient-to-br from-white via-purple-50/30 to-blue-50/30 dark:from-gray-900 dark:via-purple-950/20 dark:to-blue-950/20 border-2 border-purple-200/50 dark:border-purple-800/50 shadow-2xl">
-              <DialogHeader className="border-b border-purple-200/50 dark:border-purple-800/50 pb-4">
-                <DialogTitle className="flex items-center gap-2 text-xl font-bold text-purple-600 dark:text-purple-400">
-                  <Trophy className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                  {t('headToHeadStats')} with {selectedFriend.displayName || `${selectedFriend.firstName} ${selectedFriend.lastName || ''}`.trim()}
-                </DialogTitle>
-              </DialogHeader>
-              
-              {headToHeadLoading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-purple-600 dark:text-purple-400 mb-3" />
-                  <span className="text-sm text-muted-foreground">{t('loadingStats')}</span>
-                </div>
-              ) : headToHeadError ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 flex items-center justify-center mx-auto mb-4">
-                    <TrendingUp className="h-8 w-8 text-red-400 dark:text-red-500" />
-                  </div>
-                  <p className="text-red-500 mb-2 font-semibold">Failed to load head-to-head stats</p>
-                  <p className="text-sm text-muted-foreground">
-                    {headToHeadError.message}
-                  </p>
-                </div>
-              ) : headToHeadStats ? (
-                <div className="space-y-6 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-6 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 shadow-lg hover:shadow-xl transition-all duration-300">
-                      <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent mb-2">
-                        {headToHeadStats.wins}
-                      </div>
-                      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300">{t('youWon')}</div>
-                    </div>
-                    <div className="text-center p-6 rounded-xl border-2 border-red-200 dark:border-red-800 bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20 shadow-lg hover:shadow-xl transition-all duration-300">
-                      <div className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-700 dark:from-red-400 dark:to-red-500 bg-clip-text text-transparent mb-2">
-                        {headToHeadStats.losses}
-                      </div>
-                      <div className="text-sm font-semibold text-red-700 dark:text-red-300">{t('theyWon')}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center p-4 rounded-xl border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-900/20 shadow-md hover:shadow-lg transition-all duration-300">
-                      <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-400 dark:to-purple-500 bg-clip-text text-transparent">
-                        {headToHeadStats.totalGames}
-                      </div>
-                      <div className="text-xs font-semibold text-purple-700 dark:text-purple-300 mt-1">{t('totalGames')}</div>
-                    </div>
-                    <div className="text-center p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-800 dark:to-gray-900/20 shadow-md hover:shadow-lg transition-all duration-300">
-                      <div className="text-2xl font-bold bg-gradient-to-r from-gray-600 to-gray-700 dark:from-gray-400 dark:to-gray-500 bg-clip-text text-transparent">
-                        {headToHeadStats.draws}
-                      </div>
-                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-1">{t('draws')}</div>
-                    </div>
-                    <div className="text-center p-4 rounded-xl border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 shadow-md hover:shadow-lg transition-all duration-300">
-                      <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-700 dark:from-green-400 dark:to-green-500 bg-clip-text text-transparent">
-                        {headToHeadStats.winRate}%
-                      </div>
-                      <div className="text-xs font-semibold text-green-700 dark:text-green-300 mt-1">{t('yourWinRate')}</div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center mb-4">
-                    <Trophy className="h-10 w-10 text-purple-400 dark:text-purple-500" />
-                  </div>
-                  <p className="text-muted-foreground font-medium">No games played yet</p>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
         )}
 
         {/* Coin Gift Modal */}

@@ -364,7 +364,7 @@ const WeeklyRankPopup = ({
                           {abbreviateNumber(rankData.coinsEarned)} 
                         </div>
                       </div>
-                      <div className="text-[10px] text-gray-400 font-semibold">Coins Won</div>
+                      <div className="text-[10px] text-gray-400 font-semibold">Earning</div>
                     </div>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PlayerProfileModal } from "./PlayerProfileModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Trophy, Medal, Award, Crown, Loader2, Clock, Coins, Users, Rocket, Zap,
 import { useTranslation } from "@/contexts/LanguageContext";
 import { motion } from "framer-motion";
 import { formatNumber } from "@/lib/utils";
-
+import { CachedProfileImage } from "./CachedProfileImage";
 // Interface definitions remain the same (omitted for brevity)
 interface WeeklyLeaderboardUser {
   id: string;
@@ -22,20 +22,17 @@ interface WeeklyLeaderboardUser {
     selectedAchievementBorder: string;
   };
 }
-
 interface TimeLeft {
   days: number;
   hours: number;
   minutes: number;
   seconds: number;
 }
-
 interface LeaderboardProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onClose?: () => void;
 }
-
 // SkeletonCard, useAnimatedNumber, TopPlayerCard components remain the same (omitted for brevity)
 const SkeletonCard = () => (
   <div className="p-2 bg-gray-800 rounded-lg animate-pulse flex items-center gap-2 border border-gray-700">
@@ -48,45 +45,57 @@ const SkeletonCard = () => (
     <div className="w-12 h-5 bg-gray-700 rounded-full"></div>
   </div>
 );
-
 const useAnimatedNumber = (value: number) => {
-  const [animatedValue, setAnimatedValue] = useState(0);
-
-  useEffect(() => {
-    const startValue = animatedValue;
-    const endValue = value;
-    const duration = 800;
-    let start: number | null = null;
-
-    const animate = (timestamp: number) => {
-      if (!start) start = timestamp;
-      const progress = timestamp - start;
-      const percentage = Math.min(progress / duration, 1);
-      const currentValue = startValue + (endValue - startValue) * percentage;
-      setAnimatedValue(Math.floor(currentValue));
-
-      if (percentage < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  }, [value]);
-
-  return animatedValue;
+  const [animatedValue, setAnimatedValue] = useState(value);
+  const isFirstRender = useRef(true);
+  const animationRef = useRef<number | null>(null);
+  
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      setAnimatedValue(value);
+      return;
+    }
+    
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    
+    const startValue = animatedValue;
+    const endValue = value;
+    const duration = 800;
+    let start: number | null = null;
+    
+    const animate = (timestamp: number) => {
+      if (!start) start = timestamp;
+      const progress = timestamp - start;
+      const percentage = Math.min(progress / duration, 1);
+      const currentValue = startValue + (endValue - startValue) * percentage;
+      setAnimatedValue(Math.floor(currentValue));
+      if (percentage < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
+    };
+    animationRef.current = requestAnimationFrame(animate);
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [value]);
+  
+  return animatedValue;
 };
-
 const TopPlayerCard = ({ entry, position, onClick }: { entry: WeeklyLeaderboardUser, position: number, onClick: () => void }) => {
   const user = entry.user;
   const animatedCoins = useAnimatedNumber(entry.coinsEarned);
-
   const getTopPlayerStyle = (pos: number) => {
     if (pos === 1) return "border-b-2 border-yellow-500/80 shadow-lg shadow-yellow-500/20";
     if (pos === 2) return "border-b-2 border-gray-400/80 shadow-lg shadow-gray-400/20";
     if (pos === 3) return "border-b-2 border-amber-500/80 shadow-lg shadow-amber-500/20";
     return "";
   };
-
   const getRankIndicator = (pos: number) => {
     // Reduced icon size
     if (pos === 1) return <Crown className="w-6 h-6 text-yellow-500 absolute -top-3 left-1/2 -translate-x-1/2 z-10" />;
@@ -94,7 +103,6 @@ const TopPlayerCard = ({ entry, position, onClick }: { entry: WeeklyLeaderboardU
     if (pos === 3) return <Award className="w-5 h-5 text-amber-500 absolute -top-2 left-1/2 -translate-x-1/2 z-10" />;
     return null;
   };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -108,11 +116,11 @@ const TopPlayerCard = ({ entry, position, onClick }: { entry: WeeklyLeaderboardU
       {getRankIndicator(position)}
       {/* Profile image size kept the same: w-14 h-14 sm:w-16 sm:h-16 */}
       <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-transparent bg-gradient-to-br from-gray-700 to-gray-800 p-0.5 overflow-hidden" style={{ borderColor: position === 1 ? 'gold' : position === 2 ? 'silver' : 'bronze' }}>
-        <img
-          src={entry.user.profileImageUrl || `https://ui-avatars.com/api/?name=${entry.user.displayName}&background=random&color=fff`}
+        <CachedProfileImage
+          src={entry.user.profileImageUrl || `https://ui-avatars.com/api/?name=${entry.user.displayName}&background=random&color=fff`}
           alt={entry.user.displayName}
           className="w-full h-full object-cover rounded-full"
-        />
+        />
         
       </div>
       {/* Increased max width for player name: max-w-[90px] */}
@@ -126,24 +134,20 @@ const TopPlayerCard = ({ entry, position, onClick }: { entry: WeeklyLeaderboardU
     </motion.div>
   );
 };
-
 // REWARDS LIST COMPONENT MODIFIED
 const RewardsList = ({ rewardData, timeUntilEnd }: { rewardData: any[], timeUntilEnd: TimeLeft | undefined }) => {
   const top3Rewards = rewardData.slice(0, 3);
   const remainingRewards = rewardData.slice(3);
-
   const combinedReward4to10 = remainingRewards.length > 0 ? {
     position: "4-10",
     coins: remainingRewards[0].coins,
     displayRange: true
   } : null;
-
   const combinedReward11to50 = {
     position: "11-50",
     coins: 100000000,
     displayRange: true
   };
-
   return (
     <div className="py-4">
       <h3 className="text-lg font-bold text-white mb-4 text-center">Top 50 Rewards</h3>
@@ -167,7 +171,6 @@ const RewardsList = ({ rewardData, timeUntilEnd }: { rewardData: any[], timeUnti
             </div>
           </motion.div>
         ))}
-
         {combinedReward4to10 && (
           <motion.div
             key={combinedReward4to10.position}
@@ -185,7 +188,6 @@ const RewardsList = ({ rewardData, timeUntilEnd }: { rewardData: any[], timeUnti
             </div>
           </motion.div>
         )}
-
         <motion.div
           key={combinedReward11to50.position}
           initial={{ opacity: 0, scale: 0.95 }}
@@ -205,7 +207,6 @@ const RewardsList = ({ rewardData, timeUntilEnd }: { rewardData: any[], timeUnti
     </div>
   );
 };
-
 export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const modalOpen = open !== undefined ? open : isOpen;
@@ -216,7 +217,6 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
   const { t, language } = useTranslation();
   const queryClient = useQueryClient();
   const isArabic = language === 'ar';
-
   // API and Time Left logic remains the same (omitted for brevity)
   const { data: weeklyLeaderboard, isLoading, error, refetch } = useQuery<WeeklyLeaderboardUser[]>({
     queryKey: ['/api/leaderboard/weekly', language],
@@ -225,13 +225,15 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     },
-    retry: 3,
-    staleTime: 60000,
-    refetchOnMount: false,
+    enabled: modalOpen,
+    retry: 3,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    
     refetchOnWindowFocus: false,
     refetchInterval: modalOpen ? 30000 : false,
   });
-
   const { data: serverTimeUntilEnd } = useQuery<TimeLeft>({
     queryKey: ['/api/leaderboard/time-left'],
     queryFn: async () => {
@@ -239,25 +241,21 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     },
-    refetchInterval: modalOpen ? 10000 : false,
+    enabled: modalOpen,
+    refetchInterval: modalOpen ? 10000 : false,
     staleTime: 0,
   });
-
   const [timeUntilEnd, setTimeUntilEnd] = useState<TimeLeft | undefined>(serverTimeUntilEnd);
-
   useEffect(() => {
     if (serverTimeUntilEnd) {
       setTimeUntilEnd(serverTimeUntilEnd);
     }
   }, [serverTimeUntilEnd]);
-
   useEffect(() => {
     if (!modalOpen || !timeUntilEnd) return;
-
     const interval = setInterval(() => {
       setTimeUntilEnd(prev => {
         if (!prev) return prev;
-
         let { days, hours, minutes, seconds } = prev;
         seconds--;
         
@@ -283,13 +281,10 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
         return { days, hours, minutes, seconds };
       });
     }, 1000);
-
     return () => clearInterval(interval);
   }, [modalOpen, timeUntilEnd]);
-
   const top3 = weeklyLeaderboard?.slice(0, 3) || [];
   const remainingPlayers = weeklyLeaderboard?.slice(3) || [];
-
   const rewardData = [
     { position: 1, coins: 1000000000 },
     { position: 2, coins: 700000000 },
@@ -342,26 +337,22 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
     { position: 49, coins: 100000000 },
     { position: 50, coins: 100000000 },
   ];
-
   useEffect(() => {
     if (modalOpen) {
       queryClient.invalidateQueries({ queryKey: ['/api/leaderboard/weekly'] });
       refetch();
     }
   }, [modalOpen, language, refetch, queryClient]);
-
   const handlePlayerClick = (userId: string) => {
     setSelectedPlayerId(userId);
     setShowPlayerProfile(true);
   };
-
   const defaultTrigger = (
     <Button variant="ghost" size="sm" className="flex items-center gap-1 text-gray-400 hover:text-white px-2 py-1 h-8" data-testid="button-leaderboard">
       <Trophy className="w-3 h-3 text-yellow-500" />
       {t('Leaderboard') || 'Leaderboard'}
     </Button>
   );
-
   return (
     <>
       <style jsx global>{`
@@ -381,7 +372,6 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
         .scrollbar-custom::-webkit-scrollbar-thumb:hover {
           background: #4b5563;
         }
-
         .scrollbar-custom {
           scrollbar-width: thin;
           scrollbar-color: #374151 #1f2937;
@@ -416,10 +406,8 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                 {t('Weekly Leaderboard') || 'Weekly Leaderboard'}
               </div>
             </div>
-
             {/* Horizontal Divider */}
             <hr className="border-gray-800 my-0"/>
-
             {/* HEADER 2: TIMER/REWARD - Explicitly controlling vertical space below the divider */}
             <div className="flex justify-between items-center pt-2 pb-3">
               {/* TIME LEFT: Aligned left */}
@@ -429,7 +417,6 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                   {timeUntilEnd?.days}d {timeUntilEnd?.hours}h {timeUntilEnd?.minutes}m
                 </div>
               </div>
-
               {/* REWARD BUTTON: Aligned right */}
               <Button
                 variant="ghost"
@@ -442,8 +429,6 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
             </div>
           </div>
           {/* END Custom Header Wrapper */}
-
-
           {isLoading ? (
             <div className="flex flex-col gap-2 py-3 px-6" data-testid="loading-state">
               {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -468,7 +453,6 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                   </div>
                 </div>
               )}
-
               {/* REST OF PLAYERS LIST */}
               {/* px-6 is applied to all padding sections of the content for consistency */}
               <div className="flex-1 min-h-0 overflow-y-auto mt-3 px-6 space-y-2 scrollbar-custom" style={{ WebkitOverflowScrolling: 'touch' }} data-testid="leaderboard-container">
@@ -488,10 +472,12 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                         data-testid={`player-card-${user.id}`}
                       >
                         <span className="w-6 flex-shrink-0 text-center font-bold text-gray-500 text-sm">#{position}</span>
-                        <img
-                          src={user.profileImageUrl || `https://ui-avatars.com/api/?name=${user.displayName}&background=random&color=fff`}
-                          alt={user.displayName}
-                          className="w-8 h-8 rounded-full object-cover"
+                        <CachedProfileImage
+                          src={user.profileImageUrl || `https://ui-avatars.com/api/?name=${user.displayName}&background=random&color=fff`}
+                          alt={user.displayName}
+                          className="w-8 h-8 rounded-full object-cover"
+                          fallbackClassName="w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center"
+                          fallbackIconClassName="w-4 h-4 text-gray-400"
                         />
                         <div className="flex-1 min-w-0">
                           <span className="font-semibold text-white truncate text-sm">{user.displayName}</span>
@@ -512,7 +498,6 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
                 </div>
               </div>
           )}
-
           {/* Footer kept small */}
           <div className="py-2 px-6 border-t border-gray-800 flex justify-between items-center bg-gray-900/50">
             <div className="flex items-center gap-1.5 text-gray-500 text-xs">
@@ -531,7 +516,6 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
           </div>
         </DialogContent>
       </Dialog>
-
       <PlayerProfileModal
         playerId={selectedPlayerId}
         open={showPlayerProfile}
@@ -541,7 +525,6 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
         }}
         currentUserId={undefined}
       />
-
       <Dialog open={showRewards} onOpenChange={setShowRewards}>
         <DialogContent
           className={`max-w-[95vw] sm:max-w-md bg-gray-950 border border-gray-800 text-gray-100 ${isArabic ? 'font-arabic' : ''}`}

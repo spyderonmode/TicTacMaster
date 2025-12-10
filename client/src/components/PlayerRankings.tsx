@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Trophy, Medal, Award, TrendingUp, TrendingDown, Minus, User, BarChart3, PieChart, Activity, Zap, Crown, Star, Target } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CachedProfileImage } from "./CachedProfileImage";
 
 interface PlayerRanking {
   userId: string;
@@ -45,7 +46,6 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
     refetchInterval: 30000, // Increased to 30s - rankings don't change frequently
     staleTime: 25000, // Consider data fresh for 25 seconds
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
   });
 
   // Track ranking changes
@@ -274,17 +274,13 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      {player.profileImageUrl ? (
-                        <img 
-                          src={player.profileImageUrl} 
-                          alt={player.displayName}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                          <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                        </div>
-                      )}
+                      <CachedProfileImage
+                        src={player.profileImageUrl}
+                        alt={player.displayName}
+                        className="w-8 h-8 rounded-full object-cover"
+                        fallbackClassName="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center"
+                        fallbackIconClassName="h-4 w-4 text-gray-600 dark:text-gray-400"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
                           {player.displayName || 'Unknown'}
@@ -527,17 +523,13 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
 
                   {/* Profile Picture */}
                   <div className="relative">
-                    {player.profileImageUrl ? (
-                      <img 
-                        src={player.profileImageUrl} 
-                        alt={player.displayName}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                        <User className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                      </div>
-                    )}
+                    <CachedProfileImage
+                      src={player.profileImageUrl}
+                      alt={player.displayName}
+                      className="w-10 h-10 rounded-full object-cover"
+                      fallbackClassName="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center"
+                      fallbackIconClassName="h-5 w-5 text-gray-600 dark:text-gray-400"
+                    />
                     
                     {/* Streak indicator */}
                     {player.streak > 1 && (

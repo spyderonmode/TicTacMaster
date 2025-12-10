@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { User, Upload, X } from "lucide-react";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { processImageForUpload, clearImageCache } from "@/lib/imageCache";
 
 interface ProfileManagerProps {
   user: any;
@@ -66,11 +67,11 @@ export function ProfileManager({ user, open = false, onClose }: ProfileManagerPr
     },
   });
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1 * 1024 * 1024) { // 1MB limit
+    if (file.size > 2 * 1024 * 1024) { // 2MB limit (we'll compress it)
       toast({
         title: t('fileTooLarge'),
         description: t('selectImageUnder1MB'),
@@ -89,24 +90,20 @@ export function ProfileManager({ user, open = false, onClose }: ProfileManagerPr
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
     
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      setProfilePicture(dataUrl);
-      setIsUploading(false);
-    };
-    
-    reader.onerror = () => {
+    try {
+      const { thumbnail } = await processImageForUpload(file, 256, 256);
+      setProfilePicture(thumbnail);
+      clearImageCache();
+    } catch {
       toast({
         title: t('uploadFailed'),
         description: t('failedToReadImage'),
         variant: "destructive",
       });
+    } finally {
       setIsUploading(false);
-    };
-    
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {

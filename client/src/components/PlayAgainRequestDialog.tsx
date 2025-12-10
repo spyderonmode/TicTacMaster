@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, X, Check, User } from "lucide-react";
+import { CachedProfileImage } from "./CachedProfileImage";
 
 interface PlayAgainRequest {
   id: string;
@@ -149,19 +150,13 @@ export function PlayAgainRequestDialog({ open, onClose, request }: PlayAgainRequ
             justifyContent: 'center',
             overflow: 'hidden'
           }}>
-            {request.requester.profileImageUrl ? (
-              <img 
-                src={request.requester.profileImageUrl} 
-                alt={requesterName}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-              />
-            ) : (
-              <User style={{ width: '24px', height: '24px', color: 'white' }} />
-            )}
+            <CachedProfileImage
+              src={request.requester.profileImageUrl}
+              alt={requesterName}
+              className="w-full h-full rounded-full object-cover"
+              fallbackClassName="w-full h-full rounded-full bg-blue-500 flex items-center justify-center"
+              fallbackIconClassName="w-6 h-6 text-white"
+            />
           </div>
           <div style={{ textAlign: 'left' }}>
             <p style={{ fontWeight: 'bold', fontSize: '16px', margin: 0 }}>
