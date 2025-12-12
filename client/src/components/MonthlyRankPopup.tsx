@@ -188,9 +188,10 @@ const WeeklyRankPopup = ({
     <AnimatePresence>
       {isOpen && (
         <Dialog open={isOpen} onOpenChange={onClose}>
-          <DialogContent 
+          <DialogContent
             // Adjusted max-width and padding for better fit
-            className="w-full max-w-sm mx-auto p-4 sm:p-6 bg-gradient-to-br from-slate-900 via-gray-900 to-black dark:from-slate-950 dark:via-gray-950 dark:to-black border-2 border-yellow-500/30 dark:border-yellow-400/20 shadow-2xl shadow-yellow-500/20"
+            className="w-full max-w-sm mx-auto p-4 sm:p-6 bg-gradient-to-br from-slate-900 via-gray-900 to-black dark:from-slate-950 dark:via-gray-950 dark:to-black border-2 border-yellow-500/30 dark:border-yellow-400/20 shadow-2xl shadow-yellow-500/20 max-h-[90vh] overflow-y-auto"
+            style={{ maxHeight: '90vh' }}
             data-testid="weekly-rank-popup"
           >
             {/* Animated Background Pattern */}

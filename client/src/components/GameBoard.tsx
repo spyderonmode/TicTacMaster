@@ -1175,17 +1175,17 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                   ? (symbol === 'X' 
                       ? (game?.playerXInfo?.activePieceStyle || 'default') 
                       : (game?.playerOInfo?.activePieceStyle || 'default'))
-                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb" || currentUserPieceStyle === "moonstar"))
+                  : (symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb" || currentUserPieceStyle === "moonstar" || currentUserPieceStyle === "aurora" || currentUserPieceStyle === "hypernova"))
                     ? currentUserPieceStyle
                     : "default"
               }
               className={
                 gameMode === 'online'
-                  ? (((symbol === 'X' && game?.playerXInfo?.activePieceStyle && game?.playerXInfo?.activePieceStyle !== 'default') || 
+                  ? (((symbol === 'X' && game?.playerXInfo?.activePieceStyle && game?.playerXInfo?.activePieceStyle !== 'default') ||
                       (symbol === 'O' && game?.playerOInfo?.activePieceStyle && game?.playerOInfo?.activePieceStyle !== 'default'))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
-                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb" || currentUserPieceStyle === "moonstar"))
+                  : ((symbol === currentUserSymbol && (currentUserPieceStyle === "thunder" || currentUserPieceStyle === "fire" || currentUserPieceStyle === "hammer" || currentUserPieceStyle === "autumn" || currentUserPieceStyle === "lovers" || currentUserPieceStyle === "flower" || currentUserPieceStyle === "greenleaf" || currentUserPieceStyle === "cat" || currentUserPieceStyle === "bestfriends" || currentUserPieceStyle === "lotus" || currentUserPieceStyle === "holi" || currentUserPieceStyle === "tulip" || currentUserPieceStyle === "butterfly" || currentUserPieceStyle === "peacock" || currentUserPieceStyle === "bulb" || currentUserPieceStyle === "moonstar" || currentUserPieceStyle === "aurora" || currentUserPieceStyle === "hypernova"))
                       ? `${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`
                       : `text-lg sm:text-xl md:text-2xl font-bold ${symbol === 'X' ? theme.playerXColor : theme.playerOColor}`)
               }

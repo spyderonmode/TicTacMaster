@@ -57,14 +57,14 @@ const PIECE_STYLES = [
     id: "thunder",
     name: "Thunder Strike",
     description: "Electrifying X and O with lightning effects",
-    price: 200000000, // 200 million coins
+    price: 400000000, // 200 million coins
     isDefault: false,
   },
   {
     id: "fire",
     name: "Inferno Blaze",
     description: "Blazing X and O with realistic fire effects",
-    price: 150000000, // 150 million coins
+    price: 350000000, // 150 million coins
     isDefault: false,
   },
   {
@@ -78,28 +78,28 @@ const PIECE_STYLES = [
     id: "autumn",
     name: "Autumn Leaves",
     description: "Beautiful 3D fall colors with falling leaves",
-    price: 10000000, // 100 coins
+    price: 100000000, // 100 coins
     isDefault: false,
   },
   {
     id: "lovers",
     name: "Lovers Heart",
     description: "Romantic 3D hearts with heavy rotation - for lovers only!",
-    price: 100000000, // 100 million coins
+    price: 300000000, // 100 million coins
     isDefault: false,
   },
   {
     id: "flower",
     name: "Blooming Flower",
     description: "Beautiful 3D flowers with smooth petals rotation",
-    price: 200000000, // 200 million coins
+    price: 400000000, // 200 million coins
     isDefault: false,
   },
   {
     id: "greenleaf",
     name: "Green Leaf",
     description: "Stunning 3D green leaves with mesmerizing rotation",
-    price: 200000000, // 200 million coins
+    price: 300000000, // 200 million coins
     isDefault: false,
   },
   {
@@ -163,6 +163,20 @@ const PIECE_STYLES = [
     name: "Moon & Stars",
     description: "Magical 3D crescent moon with twinkling stars design - enchanting celestial beauty!",
     price: 500000000, // 500 million coins
+    isDefault: false,
+  },
+  {
+    id: "aurora",
+    name: "Aurora Prism",
+    description: "Fabulous 3D prism shards with shimmering aurora glow and deep parallax lighting",
+    price: 300000000,
+    isDefault: false,
+  },
+  {
+    id: "hypernova",
+    name: "Hypernova Halo",
+    description: "Jaw-dropping twin-helix energy rings with molten neon cores and glassy starburst highlights",
+    price: 400000000, // 500 million coins
     isDefault: false,
   },
 ];
@@ -607,6 +621,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                       {style.id === "peacock" && <Bird className="w-2.5 h-2.5 text-emerald-400" />}
                       {style.id === "bulb" && <Lightbulb className="w-2.5 h-2.5 text-yellow-300" />}
                       {style.id === "moonstar" && <Moon className="w-2.5 h-2.5 text-purple-300" />}
+                      {style.id === "hypernova" && <Sparkles className="w-2.5 h-2.5 text-cyan-200" />}
                       <span className="truncate">{style.name}</span>
                     </span>
                     {isActive && (
@@ -1029,7 +1044,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                       <div className="w-20 h-20 flex items-center justify-center transform hover:scale-110 transition-transform">
                         <AnimatedPiece 
                           symbol="X" 
-                          style={previewModal.item.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar"} 
+                          style={previewModal.item.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar" | "aurora" | "hypernova"}
                           className={previewModal.item.id === "default" ? "text-5xl text-blue-400 font-bold" : "text-blue-400 text-5xl"}
                         />
                       </div>
@@ -1037,7 +1052,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                       <div className="w-20 h-20 flex items-center justify-center transform hover:scale-110 transition-transform">
                         <AnimatedPiece 
                           symbol="O" 
-                          style={previewModal.item.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar"} 
+                          style={previewModal.item.id as "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar" | "aurora" | "hypernova"}
                           className={previewModal.item.id === "default" ? "text-5xl text-red-400 font-bold" : "text-red-400 text-5xl"}
                         />
                       </div>

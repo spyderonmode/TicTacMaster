@@ -4,7 +4,26 @@ import "./AnimatedPieces.css";
 
 interface AnimatedPieceProps {
   symbol: "X" | "O";
-  style?: "default" | "thunder" | "fire" | "hammer" | "autumn" | "lovers" | "flower" | "greenleaf" | "cat" | "bestfriends" | "lotus" | "holi" | "tulip" | "butterfly" | "peacock" | "bulb" | "moonstar";
+  style?:
+    | "default"
+    | "thunder"
+    | "fire"
+    | "hammer"
+    | "autumn"
+    | "lovers"
+    | "flower"
+    | "greenleaf"
+    | "cat"
+    | "bestfriends"
+    | "lotus"
+    | "holi"
+    | "tulip"
+    | "butterfly"
+    | "peacock"
+    | "bulb"
+    | "moonstar"
+    | "aurora"
+    | "hypernova";
   className?: string;
   position?: number;
 }
@@ -138,6 +157,22 @@ const AnimatedPieceComponent = ({ symbol, style = "default", className = "", pos
       <MoonStarX className={className} uniqueId={uniqueId} />
     ) : (
       <MoonStarO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "aurora") {
+    return symbol === "X" ? (
+      <AuroraPrismX className={className} uniqueId={uniqueId} />
+    ) : (
+      <AuroraPrismO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "hypernova") {
+    return symbol === "X" ? (
+      <HyperNovaX className={className} uniqueId={uniqueId} />
+    ) : (
+      <HyperNovaO className={className} uniqueId={uniqueId} />
     );
   }
 
@@ -5079,6 +5114,447 @@ function MoonStarO({ className = "", uniqueId }: { className?: string; uniqueId:
           />
         </motion.g>
       </svg>
+    </motion.div>
+  );
+}
+
+function HyperNovaX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`animated-piece-container ${className}`}
+      initial={{ opacity: 0, scale: 0.9, rotateX: -12, rotateY: 10 }}
+      animate={{ opacity: 1, scale: 1, rotateX: 0, rotateY: 0 }}
+      transition={{ duration: 0.85, ease: "easeOut" }}
+      style={{ position: "relative" }}
+    >
+      <motion.svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        initial={{ rotateZ: -10 }}
+        animate={{ rotateZ: 0, rotateY: [0, 14, -10, 0], rotateX: [0, -12, 8, 0], scale: [1, 1.05, 1] }}
+        transition={{ duration: 2.2, ease: "easeInOut" }}
+        style={{ position: "relative", zIndex: 1, transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <linearGradient id={`novaBase-${uniqueId}`} x1="0%" y1="0%" x2="110%" y2="110%">
+            <stop offset="0%" stopColor="#0ea5e9" />
+            <stop offset="45%" stopColor="#a855f7" />
+            <stop offset="85%" stopColor="#f97316" />
+          </linearGradient>
+          <linearGradient id={`novaEdge-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+            <stop offset="45%" stopColor="rgba(255,255,255,0.45)" />
+            <stop offset="100%" stopColor="rgba(14,165,233,0.2)" />
+          </linearGradient>
+          <radialGradient id={`novaCore-${uniqueId}`} cx="50%" cy="50%" r="55%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+            <stop offset="35%" stopColor="rgba(59,130,246,0.6)" />
+            <stop offset="70%" stopColor="rgba(168,85,247,0.35)" />
+            <stop offset="100%" stopColor="rgba(8,47,73,0.1)" />
+          </radialGradient>
+          <linearGradient id={`novaStreak-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.75)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.25)" />
+            <stop offset="100%" stopColor="rgba(14,165,233,0.1)" />
+          </linearGradient>
+        </defs>
+
+        <motion.g initial={{ opacity: 0.9, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}>
+          <path
+            d="M 16 18 L 36 18 L 50 34 L 64 18 L 84 18 L 60 42 L 84 66 L 64 66 L 50 50 L 36 66 L 16 66 L 40 42 Z"
+            fill={`url(#novaBase-${uniqueId})`}
+            stroke={`url(#novaEdge-${uniqueId})`}
+            strokeWidth="3"
+            strokeLinejoin="round"
+            opacity="0.9"
+          />
+          <path
+            d="M 24 22 L 38 22 L 50 36 L 62 22 L 76 22 L 56 42 L 76 62 L 62 62 L 50 50 L 38 62 L 24 62 L 44 42 Z"
+            fill={`url(#novaCore-${uniqueId})`}
+            stroke={`url(#novaEdge-${uniqueId})`}
+            strokeWidth="2"
+            strokeLinejoin="round"
+            opacity="0.95"
+          />
+          <path
+            d="M 20 18 L 36 18 L 50 32 L 64 18 L 80 18 L 58 40 L 80 62 L 64 62 L 50 48 L 36 62 L 20 62 L 42 40 Z"
+            fill={`url(#novaEdge-${uniqueId})`}
+            opacity="0.2"
+          />
+          <motion.rect
+            x="-18"
+            y="10"
+            width="40"
+            height="84"
+            fill={`url(#novaStreak-${uniqueId})`}
+            rx="18"
+            initial={{ opacity: 0 }}
+            animate={{ x: [-26, 118], opacity: [0, 0.5, 0] }}
+            transition={{ duration: 1.05, ease: "easeOut", delay: 0.18 }}
+          />
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="10"
+            fill={`url(#novaCore-${uniqueId})`}
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
+          />
+          <motion.path
+            d="M 32 20 L 38 26 L 28 36"
+            fill="none"
+            stroke={`url(#novaEdge-${uniqueId})`}
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1, opacity: [0.4, 1, 0.6] }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
+          />
+          <motion.path
+            d="M 68 80 L 62 74 L 72 64"
+            fill="none"
+            stroke={`url(#novaEdge-${uniqueId})`}
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1, opacity: [0.4, 1, 0.6] }}
+            transition={{ duration: 0.9, ease: "easeOut", delay: 0.15 }}
+          />
+        </motion.g>
+      </motion.svg>
+    </motion.div>
+  );
+}
+
+function HyperNovaO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`animated-piece-container ${className}`}
+      initial={{ opacity: 0, scale: 0.9, rotateX: 10, rotateY: -12 }}
+      animate={{ opacity: 1, scale: 1, rotateX: 0, rotateY: 0 }}
+      transition={{ duration: 0.85, ease: "easeOut" }}
+      style={{ position: "relative" }}
+    >
+      <motion.svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        initial={{ rotateZ: 12 }}
+        animate={{ rotateZ: 0, rotateY: [0, -14, 10, 0], rotateX: [0, 12, -10, 0], scale: [1, 1.07, 1] }}
+        transition={{ duration: 2.3, ease: "easeInOut" }}
+        style={{ position: "relative", zIndex: 1, transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <linearGradient id={`novaRing-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#22d3ee" />
+            <stop offset="45%" stopColor="#a855f7" />
+            <stop offset="85%" stopColor="#fb923c" />
+          </linearGradient>
+          <linearGradient id={`novaEdge-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.4)" />
+            <stop offset="100%" stopColor="rgba(34,211,238,0.2)" />
+          </linearGradient>
+          <radialGradient id={`novaPulse-${uniqueId}`} cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+            <stop offset="32%" stopColor="rgba(34,211,238,0.6)" />
+            <stop offset="68%" stopColor="rgba(168,85,247,0.3)" />
+            <stop offset="100%" stopColor="rgba(8,47,73,0.08)" />
+          </radialGradient>
+          <linearGradient id={`novaGlass-${uniqueId}`} x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
+            <stop offset="40%" stopColor="rgba(255,255,255,0.25)" />
+            <stop offset="100%" stopColor="rgba(59,130,246,0.2)" />
+          </linearGradient>
+        </defs>
+
+        <motion.g initial={{ opacity: 0.88, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}>
+          <circle
+            cx="50"
+            cy="50"
+            r="32"
+            fill={`url(#novaPulse-${uniqueId})`}
+            stroke={`url(#novaEdge-${uniqueId})`}
+            strokeWidth="3.4"
+            opacity="0.95"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="27"
+            fill={`url(#novaRing-${uniqueId})`}
+            stroke={`url(#novaGlass-${uniqueId})`}
+            strokeWidth="3"
+            opacity="0.98"
+          />
+          <circle cx="50" cy="50" r="20" fill="rgba(2,6,23,0.65)" opacity="0.9" />
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="34"
+            fill="none"
+            stroke={`url(#novaEdge-${uniqueId})`}
+            strokeWidth="4.6"
+            strokeLinecap="round"
+            strokeDasharray="22 10 16 8"
+            style={{ opacity: 0.7 }}
+            initial={{ pathLength: 0, rotate: -12 }}
+            animate={{ pathLength: 1, rotate: 0 }}
+            transition={{ duration: 1, ease: "easeOut", delay: 0.12 }}
+          />
+          <motion.path
+            d="M 20 50 C 32 30 68 30 80 50"
+            fill="none"
+            stroke={`url(#novaGlass-${uniqueId})`}
+            strokeWidth="3"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1, opacity: [0.5, 1, 0.6] }}
+            transition={{ duration: 0.95, ease: "easeOut", delay: 0.2 }}
+          />
+          <motion.path
+            d="M 26 62 C 40 74 60 74 74 62"
+            fill="none"
+            stroke={`url(#novaGlass-${uniqueId})`}
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1, opacity: [0.4, 1, 0.6] }}
+            transition={{ duration: 1, ease: "easeOut", delay: 0.35 }}
+          />
+          <motion.rect
+            x="-14"
+            y="12"
+            width="44"
+            height="82"
+            fill={`url(#novaGlass-${uniqueId})`}
+            rx="24"
+            initial={{ opacity: 0 }}
+            animate={{ x: [-22, 118], opacity: [0, 0.45, 0] }}
+            transition={{ duration: 1.05, ease: "easeOut", delay: 0.22 }}
+          />
+        </motion.g>
+      </motion.svg>
+    </motion.div>
+  );
+}
+
+function AuroraPrismX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`animated-piece-container ${className}`}
+      initial={{ opacity: 0, scale: 0.92, rotateX: -10, rotateY: 8 }}
+      animate={{ opacity: 1, scale: 1, rotateX: 0, rotateY: 0 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      style={{
+        position: "relative",
+      }}
+    >
+      <motion.svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        initial={{ rotateZ: -6 }}
+        animate={{ rotateZ: 0, rotateY: [0, 10, -8, 0], rotateX: [0, -5, 5, 0], scale: [1, 1.02, 1] }}
+        transition={{ duration: 2.4, ease: "easeInOut" }}
+        style={{ position: "relative", zIndex: 1, transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <linearGradient id={`auroraShard-${uniqueId}`} x1="0%" y1="0%" x2="120%" y2="120%">
+            <stop offset="0%" stopColor="#8b5cf6" />
+            <stop offset="45%" stopColor="#22d3ee" />
+            <stop offset="100%" stopColor="#f472b6" />
+          </linearGradient>
+          <linearGradient id={`auroraEdge-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.9)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.35)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+          </linearGradient>
+          <linearGradient id={`auroraDepth-${uniqueId}`} x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="rgba(15, 23, 42, 0.45)" />
+            <stop offset="60%" stopColor="rgba(79, 70, 229, 0.2)" />
+            <stop offset="100%" stopColor="rgba(244, 114, 182, 0.05)" />
+          </linearGradient>
+        </defs>
+
+        <motion.g
+          initial={{ opacity: 0.85, y: 3 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+        >
+          <path
+            d="M 27 16 L 42 16 L 52 35 L 68 16 L 84 16 L 60 48 L 83 82 L 66 82 L 50 56 L 34 82 L 18 82 L 42 48 Z"
+            fill={`url(#auroraDepth-${uniqueId})`}
+            stroke={`url(#auroraEdge-${uniqueId})`}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M 29 20 L 43 20 L 53 37 L 67 20 L 80 20 L 60 46 L 78 78 L 64 78 L 50 56 L 36 78 L 22 78 L 42 46 Z"
+            fill={`url(#auroraShard-${uniqueId})`}
+            stroke={`url(#auroraEdge-${uniqueId})`}
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+            opacity="0.92"
+          />
+          <path
+            d="M 27 16 L 42 16 L 52 35 L 68 16 L 84 16 L 60 48 L 83 82 L 66 82 L 50 56 L 34 82 L 18 82 L 42 48 Z"
+            fill={`url(#auroraEdge-${uniqueId})`}
+            opacity="0.18"
+          />
+          <motion.rect
+            x="-20"
+            y="12"
+            width="42"
+            height="80"
+            fill="white"
+            opacity="0.28"
+            rx="20"
+            animate={{ x: [-24, 120], rotate: 10 }}
+            transition={{ duration: 1.15, ease: "easeOut", delay: 0.25 }}
+          />
+        </motion.g>
+      </motion.svg>
+    </motion.div>
+  );
+}
+
+function AuroraPrismO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`animated-piece-container ${className}`}
+      initial={{ opacity: 0, scale: 0.92, rotateX: -8, rotateY: -6 }}
+      animate={{ opacity: 1, scale: 1, rotateX: 0, rotateY: 0 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      style={{
+        position: "relative",
+      }}
+    >
+      <motion.svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        initial={{ rotateZ: 8 }}
+        animate={{ rotateZ: 0, rotateY: [0, -10, 8, 0], rotateX: [0, 10, -9, 0], scale: [1, 1.06, 1] }}
+        transition={{ duration: 2.6, ease: "easeInOut" }}
+        style={{ position: "relative", zIndex: 1, transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <linearGradient id={`auroraRing-${uniqueId}`} x1="0%" y1="0%" x2="120%" y2="40%">
+            <stop offset="0%" stopColor="#a855f7" />
+            <stop offset="35%" stopColor="#22d3ee" />
+            <stop offset="65%" stopColor="#38bdf8" />
+            <stop offset="100%" stopColor="#f472b6" />
+          </linearGradient>
+          <linearGradient id={`auroraFacet-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+            <stop offset="55%" stopColor="rgba(255,255,255,0.35)" />
+            <stop offset="100%" stopColor="rgba(59,130,246,0.2)" />
+          </linearGradient>
+          <linearGradient id={`auroraGlass-${uniqueId}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.9)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.18)" />
+            <stop offset="100%" stopColor="rgba(34,211,238,0.1)" />
+          </linearGradient>
+          <radialGradient id={`auroraCore-${uniqueId}`} cx="50%" cy="50%" r="45%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+            <stop offset="28%" stopColor="rgba(56,189,248,0.6)" />
+            <stop offset="65%" stopColor="rgba(168,85,247,0.28)" />
+            <stop offset="100%" stopColor="rgba(15,23,42,0)" />
+          </radialGradient>
+          <linearGradient id={`auroraIris-${uniqueId}`} x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="rgba(15,23,42,0.55)" />
+            <stop offset="45%" stopColor="rgba(34,211,238,0.35)" />
+            <stop offset="100%" stopColor="rgba(244,114,182,0.18)" />
+          </linearGradient>
+        </defs>
+
+        <motion.g
+          initial={{ opacity: 0.9, y: -3 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="32"
+            fill={`url(#auroraIris-${uniqueId})`}
+            stroke={`url(#auroraGlass-${uniqueId})`}
+            strokeWidth="3.5"
+            opacity="0.92"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="28"
+            fill={`url(#auroraRing-${uniqueId})`}
+            stroke={`url(#auroraGlass-${uniqueId})`}
+            strokeWidth="2.6"
+            opacity="0.98"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="24"
+            fill={`url(#auroraCore-${uniqueId})`}
+            opacity="0.9"
+          />
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="34"
+            fill="none"
+            stroke={`url(#auroraGlass-${uniqueId})`}
+            strokeWidth="5"
+            strokeLinecap="round"
+            style={{ opacity: 0.65 }}
+            initial={{ pathLength: 0, rotate: -8 }}
+            animate={{ pathLength: 1, rotate: 0 }}
+            transition={{ duration: 0.9, ease: "easeOut", delay: 0.12 }}
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="28"
+            fill={`url(#auroraGlass-${uniqueId})`}
+            opacity="0.18"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="28"
+            fill="none"
+            stroke={`url(#auroraFacet-${uniqueId})`}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeDasharray="18 8 12 6"
+            opacity="0.9"
+          />
+          <motion.circle
+            cx="50"
+            cy="50"
+            r="22"
+            fill="none"
+            stroke="url(#auroraFacet-${uniqueId})"
+            strokeWidth="2.2"
+            strokeDasharray="8 10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.9, rotate: [-10, 6, 0] }}
+            transition={{ duration: 1.1, ease: "easeOut", delay: 0.22 }}
+          />
+          <motion.rect
+            x="-12"
+            y="10"
+            width="40"
+            height="82"
+            fill="white"
+            opacity="0.3"
+            rx="22"
+            animate={{ x: [-20, 122], rotate: -14 }}
+            transition={{ duration: 1.05, ease: "easeOut", delay: 0.2 }}
+          />
+        </motion.g>
+      </motion.svg>
     </motion.div>
   );
 }
