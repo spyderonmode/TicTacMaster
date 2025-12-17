@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { memo, useState, useEffect } from "react";
-import { getCachedImage, loadAndCacheImage } from "@/lib/imageCache";
+import { isImageCached, getCachedImageAsync, loadAndCacheImage } from "@/lib/imageCache";
 
 interface AvatarWithFrameProps {
   src?: string;
@@ -20,24 +20,39 @@ function AvatarWithFrameComponent({
   const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    
     if (!src) {
       setImageSrc(null);
       return;
     }
 
-    const cached = getCachedImage(src);
-    if (cached) {
-      setImageSrc(cached);
-      return;
-    }
+    const loadImage = async () => {
+      if (isImageCached(src)) {
+        const cached = await getCachedImageAsync(src);
+        if (cached && isMounted) {
+          setImageSrc(cached);
+          return;
+        }
+      }
+      
+      try {
+        const optimized = await loadAndCacheImage(src);
+        if (isMounted) {
+          setImageSrc(optimized);
+        }
+      } catch {
+        if (isMounted) {
+          setImageSrc(src);
+        }
+      }
+    };
 
-    loadAndCacheImage(src)
-      .then((optimized) => {
-        setImageSrc(optimized);
-      })
-      .catch(() => {
-        setImageSrc(src);
-      });
+    loadImage();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [src]);
 
   const sizeClasses = {

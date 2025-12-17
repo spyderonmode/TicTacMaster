@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Shield, Castle, Swords, Clock, Calendar, Gem } from "lucide-react"; 
+import { Crown, Shield, Castle, Swords, Clock, Calendar, Gem, Sparkles } from "lucide-react"; 
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { AvatarWithFrame } from "./AvatarWithFrame";
+import vipImage from '@/lib/vip.png';
 
 // --- (Interfaces remain the same) ---
 interface PlayerProfile {
@@ -102,6 +103,12 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
         enabled: open && !!playerId,
     });
 
+
+    const { data: vipPassData } = useQuery<{ hasActivePass: boolean }>({
+        queryKey: [`/api/players/${playerId}/vip-status`],
+        enabled: open && !!playerId,
+    });
+    const hasVipPass = vipPassData?.hasActivePass || false;
     const isOwnProfile = playerId === currentUserId;
     const winRate = profile ? Math.round((profile.wins / Math.max(profile.totalGames, 1)) * 100) : 0;
 
@@ -228,20 +235,27 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
                                     />
                                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-yellow-500 rounded-full"></div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <h1 className="mb-0 leading-none">
-                                        {renderAchievementBorder(profile)}
-                                    </h1>
-                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                        <Badge className="text-[8px] bg-yellow-600/80 text-gray-900 border-yellow-400 font-bold">
-                                            @{profile.username}
-                                        </Badge>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-[10px] text-yellow-300/80">
-                                        <Calendar className="w-2.5 h-2.5" />
-                                        <span>{t('joined') || 'Joined'} {formatDate(profile.createdAt)}</span>
-                                    </div>
-                                </div>
+                                <div className="flex-1 min-w-0 flex justify-between items-start">
+                                    <div>
+                                        <h1 className="mb-0 leading-none">
+                                            {renderAchievementBorder(profile)}
+                                        </h1>
+                                        <div className="flex items-center gap-1.5 text-[10px] text-yellow-300/80">
+                                            <Calendar className="w-2.5 h-2.5" />
+                                            <span>{t('joined') || 'Joined'} {formatDate(profile.createdAt)}</span>
+                                        </div>
+                                    </div>
+                                    {hasVipPass && (
+    <div className="relative flex-shrink-0">
+        <img 
+            src={vipImage} 
+            alt="VIP" 
+            className="relative object-contain"
+            style={{ width: '80px', height: '60px' }}
+        />
+    </div>
+)}
+                                </div>
                             </div>
                         </div>
 

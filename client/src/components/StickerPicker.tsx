@@ -66,9 +66,11 @@ export function StickerPicker({
                 data-testid={`button-send-sticker-${sticker.id}`}
               >
                 <img 
-                  src={`/gif/${sticker.assetPath}`}
+                  src={`/gif/${sticker.assetPath}?v=3`}
                   alt={sticker.name}
                   className="w-16 h-16 object-contain"
+                  decoding="async"
+                  loading="eager"
                 />
               </motion.button>
             ))}

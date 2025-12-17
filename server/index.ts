@@ -16,7 +16,7 @@ interface IpRecord {
   patternMatches: number;
 }
 
-const LIMIT = 14; // max 14 requests per endpoint
+const LIMIT = 30; // max 14 requests per endpoint
 const WINDOW = 3 * 60 * 1000; // 3 minutes
 const BAN_DURATION = 30 * 60 * 1000; // 30 minutes
 
@@ -63,9 +63,9 @@ function abuseProtection(req: Request, res: Response, next: NextFunction) {
   record.timestamps[pathKey] = record.timestamps[pathKey].filter((t) => now - t < WINDOW);
 
   // Automation pattern detection
-  const MIN_SAMPLES = 3;
-  const PATTERN_REPEAT = 3;
-  const TIME_TOLERANCE = 150; // ms
+  const MIN_SAMPLES = 2;
+  const PATTERN_REPEAT = 5;
+  const TIME_TOLERANCE = 0; // ms
   const AUTOMATION_BAN = 2 * 60 * 60 * 1000; // 2 hours
 
   const ts = record.timestamps[pathKey];
@@ -164,11 +164,11 @@ app.use((req, res, next) => {
 
   const h = req.headers;
   if (h["x-requested-with"] !== OFFICIAL_APP_ID) {
-    return res.status(403).json({ message: "Blocked: Invalid client" });
+    return res.status(403).json({ message: "unauthorised" });
   }
 
   const ua = h["user-agent"] || "";
-  if (!/wv/i.test(ua)) return res.status(403).json({ message: "Blocked: Not Android WebView" });
+  if (!/wv/i.test(ua)) return res.status(403).json({ message: "unauthorised" });
 
   if (h["origin"] && !h["origin"].startsWith("https://darklayerstudios.com")) {
     return res.status(403).json({ message: "Blocked: Wrong origin" });

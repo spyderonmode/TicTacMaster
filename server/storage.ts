@@ -23,6 +23,9 @@ import {
   weeklyRewards,
   weeklyResetStatus,
   dailyRewards,
+  vipPasses,
+  VIP_PASS_PRICE,
+  VIP_BET_AMOUNT,
   type User,
   type UpsertUser,
   type Room,
@@ -48,6 +51,7 @@ import {
   type WeeklyReward,
   type WeeklyResetStatus,
   type DailyReward,
+  type VipPass,
   type InsertRoom,
   type InsertGame,
   type InsertMove,
@@ -242,6 +246,11 @@ export interface IStorage {
   // Daily Reward operations
   getDailyReward(userId: string): Promise<{ canClaim: boolean; reward: DailyReward | null; nextClaimDate?: Date }>;
   claimDailyReward(userId: string): Promise<{ success: boolean; message: string; reward?: DailyReward; coinsEarned?: number }>;
+
+  // VIP Pass operations
+  hasActiveVipPass(userId: string): Promise<boolean>;
+  getActiveVipPass(userId: string): Promise<VipPass | null>;
+  purchaseVipPass(userId: string): Promise<{ success: boolean; message: string; vipPass?: VipPass }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4057,7 +4066,7 @@ export class DatabaseStorage implements IStorage {
         description: 'Send hilarious meme reactions',
         price: 100000000,
         assetPath: 'funny-memes.gif',
-        animationType: 'none',
+        animationType: '',
       },
       {
         id: '200w',
@@ -4065,7 +4074,7 @@ export class DatabaseStorage implements IStorage {
         description: 'Celebrate your wins with style',
         price: 100000000,
         assetPath: '200w.gif',
-        animationType: 'none',
+        animationType: '',
       },
       {
         id: '2754b56ef8822c96677a529827edfdcb',
@@ -4073,7 +4082,7 @@ export class DatabaseStorage implements IStorage {
         description: 'Show your epic reaction',
         price: 100000000,
         assetPath: '2754b56ef8822c96677a529827edfdcb.gif',
-        animationType: 'none',
+        animationType: '',
       },
       {
         id: '50782c2081d0743376207ba172523866',
@@ -4081,7 +4090,7 @@ export class DatabaseStorage implements IStorage {
         description: 'When your opponent makes an amazing move',
         price: 100000000,
         assetPath: '50782c2081d0743376207ba172523866.gif',
-        animationType: 'none',
+        animationType: '',
       },
       {
         id: 'c3c38d9d92142e045c30c40487b69abc',
@@ -4089,7 +4098,7 @@ export class DatabaseStorage implements IStorage {
         description: 'Time to celebrate your victory',
         price: 100000000,
         assetPath: 'c3c38d9d92142e045c30c40487b69abc.gif',
-        animationType: 'none',
+        animationType: '',
       },
       {
         id: 'd1712b1d2c1169c8d01c70530f88874d',
@@ -4097,7 +4106,7 @@ export class DatabaseStorage implements IStorage {
         description: 'Let the games begin',
         price: 100000000,
         assetPath: 'd1712b1d2c1169c8d01c70530f88874d.gif',
-        animationType: 'none',
+        animationType: '',
       },
     ];
 
@@ -4550,6 +4559,102 @@ export class DatabaseStorage implements IStorage {
       message: `Daily reward claimed! You earned ${DAILY_REWARD_AMOUNT.toLocaleString()} coins! ${newStreak > 1 ? `🔥 ${newStreak} day streak!` : ''}`,
       reward: updatedReward,
       coinsEarned: DAILY_REWARD_AMOUNT,
+    };
+  }
+
+  // VIP Pass operations
+  async hasActiveVipPass(userId: string): Promise<boolean> {
+    const vipPass = await this.getActiveVipPass(userId);
+    return vipPass !== null;
+  }
+
+  async getActiveVipPass(userId: string): Promise<VipPass | null> {
+    const { weekNumber, year } = this.getISOWeekInfo();
+    
+    const [vipPass] = await db.select()
+      .from(vipPasses)
+      .where(
+        and(
+          eq(vipPasses.userId, userId),
+          eq(vipPasses.weekNumber, weekNumber),
+          eq(vipPasses.year, year)
+        )
+      );
+    
+    return vipPass || null;
+  }
+
+  async purchaseVipPass(userId: string): Promise<{ success: boolean; message: string; vipPass?: VipPass }> {
+    const { weekNumber, year } = this.getISOWeekInfo();
+    
+    // Check if user already has VIP pass for this week
+    const existingPass = await this.getActiveVipPass(userId);
+    if (existingPass) {
+      return {
+        success: false,
+        message: "You already have an active VIP Pass for this week!"
+      };
+    }
+
+    // Get user's current balance
+    const user = await this.getUser(userId);
+    if (!user) {
+      return {
+        success: false,
+        message: "User not found"
+      };
+    }
+
+    const currentBalance = user.coins || 0;
+    if (currentBalance < VIP_PASS_PRICE) {
+      return {
+        success: false,
+        message: `Insufficient coins. You need ${VIP_PASS_PRICE.toLocaleString()} coins to purchase a VIP Pass.`
+      };
+    }
+
+    // Process the transaction
+    const newBalance = currentBalance - VIP_PASS_PRICE;
+    
+    await db.transaction(async (tx) => {
+      // Deduct coins from user
+      await tx.update(users)
+        .set({ coins: newBalance })
+        .where(eq(users.id, userId));
+
+      // Record coin transaction
+      await tx.insert(coinTransactions).values({
+        userId,
+        amount: -VIP_PASS_PRICE,
+        type: 'vip_pass_purchase',
+        balanceBefore: currentBalance,
+        balanceAfter: newBalance,
+      });
+
+      // Create VIP pass record
+      await tx.insert(vipPasses).values({
+        userId,
+        weekNumber,
+        year,
+        price: VIP_PASS_PRICE,
+      });
+    });
+
+    // Get the created VIP pass
+    const [newVipPass] = await db.select()
+      .from(vipPasses)
+      .where(
+        and(
+          eq(vipPasses.userId, userId),
+          eq(vipPasses.weekNumber, weekNumber),
+          eq(vipPasses.year, year)
+        )
+      );
+
+    return {
+      success: true,
+      message: `VIP Pass purchased! 30M bet amount unlocked for this week.`,
+      vipPass: newVipPass
     };
   }
 }

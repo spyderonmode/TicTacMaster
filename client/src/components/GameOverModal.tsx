@@ -7,6 +7,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatNumber } from "@/lib/utils";
 import { CachedProfileImage } from "./CachedProfileImage";
+import victoryImage from '@/lib/victory.png';
+
+const VICTORY_NATIVE_WIDTH = 509;
+const VICTORY_NATIVE_HEIGHT = 270;
+const VICTORY_RENDER_WIDTH = 190;
 
 interface GameOverModalProps {
   open: boolean;
@@ -23,15 +28,76 @@ interface GameOverModalProps {
   } | null;
 }
 
-export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGame = false, onPlayWithAI, isSpectator = false, currentUser }: GameOverModalProps) {
+export function GameOverModal({
+  open,
+  onClose,
+  result,
+  onPlayAgain,
+  isCreatingGame = false,
+  onPlayWithAI,
+  isSpectator = false,
+  currentUser
+}: GameOverModalProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isRequestingSent, setIsRequestingSent] = useState(false);
 
-  // ... (Your useMutation and useEffect hooks remain unchanged)
+  // ✅ NEW: modal will render only when the victory image is ready (decoded)
+  const [modalReady, setModalReady] = useState(false);
+
+  /**
+   * ✅ FIX 1: Preload + decode the victory image early
+   */
+  useEffect(() => {
+    const img = new Image();
+    img.src = victoryImage;
+    if (img.decode) img.decode().catch(() => {});
+  }, []);
+
+  /**
+   * ✅ FIX 2 (main): When modal opens, wait for victory image decode BEFORE rendering modal
+   * Draw case does not wait.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    // reset every time open/condition changes
+    setModalReady(false);
+
+    if (!open) return;
+
+    const isDrawLocal = result?.condition === 'draw';
+
+    // Draw: show immediately next frame
+    if (isDrawLocal) {
+      requestAnimationFrame(() => {
+        if (!cancelled) setModalReady(true);
+      });
+      return () => { cancelled = true; };
+    }
+
+    // Victory: ensure image is decoded first
+    const img = new Image();
+    img.src = victoryImage;
+
+    const done = () => {
+      requestAnimationFrame(() => {
+        if (!cancelled) setModalReady(true);
+      });
+    };
+
+    if (img.decode) {
+      img.decode().then(done).catch(done);
+    } else {
+      img.onload = done;
+      img.onerror = done;
+    }
+
+    return () => { cancelled = true; };
+  }, [open, result?.condition]);
+
   const playAgainRequestMutation = useMutation({
-    // ... (rest of mutation setup)
     mutationFn: async ({ requestedUserId, gameId }: { requestedUserId: string; gameId: string }) => {
       return apiRequest(`/api/play-again/request`, {
         method: 'POST',
@@ -90,9 +156,9 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
   const isOnlineGameWithOpponent = () => {
     const opponentId = getOpponentId();
     return result?.game?.gameMode === 'online' &&
-             opponentId &&
-             opponentId !== 'ai' &&
-             !opponentId.startsWith('player_');
+      opponentId &&
+      opponentId !== 'ai' &&
+      !opponentId.startsWith('player_');
   };
 
   const handlePlayAgainClick = () => {
@@ -116,12 +182,14 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
     return null;
   }
 
+  // ✅ NEW: wait until victory image is decoded (no pop-in)
+  if (!modalReady) return null;
+
   const isDraw = result.condition === 'draw';
   const winner = result.winner;
   const isOnlineGame = result.game?.gameMode === 'online';
 
   const getPlayerDisplayName = (symbol: string) => {
-    // ... (rest of getPlayerDisplayName logic)
     if (!isOnlineGame) {
       if (symbol === 'X') return 'Player X';
       if (symbol === 'O') return result.game?.gameMode === 'ai' ? 'AI' : 'Player O';
@@ -148,34 +216,33 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
   const renderTextWithEmojis = (text: string, style: React.CSSProperties) => {
     const isEmojiCodePoint = (codePoint: number): boolean => {
       return (
-        (codePoint >= 0x1F300 && codePoint <= 0x1F9FF) || // Misc symbols and pictographs
-        (codePoint >= 0x2600 && codePoint <= 0x26FF) ||   // Misc symbols
-        (codePoint >= 0x2700 && codePoint <= 0x27BF) ||   // Dingbats
-        (codePoint >= 0x1F000 && codePoint <= 0x1F02F) || // Mahjong tiles
-        (codePoint >= 0x1F0A0 && codePoint <= 0x1F0FF) || // Playing cards
-        (codePoint >= 0x1F100 && codePoint <= 0x1F64F) || // Enclosed characters and emoticons
-        (codePoint >= 0x1F680 && codePoint <= 0x1F6FF) || // Transport and map symbols
-        (codePoint >= 0x1F900 && codePoint <= 0x1F9FF) || // Supplemental symbols and pictographs
-        (codePoint >= 0x1FA70 && codePoint <= 0x1FAFF)    // Extended-A
+        (codePoint >= 0x1F300 && codePoint <= 0x1F9FF) ||
+        (codePoint >= 0x2600 && codePoint <= 0x26FF) ||
+        (codePoint >= 0x2700 && codePoint <= 0x27BF) ||
+        (codePoint >= 0x1F000 && codePoint <= 0x1F02F) ||
+        (codePoint >= 0x1F0A0 && codePoint <= 0x1F0FF) ||
+        (codePoint >= 0x1F100 && codePoint <= 0x1F64F) ||
+        (codePoint >= 0x1F680 && codePoint <= 0x1F6FF) ||
+        (codePoint >= 0x1F900 && codePoint <= 0x1F9FF) ||
+        (codePoint >= 0x1FA70 && codePoint <= 0x1FAFF)
       );
     };
 
     const isEmojiModifier = (codePoint: number): boolean => {
       return (
-        (codePoint >= 0xFE00 && codePoint <= 0xFE0F) ||   // Variation selectors
-        codePoint === 0x200D ||                            // Zero-width joiner
-        (codePoint >= 0x1F3FB && codePoint <= 0x1F3FF) || // Skin tone modifiers
-        (codePoint >= 0x1F1E6 && codePoint <= 0x1F1FF) || // Regional indicators (flags)
-        codePoint === 0x20E3                               // Combining enclosing keycap
+        (codePoint >= 0xFE00 && codePoint <= 0xFE0F) ||
+        codePoint === 0x200D ||
+        (codePoint >= 0x1F3FB && codePoint <= 0x1F3FF) ||
+        (codePoint >= 0x1F1E6 && codePoint <= 0x1F1FF) ||
+        codePoint === 0x20E3
       );
     };
 
-    // Check if a character is a keycap base (0-9, #, *)
     const isKeycapBase = (codePoint: number): boolean => {
       return (
-        (codePoint >= 0x30 && codePoint <= 0x39) || // 0-9
-        codePoint === 0x23 ||                        // #
-        codePoint === 0x2A                           // *
+        (codePoint >= 0x30 && codePoint <= 0x39) ||
+        codePoint === 0x23 ||
+        codePoint === 0x2A
       );
     };
 
@@ -183,55 +250,47 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
     const elements: React.ReactNode[] = [];
     let textBuffer = '';
     let i = 0;
-    
+
     while (i < chars.length) {
       const char = chars[i];
       const codePoint = char.codePointAt(0);
-      
-      // Check if this starts an emoji sequence
+
       const isEmojiStart = codePoint && (isEmojiCodePoint(codePoint) || isEmojiModifier(codePoint));
-      
-      // Check if this is a keycap base followed by variation selector or keycap combiner
-      const isKeycapEmoji = codePoint && isKeycapBase(codePoint) && i + 1 < chars.length && 
-        chars[i + 1].codePointAt(0) && 
+
+      const isKeycapEmoji = codePoint && isKeycapBase(codePoint) && i + 1 < chars.length &&
+        chars[i + 1].codePointAt(0) &&
         (chars[i + 1].codePointAt(0) === 0xFE0F || chars[i + 1].codePointAt(0) === 0x20E3);
-      
+
       if (isEmojiStart || isKeycapEmoji) {
-        // Push any buffered text first
         if (textBuffer) {
           elements.push(textBuffer);
           textBuffer = '';
         }
-        
-        // Collect the entire emoji sequence
+
         let emojiSequence = char;
         let j = i + 1;
-        
-        // Continue collecting while we find modifiers or ZWJs
+
         while (j < chars.length) {
           const nextChar = chars[j];
           const nextCodePoint = nextChar.codePointAt(0);
-          
+
           if (nextCodePoint && (isEmojiModifier(nextCodePoint) || isEmojiCodePoint(nextCodePoint))) {
-            // Check if previous character was a ZWJ or this is part of a flag/modifier sequence
             const prevCodePoint = emojiSequence.codePointAt(emojiSequence.length - 1);
             if (prevCodePoint === 0x200D || isEmojiModifier(nextCodePoint)) {
               emojiSequence += nextChar;
               j++;
             } else {
-              // This is a new emoji sequence, stop here
               break;
             }
           } else {
             break;
           }
         }
-        
-        // Add the complete emoji sequence with no color styling
+
         elements.push(
-          <span 
+          <span
             key={`emoji-${i}`}
-            style={{ 
+            style={{
               background: 'none',
               WebkitTextFillColor: 'initial',
               backgroundClip: 'border-box',
@@ -241,19 +300,18 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
             {emojiSequence}
           </span>
         );
-        
+
         i = j;
       } else {
         textBuffer += char;
         i++;
       }
     }
-    
-    // Push any remaining buffered text
+
     if (textBuffer) {
       elements.push(textBuffer);
     }
-    
+
     return <span style={style}>{elements}</span>;
   };
 
@@ -339,7 +397,7 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
             pointerEvents: 'none',
             animation: 'float-glow 6s ease-in-out infinite reverse'
           }} />
-          
+
           {/* Floating Geometric Shape */}
           <div style={{
             position: 'absolute',
@@ -367,14 +425,8 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
               50% { transform: translateY(-30px); opacity: 0.35; }
             }
             @keyframes sparkle {
-              0%, 100% {
-                opacity: 0;
-                transform: scale(0);
-              }
-              50% {
-                opacity: 1;
-                transform: scale(1);
-              }
+              0%, 100% { opacity: 0; transform: scale(0); }
+              50% { opacity: 1; transform: scale(1); }
             }
 
             @media (max-width: 600px) {
@@ -392,30 +444,50 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
           `}</style>
 
           {/* Header Section */}
-          <div className="modal-header" style={{ padding: '40px 32px 28px', position: 'relative' }}>
-            <h2 style={{ 
-              fontSize: '32px', 
-              fontWeight: '900', 
-              margin: 0,
-              background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              letterSpacing: '0.5px'
-            }}>
-              {isDraw ? t('itsADraw') : 'Victory!'}
-            </h2>
-            
-            <p style={{ 
-              fontSize: '14px', 
-              color: 'rgba(255, 255, 255, 0.6)', 
-              marginTop: '8px',
-              fontWeight: '700',
-              letterSpacing: '1px',
-              textTransform: 'uppercase'
-            }}>
-              {t('gameOver')}
-            </p>
+          <div
+            className="modal-header"
+            style={{
+              padding: '40px 32px 28px',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {isDraw ? (
+              <h2
+                style={{
+                  fontSize: '32px',
+                  fontWeight: '900',
+                  margin: 0,
+                  background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  letterSpacing: '0.5px',
+                  textAlign: 'center',
+                }}
+              >
+                {t('itsADraw')}
+              </h2>
+            ) : (
+              <img
+                src={victoryImage}
+                alt="Victory"
+                loading="eager"
+                decoding="async"
+                width={VICTORY_NATIVE_WIDTH}
+                height={VICTORY_NATIVE_HEIGHT}
+                style={{
+                  width: `${VICTORY_RENDER_WIDTH}px`,
+                  maxWidth: '100%',
+                  marginTop: '-16px',
+                  height: 'auto',
+                  display: 'block',
+                }}
+              />
+            )}
           </div>
 
           {/* Body Section - Players Display */}
@@ -436,8 +508,8 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                 }}>
                   <span style={{ fontSize: '56px' }}>🤝</span>
                 </div>
-                <p style={{ 
-                  fontSize: '24px', 
+                <p style={{
+                  fontSize: '24px',
                   fontWeight: '800',
                   color: '#f59e0b',
                   margin: 0
@@ -448,15 +520,15 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
             ) : (
               <div>
                 {/* Players Comparison */}
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
                   gap: '32px',
                   marginBottom: '24px'
                 }}>
                   {/* Winner */}
-                  <div style={{ 
+                  <div style={{
                     textAlign: 'center',
                     position: 'relative',
                     flex: 1
@@ -473,19 +545,13 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                       filter: 'drop-shadow(0 4px 8px rgba(255, 215, 0, 0.6))'
                     }}>
                       <svg viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        {/* Crown Base */}
-                        <rect x="6" y="30" width="36" height="6" fill="#FFD700" stroke="#FFA500" strokeWidth="1"/>
-                        
-                        {/* Crown Body */}
-                        <path d="M24 4L20 14L10 8L12 28h24L38 8L28 14z" fill="#FFD700" stroke="#FFA500" strokeWidth="1"/>
-                        
-                        {/* Simple Jewels */}
-                        <circle cx="24" cy="6" r="3" fill="#FF1493"/>
-                        <circle cx="10" cy="10" r="2" fill="#00FFFF"/>
-                        <circle cx="38" cy="10" r="2" fill="#7FFFD4"/>
+                        <rect x="6" y="30" width="36" height="6" fill="#FFD700" stroke="#FFA500" strokeWidth="1" />
+                        <path d="M24 4L20 14L10 8L12 28h24L38 8L28 14z" fill="#FFD700" stroke="#FFA500" strokeWidth="1" />
+                        <circle cx="24" cy="6" r="3" fill="#FF1493" />
+                        <circle cx="10" cy="10" r="2" fill="#00FFFF" />
+                        <circle cx="38" cy="10" r="2" fill="#7FFFD4" />
                       </svg>
-                      
-                      {/* Sparkles - Pure CSS */}
+
                       <div style={{
                         position: 'absolute',
                         top: '-8px',
@@ -527,13 +593,13 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                         animation: 'sparkle 1.6s ease-in-out 0.9s infinite'
                       }} />
                     </div>
-                    
+
                     <div className="player-avatar" style={{
                       width: '100px',
                       height: '100px',
                       margin: '0 auto 12px',
-                      background: winner === 'X' ? 
-                        'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 
+                      background: winner === 'X' ?
+                        'linear-gradient(135deg, #3b82f6, #1d4ed8)' :
                         'linear-gradient(135deg, #ef4444, #dc2626)',
                       borderRadius: '50%',
                       display: 'flex',
@@ -553,27 +619,27 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                           fallbackIconClassName="w-10 h-10 text-white"
                         />
                       ) : (
-                        <span style={{ 
-                          fontSize: '40px', 
-                          color: 'white', 
+                        <span style={{
+                          fontSize: '40px',
+                          color: 'white',
                           fontWeight: 'bold'
                         }}>
                           {winner}
                         </span>
                       )}
                     </div>
-                    
-                    <p style={{ 
-                      fontSize: '16px', 
-                      color: '#10b981', 
+
+                    <p style={{
+                      fontSize: '16px',
+                      color: '#10b981',
                       fontWeight: '700',
                       margin: '12px 0 0'
                     }}>
                       {winnerName}
                     </p>
                     {isOnlineGame && result?.betAmount && typeof result.betAmount === 'number' && (
-                      <p style={{ 
-                        fontSize: '14px', 
+                      <p style={{
+                        fontSize: '14px',
                         color: '#10b981',
                         margin: '4px 0 0',
                         fontWeight: '600'
@@ -604,7 +670,7 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                   </div>
 
                   {/* Loser */}
-                  <div style={{ 
+                  <div style={{
                     textAlign: 'center',
                     flex: 1
                   }}>
@@ -612,8 +678,8 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                       width: '100px',
                       height: '100px',
                       margin: '12px auto',
-                      background: loser === 'X' ? 
-                        'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 
+                      background: loser === 'X' ?
+                        'linear-gradient(135deg, #3b82f6, #1d4ed8)' :
                         'linear-gradient(135deg, #ef4444, #dc2626)',
                       borderRadius: '50%',
                       display: 'flex',
@@ -633,27 +699,27 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                           fallbackIconClassName="w-10 h-10 text-white"
                         />
                       ) : (
-                        <span style={{ 
-                          fontSize: '40px', 
-                          color: 'white', 
+                        <span style={{
+                          fontSize: '40px',
+                          color: 'white',
                           fontWeight: 'bold'
                         }}>
                           {loser}
                         </span>
                       )}
                     </div>
-                    
-                    <p style={{ 
-                      fontSize: '14px', 
-                      color: '#ef4444', 
+
+                    <p style={{
+                      fontSize: '14px',
+                      color: '#ef4444',
                       fontWeight: '800',
                       margin: '12px 0 0'
                     }}>
                       {loserName}
                     </p>
                     {isOnlineGame && result?.betAmount && typeof result.betAmount === 'number' && (
-                      <p style={{ 
-                        fontSize: '14px', 
+                      <p style={{
+                        fontSize: '14px',
                         color: '#ef4444',
                         margin: '4px 0 0',
                         fontWeight: '600'
@@ -665,12 +731,12 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                 </div>
 
                 {/* Winner Wins Text - Centered */}
-                <div style={{ 
+                <div style={{
                   textAlign: 'center',
                   margin: '24px 0 0'
                 }}>
-                  <p style={{ 
-                    fontSize: '24px', 
+                  <p style={{
+                    fontSize: '24px',
                     fontWeight: '800',
                     margin: 0,
                     letterSpacing: '0.5px',
@@ -686,8 +752,8 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                 </div>
 
                 {/* Win Condition */}
-                <p style={{ 
-                  fontSize: '15px', 
+                <p style={{
+                  fontSize: '15px',
                   color: 'rgba(255, 255, 255, 0.8)',
                   margin: '20px 0 0',
                   fontWeight: '600'
@@ -696,8 +762,8 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                     result.abandonmentMessage :
                     result.condition === 'abandonment' ?
                       'Opponent left the game' :
-                      result.condition === 'horizontal' ? 
-                        `🎯 ${t('horizontalLine')}` : 
+                      result.condition === 'horizontal' ?
+                        `🎯 ${t('horizontalLine')}` :
                         `🎯 ${t('diagonalLine')}`
                   }
                 </p>
@@ -706,14 +772,14 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
           </div>
 
           {/* Footer - Action Buttons */}
-          <div className="modal-footer" style={{ 
+          <div className="modal-footer" style={{
             padding: '0 32px 40px',
             background: 'linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.2))'
           }}>
-            <div className="modal-button-container" style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              gap: '12px', 
+            <div className="modal-button-container" style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '12px',
               flexWrap: 'wrap',
               marginBottom: '16px'
             }}>
@@ -740,14 +806,6 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                   transition: 'all 0.3s ease',
                   backdropFilter: 'blur(10px)'
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08))';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
               >
                 Home
               </button>
@@ -764,12 +822,12 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                   style={{
                     padding: '8px 16px',
                     borderRadius: '8px',
-                    background: isCreatingGame ? 
+                    background: isCreatingGame ?
                       'linear-gradient(135deg, rgba(107, 114, 128, 0.5), rgba(107, 114, 128, 0.3))' :
                       'linear-gradient(135deg, #10b981, #059669)',
                     color: 'white',
-                    border: isCreatingGame ? 
-                      '1px solid rgba(107, 114, 128, 0.5)' : 
+                    border: isCreatingGame ?
+                      '1px solid rgba(107, 114, 128, 0.5)' :
                       '1px solid rgba(16, 185, 129, 0.5)',
                     cursor: isCreatingGame ? 'not-allowed' : 'pointer',
                     display: 'flex',
@@ -780,21 +838,9 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                     fontSize: '13px',
                     opacity: isCreatingGame ? 0.6 : 1,
                     transition: 'all 0.3s ease',
-                    boxShadow: isCreatingGame ? 
-                      'none' : 
+                    boxShadow: isCreatingGame ?
+                      'none' :
                       '0 3px 10px rgba(16, 185, 129, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isCreatingGame) {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 14px rgba(16, 185, 129, 0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = isCreatingGame ? 
-                      'none' : 
-                      '0 3px 10px rgba(16, 185, 129, 0.3)';
                   }}
                 >
                   <RefreshCw style={{ width: '16px', height: '16px' }} />
@@ -814,14 +860,14 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                   style={{
                     padding: '8px 16px',
                     borderRadius: '8px',
-                    background: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ? 
+                    background: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ?
                       'linear-gradient(135deg, rgba(107, 114, 128, 0.5), rgba(107, 114, 128, 0.3))' :
                       'linear-gradient(135deg, #3b82f6, #2563eb)',
                     color: 'white',
-                    border: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ? 
-                      '1px solid rgba(107, 114, 128, 0.5)' : 
+                    border: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ?
+                      '1px solid rgba(107, 114, 128, 0.5)' :
                       '1px solid rgba(59, 130, 246, 0.5)',
-                    cursor: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ? 
+                    cursor: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ?
                       'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -831,27 +877,15 @@ export function GameOverModal({ open, onClose, result, onPlayAgain, isCreatingGa
                     fontSize: '13px',
                     opacity: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ? 0.6 : 1,
                     transition: 'all 0.3s ease',
-                    boxShadow: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ? 
-                      'none' : 
+                    boxShadow: (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ?
+                      'none' :
                       '0 3px 10px rgba(59, 130, 246, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isCreatingGame && !playAgainRequestMutation.isPending && !isRequestingSent) {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 14px rgba(59, 130, 246, 0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = (isCreatingGame || playAgainRequestMutation.isPending || isRequestingSent) ? 
-                      'none' : 
-                      '0 3px 10px rgba(59, 130, 246, 0.3)';
                   }}
                 >
                   <Send style={{ width: '16px', height: '16px' }} />
                   {isRequestingSent ? 'Request Sent' :
                     playAgainRequestMutation.isPending ? 'Sending...' :
-                    'Request Play Again'}
+                      'Request Play Again'}
                 </button>
               )}
             </div>

@@ -1,221 +1,208 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trophy, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { motion } from "framer-motion"; // Retained for trophy/text animations, but the confetti motion is gone
+import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import levelPng from "@/lib/level.png";
 
 interface LevelUpModalProps {
   open: boolean;
   onClose: () => void;
   userDisplayName: string;
   newLevel: number;
-  previousLevel: number; 
+  previousLevel: number;
   userProfilePicture?: string;
 }
 
-// Define modern, rich accent colors
-const GOLD_COLOR = "text-amber-300";
-const SHADOW_GLOW = "shadow-amber-500/50";
-const BORDER_COLOR = "border-amber-400";
-const DARK_OBSIDIAN = "bg-gray-950"; 
-const GOLD_BG_GRADIENT = "bg-gradient-to-r from-amber-500 to-yellow-600";
-const RUBY_COLOR = "text-red-500";
+function preloadImage(src?: string) {
+  return new Promise<void>((resolve) => {
+    if (!src) return resolve();
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+    img.src = src;
+  });
+}
 
+/* JRPG font helper (assumes Cinzel / Trajan-style font available) */
+const JRPG_FONT = "font-[Cinzel,Trajan_Pro,serif] tracking-wide uppercase";
 
-export function LevelUpModal({ open, onClose, userDisplayName, newLevel, userProfilePicture }: LevelUpModalProps) {
+export function LevelUpModal({
+  open,
+  onClose,
+  userDisplayName,
+  newLevel,
+  userProfilePicture,
+}: LevelUpModalProps) {
   const { t } = useTranslation();
+  const [isReady, setIsReady] = useState(false);
 
-  // Removed useState and useEffect for confetti
+  useEffect(() => {
+    let cancelled = false;
+
+    async function prepare() {
+      if (!open) {
+        setIsReady(false);
+        return;
+      }
+      setIsReady(false);
+      await Promise.all([preloadImage(levelPng), preloadImage(userProfilePicture)]);
+      if (!cancelled) setIsReady(true);
+    }
+
+    prepare();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, userProfilePicture]);
+
+  const dialogOpen = useMemo(() => open && isReady, [open, isReady]);
 
   return (
-    <Dialog 
-        open={open} 
-        onOpenChange={onClose}
-        // Retaining the smooth overlay transition fix
-        overlayClassName="bg-black/90 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-    >
-      <DialogContent 
-        className={`
-            fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] 
-            max-w-[90vw] sm:max-w-[420px] max-h-[80vh] w-full 
-            ${DARK_OBSIDIAN} border border-gray-800 rounded-xl 
-            text-white shadow-2xl ${SHADOW_GLOW} 
-            
-            data-[state=open]:animate-in 
-            data-[state=open]:fade-in-100
-            data-[state=closed]:animate-out 
-            data-[state=closed]:fade-out-0
-        `}
+    <Dialog open={dialogOpen} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        className="
+          fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
+          w-full max-w-[90%]
+          p-0 bg-transparent border-0 shadow-none
+        "
       >
-        {/* Subtle Background Radial Glow (Obsidian/Ruby) - RETAINED for visual style */}
-        <div className="absolute inset-0 z-0 opacity-50">
-          <motion.div
-            className="absolute w-2/3 h-2/3 rounded-full bg-red-900/40 blur-3xl"
-            initial={{ scale: 0.8, x: '10%', y: '10%' }}
-            animate={{ 
-              scale: [0.8, 1.2, 0.8],
-              x: ['10%', '-10%', '10%'],
-              y: ['10%', '0%', '10%']
-            }}
-            transition={{
-              duration: 12,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-        </div>
-        
-        {/* Main Content (Fixed Height, Justify-between) */}
-        <DialogHeader className="relative z-10 text-center space-y-4 pt-6 pb-4 flex flex-col justify-between h-full">
-          
-          {/* Trophy Animation (Top Section) */}
-          <motion.div
-            className="flex justify-center relative"
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ duration: 0.8, type: "spring", bounce: 0.5 }}
-          >
-            <div className="relative">
-              <Trophy className={`w-14 h-14 sm:w-16 sm:h-16 ${GOLD_COLOR} drop-shadow-lg ${SHADOW_GLOW}`} />
-              <motion.div
-                className={`absolute -inset-3 rounded-full border-2 ${RUBY_COLOR} opacity-50`}
-                animate={{ 
-                  scale: [1, 1.3, 1],
-                  opacity: [0.3, 0, 0.3]
-                }}
-                transition={{ 
-                  duration: 2,
-                  repeat: Infinity
-                }}
-              />
-            </div>
-            {/* Removed: radialParticles */}
-          </motion.div>
+        {/* ===== JRPG PREMIUM FRAME (NO SHADOWS) ===== */}
+        <div className="relative rounded-2xl p-[2px] bg-[linear-gradient(135deg,#fde68a,#f59e0b,#fde68a)]">
+          <div className="relative rounded-[15px] bg-gray-950 text-white">
+            {/* double-line frame */}
+            <div className="pointer-events-none absolute inset-0 rounded-[15px] border border-amber-200/35" />
+            <div className="pointer-events-none absolute inset-[10px] rounded-[11px] border border-amber-200/15" />
 
-          {/* Title: Gold & Bold */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-          >
-            <DialogTitle className={`text-3xl sm:text-4xl font-extrabold ${GOLD_COLOR} mb-1 tracking-wider uppercase`}>
-              LEVEL UP!
-            </DialogTitle>
-          </motion.div>
+            {/* corner lines */}
+            <div className="pointer-events-none absolute left-4 top-4 h-4 w-4 border-l border-t border-amber-200/50" />
+            <div className="pointer-events-none absolute right-4 top-4 h-4 w-4 border-r border-t border-amber-200/50" />
+            <div className="pointer-events-none absolute left-4 bottom-4 h-4 w-4 border-l border-b border-amber-200/50" />
+            <div className="pointer-events-none absolute right-4 bottom-4 h-4 w-4 border-r border-b border-amber-200/50" />
 
-          {/* User Info & Intro Text */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-            className="space-y-3"
-          >
-            {/* Profile Picture */}
-            {userProfilePicture && (
+            <DialogHeader className="relative px-6 pt-6 pb-6 text-center">
+              {/* ===== TITLE RIBBON ===== */}
               <div className="flex justify-center">
-                <motion.div
-                  className="relative"
-                  initial={{ scale: 0, rotate: -90 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ delay: 0.6, duration: 0.5, type: "spring" }}
-                >
-                  <img
-                    src={userProfilePicture}
-                    alt={userDisplayName}
-                    className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border-3 ${BORDER_COLOR} object-cover shadow-lg`}
-                  />
-                  <Sparkles className={`absolute bottom-0 right-0 w-4 h-4 ${GOLD_COLOR}`} />
-                </motion.div>
+                <div className={`px-4 py-1.5 border border-amber-200/30 text-amber-100 text-[11px] ${JRPG_FONT}`}>
+                  LEVEL UP
+                </div>
               </div>
-            )}
 
-            <div className="text-lg sm:text-xl font-semibold text-gray-200">
-              {userDisplayName}
-            </div>
+              {/* ===== HEADER IMAGE (STATIC, locked height) ===== */}
+              <div className="mt-4 flex justify-center">
+                <div className="h-[150px] w-full flex items-center justify-center">
+                  <img
+                    src={levelPng}
+                    alt="Level Up"
+                    draggable={false}
+                    className="max-h-full w-72 h-auto object-contain"
+                  />
+                </div>
+              </div>
 
-            <div className="text-md sm:text-lg text-gray-400 font-medium">
-              You have reached to level:
-            </div>
-          </motion.div>
+              {/* ===== USER PANEL ===== */}
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                <div className="flex items-center justify-center gap-3">
+                  {userProfilePicture && (
+                    <img
+                      src={userProfilePicture}
+                      alt={userDisplayName}
+                      draggable={false}
+                      className="h-16 w-16 rounded-full border border-amber-200/35 object-cover"
+                    />
+                  )}
 
-          {/* Level Badge Animation (Polished Gold Coin Effect) */}
-          <motion.div
-            className="flex justify-center items-center py-2 relative"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7, duration: 0.6 }}
-          >
-            <div className="relative">
-              <motion.div
-                className={`w-24 h-24 sm:w-28 sm:h-28 ${GOLD_BG_GRADIENT} rounded-full flex items-center justify-center 
-                            shadow-xl ${SHADOW_GLOW} border-4 ${BORDER_COLOR} 
-                            border-double`}
-                animate={{ 
-                  boxShadow: [
-                    `0 0 20px 5px rgba(251, 191, 36, 0.4)`,
-                    `0 0 40px 10px rgba(251, 191, 36, 0.8)`,
-                    `0 0 20px 5px rgba(251, 191, 36, 0.4)`
-                  ],
-                  scale: [1, 1.05, 1]
-                }}
-                transition={{ 
-                  duration: 2.5,
-                  repeat: Infinity
-                }}
-              >
-                <span className="text-3xl sm:text-4xl font-extrabold text-gray-950 drop-shadow-md">
-                  {newLevel}
-                </span>
-              </motion.div>
+                  <div className="text-left">
+                    <div className={`text-base font-semibold ${JRPG_FONT}`}>
+                      {userDisplayName}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Your journey continues…
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              {/* Enhanced Sparkles around the badge */}
-              <motion.div
-                className="absolute -top-1 right-2"
-                animate={{ rotate: 360, opacity: [0, 1, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              >
-                <Sparkles className={`w-5 h-5 ${GOLD_COLOR}`} />
-              </motion.div>
-              <motion.div
-                className="absolute -bottom-1 left-2"
-                animate={{ rotate: -360, opacity: [0, 1, 0] }}
-                transition={{ duration: 3.5, repeat: Infinity, ease: "linear", delay: 0.5 }}
-              >
-                <Sparkles className={`w-5 h-5 ${GOLD_COLOR}`} />
-              </motion.div>
-            </div>
-          </motion.div>
-          
-          {/* Motivational Text */}
-          <motion.div
-            className="text-center text-gray-400 text-base space-y-1 mt-1"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.6 }}
-          >
-            <div className={`text-lg font-semibold ${GOLD_COLOR}`}>
-              A new level of excellence is unlocked.
-            </div>
-          </motion.div>
+              {/* ===== SHINY JRPG LEVEL PLATE (NO SHADOWS/BLUR) ===== */}
+              <div className="mt-4 relative rounded-2xl border border-amber-200/25 bg-white/[0.02] overflow-hidden">
+                {/* metallic top sheen */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/10 to-transparent" />
 
-          {/* Continue Button */}
-          <motion.div
-            className="pt-4"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1.2, duration: 0.5 }}
-          >
-            <Button
-              onClick={onClose}
-              className={`w-full bg-gray-800 hover:bg-gray-700 ${GOLD_COLOR} 
-                          font-bold px-8 py-3 transform hover:scale-[1.02] 
-                          transition-all duration-200 shadow-md border border-amber-400`}
-            >
-              <Sparkles className="w-5 h-5 mr-2" />
-              {t('continue')}
-            </Button>
-          </motion.div>
-        </DialogHeader>
+                {/* diagonal shine sweep */}
+                <motion.div
+                  className="pointer-events-none absolute -left-[60%] top-0 h-full w-[60%] bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  animate={{ x: ["0%", "220%"] }}
+                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+                />
+
+                {/* inner frame */}
+                <div className="relative p-4 border border-amber-200/15 rounded-2xl">
+                  <div className="flex items-center justify-between">
+                    <div className="text-left">
+                      <div className={`text-[11px] text-amber-200/80 ${JRPG_FONT}`}>
+                        New Level
+                      </div>
+                      <div className={`mt-1 text-sm text-amber-100 ${JRPG_FONT}`}>
+                        Mastery Increased
+                      </div>
+                    </div>
+
+                    {/* polished metal level badge */}
+                    <motion.div
+                      className="
+                        relative h-16 w-16 rounded-2xl
+                        border border-amber-200/40
+                        bg-[linear-gradient(145deg,#fde68a,#f59e0b,#fde68a)]
+                        flex items-center justify-center
+                      "
+                      animate={{ y: [0, -2, 0] }}
+                      transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                      aria-label={`Level ${newLevel}`}
+                    >
+                      {/* engraved highlight */}
+                      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[linear-gradient(180deg,rgba(255,255,255,0.35),transparent_55%)]" />
+                      <span className="text-2xl font-extrabold text-gray-950">
+                        {newLevel}
+                      </span>
+                    </motion.div>
+                  </div>
+
+                  {/* elegant JRPG meter */}
+                  <div className="mt-4">
+                    <div className="h-[6px] w-full rounded-full bg-white/5 border border-white/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: "80%",
+                          background: "linear-gradient(90deg,#fde68a,#f59e0b,#fde68a)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ===== CONTINUE ONLY ===== */}
+              <div className="mt-5">
+                <Button
+                  onClick={onClose}
+                  className="
+                    w-full h-12 rounded-xl
+                    bg-[linear-gradient(135deg,#fde68a,#f59e0b)]
+                    text-gray-950 font-bold tracking-wide
+                    border border-amber-200/35
+                    hover:brightness-110
+                    transition
+                  "
+                >
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  {t("continue")}
+                </Button>
+              </div>
+            </DialogHeader>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

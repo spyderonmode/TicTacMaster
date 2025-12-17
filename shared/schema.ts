@@ -348,6 +348,21 @@ export const dailyRewards = pgTable("daily_rewards", {
   index("idx_daily_rewards_user").on(table.userId),
 ]);
 
+// VIP Pass purchases - valid for one league week only
+export const vipPasses = pgTable("vip_passes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  weekNumber: integer("week_number").notNull(), // 1-53
+  year: integer("year").notNull(),
+  purchasedAt: timestamp("purchased_at").defaultNow(),
+  price: bigint("price", { mode: 'number' }).notNull(), // Price paid (25 billion)
+}, (table) => [
+  // Ensure one VIP pass per user per week
+  uniqueIndex("unique_user_vip_week").on(table.userId, table.weekNumber, table.year),
+  // Index for quick lookups
+  index("idx_vip_user").on(table.userId),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedRooms: many(rooms),
@@ -378,6 +393,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   weeklyStats: many(weeklyLeaderboard),
   weeklyRewards: many(weeklyRewards),
   dailyReward: many(dailyRewards),
+  vipPasses: many(vipPasses),
 }));
 
 export const roomsRelations = relations(rooms, ({ one, many }) => ({
@@ -474,15 +490,25 @@ export const dailyRewardsRelations = relations(dailyRewards, ({ one }) => ({
   user: one(users, { fields: [dailyRewards.userId], references: [users.id] }),
 }));
 
+export const vipPassesRelations = relations(vipPasses, ({ one }) => ({
+  user: one(users, { fields: [vipPasses.userId], references: [users.id] }),
+}));
+
 // Schemas
+// VIP Pass unlocks 30M bet amount
+export const VIP_BET_AMOUNT = 30000000; // 30 million coins
+export const STANDARD_BET_AMOUNTS = [5000, 50000, 250000, 1000000, 10000000];
+export const ALL_BET_AMOUNTS = [...STANDARD_BET_AMOUNTS, VIP_BET_AMOUNT];
+export const VIP_PASS_PRICE = 10000000000; // 10 billion coins
+
 export const insertRoomSchema = createInsertSchema(rooms).pick({
   maxPlayers: true,
   isPrivate: true,
   betAmount: true,
 }).extend({
   name: z.string().optional().default('Game Room'), // Auto-generate name if not provided
-  betAmount: z.number().refine((val) => [5000, 50000, 250000, 1000000, 10000000].includes(val), {
-    message: "Bet amount must be 5000, 50000, 250000, 1000000, or 10000000 coins",
+  betAmount: z.number().refine((val) => ALL_BET_AMOUNTS.includes(val), {
+    message: "Bet amount must be 5000, 50000, 250000, 1000000, 10000000, or 30000000 (VIP) coins",
   }),
 });
 
@@ -662,6 +688,17 @@ export const insertDailyRewardSchema = createInsertSchema(dailyRewards).pick({
   userId: true,
 });
 
+export const insertVipPassSchema = createInsertSchema(vipPasses).pick({
+  userId: true,
+  weekNumber: true,
+  year: true,
+  price: true,
+}).extend({
+  weekNumber: z.number().min(1).max(53),
+  year: z.number().min(2000).max(3000),
+  price: z.number().positive(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -725,3 +762,5 @@ export type WeeklyResetStatus = typeof weeklyResetStatus.$inferSelect;
 export type InsertWeeklyResetStatus = z.infer<typeof insertWeeklyResetStatusSchema>;
 export type DailyReward = typeof dailyRewards.$inferSelect;
 export type InsertDailyReward = z.infer<typeof insertDailyRewardSchema>;
+export type VipPass = typeof vipPasses.$inferSelect;
+export type InsertVipPass = z.infer<typeof insertVipPassSchema>;

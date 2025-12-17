@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { Plus, Users, Lock, Unlock, Sparkles, Coins } from "lucide-react";
+import { Plus, Users, Lock, Unlock, Sparkles, Coins, Crown } from "lucide-react";
+import { userDataQueryOptions } from "@/lib/queryClient";
 
 interface CreateRoomModalProps {
   open: boolean;
@@ -28,6 +30,13 @@ export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, lea
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const { sendMessage, isConnected } = useWebSocket();
+
+  // Check if user has active VIP Pass
+  const { data: vipPassData } = useQuery<{ hasActivePass: boolean }>({
+    queryKey: ['/api/vip-pass'],
+    ...userDataQueryOptions,
+  });
+  const hasVipPass = vipPassData?.hasActivePass || false;
 
   useEffect(() => {
     const handleCreateRoomSuccess = (event: any) => {
@@ -249,6 +258,15 @@ export function CreateRoomModal({ open, onClose, onRoomCreated, currentRoom, lea
                       <span>10M coins</span>
                     </div>
                   </SelectItem>
+                  {hasVipPass && (
+                    <SelectItem value="30000000" data-testid="option-bet-30m" className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-yellow-400" />
+                        <span className="text-yellow-400 font-semibold">30M coins</span>
+                        <span className="text-xs bg-gradient-to-r from-yellow-500 to-amber-500 text-black px-1.5 py-0.5 rounded font-bold">VIP</span>
+                      </div>
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

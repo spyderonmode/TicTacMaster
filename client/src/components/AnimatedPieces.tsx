@@ -23,7 +23,9 @@ interface AnimatedPieceProps {
     | "bulb"
     | "moonstar"
     | "aurora"
-    | "hypernova";
+    | "hypernova"
+    | "christmas"
+    | "newyear";
   className?: string;
   position?: number;
 }
@@ -173,6 +175,22 @@ const AnimatedPieceComponent = ({ symbol, style = "default", className = "", pos
       <HyperNovaX className={className} uniqueId={uniqueId} />
     ) : (
       <HyperNovaO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "christmas") {
+    return symbol === "X" ? (
+      <ChristmasX className={className} uniqueId={uniqueId} />
+    ) : (
+      <ChristmasO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "newyear") {
+    return symbol === "X" ? (
+      <NewYearX className={className} uniqueId={uniqueId} />
+    ) : (
+      <NewYearO className={className} uniqueId={uniqueId} />
     );
   }
 
@@ -5555,6 +5573,591 @@ function AuroraPrismO({ className = "", uniqueId }: { className?: string; unique
           />
         </motion.g>
       </motion.svg>
+    </motion.div>
+  );
+}
+
+function ChristmasX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotateZ: -30 }}
+      animate={{ scale: 1, rotateZ: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 20 }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "800px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <linearGradient id={`candyCane1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "#FF0000", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "#DC143C", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#8B0000", stopOpacity: 1 }} />
+          </linearGradient>
+          <linearGradient id={`candyCane2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "#FF0000", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "#DC143C", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#8B0000", stopOpacity: 1 }} />
+          </linearGradient>
+          <filter id={`candyGlow-${uniqueId}`}>
+            <feGaussianBlur stdDeviation="1.5" result="glow"/>
+            <feMerge>
+              <feMergeNode in="glow"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <motion.path
+          d="M 10 10 L 90 90"
+          stroke={`url(#candyCane1-${uniqueId})`}
+          strokeWidth="16"
+          strokeLinecap="round"
+          fill="none"
+          filter={`url(#candyGlow-${uniqueId})`}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        />
+
+        <motion.path
+          d="M 90 10 L 10 90"
+          stroke={`url(#candyCane2-${uniqueId})`}
+          strokeWidth="16"
+          strokeLinecap="round"
+          fill="none"
+          filter={`url(#candyGlow-${uniqueId})`}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+        />
+
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
+          <motion.path
+            d="M 15 15 Q 18 15, 18 18 Q 18 22, 15 25"
+            stroke="white"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.4, delay: 0.5, type: "spring" }}
+          />
+          <motion.path
+            d="M 85 15 Q 82 15, 82 18 Q 82 22, 85 25"
+            stroke="white"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.4, delay: 0.55, type: "spring" }}
+          />
+          <motion.path
+            d="M 35 65 Q 32 68, 32 72"
+            stroke="white"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.4, delay: 0.6, type: "spring" }}
+          />
+          <motion.path
+            d="M 65 65 Q 68 68, 68 72"
+            stroke="white"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.4, delay: 0.65, type: "spring" }}
+          />
+        </motion.g>
+      </svg>
+    </motion.div>
+  );
+}
+
+function ChristmasO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotateY: -20 }}
+      animate={{ scale: 1, rotateY: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 20 }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "900px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <radialGradient id={`ornamentGold-${uniqueId}`} cx="30%" cy="30%" r="60%">
+            <stop offset="0%" style={{ stopColor: "#FFD700", stopOpacity: 1 }} />
+            <stop offset="70%" style={{ stopColor: "#FFA500", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#CC8400", stopOpacity: 1 }} />
+          </radialGradient>
+          <radialGradient id={`ornamentRed-${uniqueId}`} cx="30%" cy="30%" r="60%">
+            <stop offset="0%" style={{ stopColor: "#FF1744", stopOpacity: 1 }} />
+            <stop offset="70%" style={{ stopColor: "#D32F2F", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#8B0000", stopOpacity: 1 }} />
+          </radialGradient>
+          <filter id={`ornamentGlow-${uniqueId}`}>
+            <feGaussianBlur stdDeviation="1.5" result="glow"/>
+            <feMerge>
+              <feMergeNode in="glow"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="35"
+          fill="none"
+          stroke="#1B3A00"
+          strokeWidth="14"
+          strokeLinecap="round"
+          filter={`url(#ornamentGlow-${uniqueId})`}
+          initial={{ pathLength: 0, rotate: -90 }}
+          animate={{ pathLength: 1, rotate: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ originX: "50%", originY: "50%" }}
+        />
+
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <motion.circle cx="50" cy="15" r="4.5" fill={`url(#ornamentGold-${uniqueId})`} filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0, y: -10 }}
+            animate={{ scale: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4, type: "spring" }}
+          />
+          <motion.circle cx="75" cy="25" r="4" fill={`url(#ornamentRed-${uniqueId})`} filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.45, type: "spring" }}
+          />
+          <motion.circle cx="85" cy="50" r="4.5" fill={`url(#ornamentGold-${uniqueId})`} filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.5, type: "spring" }}
+          />
+          <motion.circle cx="75" cy="75" r="4" fill={`url(#ornamentRed-${uniqueId})`} filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.55, type: "spring" }}
+          />
+          <motion.circle cx="50" cy="85" r="4.5" fill={`url(#ornamentGold-${uniqueId})`} filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.6, type: "spring" }}
+          />
+          <motion.circle cx="25" cy="75" r="4" fill={`url(#ornamentRed-${uniqueId})`} filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.65, type: "spring" }}
+          />
+          <motion.circle cx="15" cy="50" r="4.5" fill={`url(#ornamentGold-${uniqueId})`} filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.7, type: "spring" }}
+          />
+          <motion.circle cx="25" cy="25" r="4" fill={`url(#ornamentRed-${uniqueId})`} filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.75, type: "spring" }}
+          />
+        </motion.g>
+
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
+          {/* Tree trunk */}
+          <motion.rect x="47" y="53" width="6" height="8" fill="#8B4513"
+            initial={{ scale: 0, scaleY: 0 }}
+            animate={{ scale: 1, scaleY: 1 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+            style={{ originY: "top" }}
+          />
+          
+          {/* Tree bottom layer - largest */}
+          <motion.path
+            d="M 50 48 L 62 58 L 38 58 Z"
+            fill="#1B5E20"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.5, type: "spring" }}
+            style={{ originX: "50%", originY: "48px" }}
+          />
+          
+          {/* Tree middle layer */}
+          <motion.path
+            d="M 50 42 L 58 51 L 42 51 Z"
+            fill="#2E7D32"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.55, type: "spring" }}
+            style={{ originX: "50%", originY: "42px" }}
+          />
+          
+          {/* Tree top layer - smallest */}
+          <motion.path
+            d="M 50 37 L 56 44 L 44 44 Z"
+            fill="#43A047"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.6, type: "spring" }}
+            style={{ originX: "50%", originY: "37px" }}
+          />
+          
+          {/* Star on top */}
+          <motion.path
+            d="M 50 32 L 52 36 L 56 36 L 53 39 L 55 43 L 50 40 L 45 43 L 47 39 L 44 36 L 48 36 Z"
+            fill="#FFD700"
+            filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0, rotate: -30 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.5, delay: 0.65, type: "spring" }}
+          />
+          
+          {/* Ornaments - red */}
+          <motion.circle cx="45" cy="50" r="2" fill="#DC143C" filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.7 }}
+          />
+          <motion.circle cx="55" cy="52" r="1.8" fill="#DC143C" filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.75 }}
+          />
+          
+          {/* Ornaments - gold */}
+          <motion.circle cx="50" cy="55" r="2" fill="#FFD700" filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.72 }}
+          />
+          <motion.circle cx="48" cy="46" r="1.5" fill="#FFD700" filter={`url(#ornamentGlow-${uniqueId})`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.77 }}
+          />
+        </motion.g>
+
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+        >
+          <motion.path
+            d="M 50 8 L 52 13 L 57 13 L 53 17 L 55 22 L 50 18 L 45 22 L 47 17 L 43 13 L 48 13 Z"
+            fill="white"
+            opacity="0.9"
+            initial={{ scale: 0, rotate: -30 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.5, delay: 0.65, type: "spring" }}
+          />
+          <motion.path
+            d="M 92 48 L 93.5 52 L 98 52 L 94.5 55 L 96 59 L 92 56 L 88 59 L 89.5 55 L 86 52 L 90.5 52 Z"
+            fill="white"
+            opacity="0.85"
+            initial={{ scale: 0, rotate: 30 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.5, delay: 0.7, type: "spring" }}
+          />
+          <motion.path
+            d="M 8 48 L 9.5 52 L 14 52 L 10.5 55 L 12 59 L 8 56 L 4 59 L 5.5 55 L 2 52 L 6.5 52 Z"
+            fill="white"
+            opacity="0.85"
+            initial={{ scale: 0, rotate: -30 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.5, delay: 0.75, type: "spring" }}
+          />
+        </motion.g>
+      </svg>
+    </motion.div>
+  );
+}
+
+function NewYearX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotateX: -20 }}
+      animate={{ scale: 1, rotateX: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 22 }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "900px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <linearGradient id={`champGold1-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "#E8D5B7", stopOpacity: 1 }} />
+            <stop offset="30%" style={{ stopColor: "#F5E6D3", stopOpacity: 1 }} />
+            <stop offset="60%" style={{ stopColor: "#D4AF37", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#C5A028", stopOpacity: 1 }} />
+          </linearGradient>
+          <linearGradient id={`champGold2-${uniqueId}`} x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "#E8D5B7", stopOpacity: 1 }} />
+            <stop offset="30%" style={{ stopColor: "#F5E6D3", stopOpacity: 1 }} />
+            <stop offset="60%" style={{ stopColor: "#D4AF37", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#C5A028", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`bubble-${uniqueId}`} cx="30%" cy="30%" r="50%">
+            <stop offset="0%" style={{ stopColor: "#FFFFFF", stopOpacity: 0.9 }} />
+            <stop offset="50%" style={{ stopColor: "#F5E6D3", stopOpacity: 0.6 }} />
+            <stop offset="100%" style={{ stopColor: "#D4AF37", stopOpacity: 0.3 }} />
+          </radialGradient>
+          <filter id={`champGlow-${uniqueId}`}>
+            <feGaussianBlur stdDeviation="1.5" result="glow"/>
+            <feMerge>
+              <feMergeNode in="glow"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <motion.path
+          d="M 20 20 L 80 80"
+          stroke={`url(#champGold1-${uniqueId})`}
+          strokeWidth="13"
+          strokeLinecap="round"
+          fill="none"
+          filter={`url(#champGlow-${uniqueId})`}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+        />
+        <motion.path
+          d="M 80 20 L 20 80"
+          stroke={`url(#champGold2-${uniqueId})`}
+          strokeWidth="13"
+          strokeLinecap="round"
+          fill="none"
+          filter={`url(#champGlow-${uniqueId})`}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.35, ease: "easeOut", delay: 0.08 }}
+        />
+
+        <motion.g>
+          <motion.circle cx="18" cy="30" r="4" fill={`url(#bubble-${uniqueId})`} opacity="0.85"
+            initial={{ y: 20, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.85, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+          />
+          <motion.circle cx="30" cy="15" r="3" fill={`url(#bubble-${uniqueId})`} opacity="0.8"
+            initial={{ y: 20, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+          />
+          <motion.circle cx="70" cy="18" r="3.5" fill={`url(#bubble-${uniqueId})`} opacity="0.85"
+            initial={{ y: 20, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.85, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
+          />
+          <motion.circle cx="82" cy="35" r="2.5" fill={`url(#bubble-${uniqueId})`} opacity="0.75"
+            initial={{ y: 20, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.75, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+          />
+          <motion.circle cx="82" cy="70" r="3" fill={`url(#bubble-${uniqueId})`} opacity="0.8"
+            initial={{ y: 20, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }}
+          />
+          <motion.circle cx="70" cy="85" r="4" fill={`url(#bubble-${uniqueId})`} opacity="0.85"
+            initial={{ y: 20, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.85, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
+          />
+          <motion.circle cx="30" cy="82" r="3" fill={`url(#bubble-${uniqueId})`} opacity="0.8"
+            initial={{ y: 20, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.9, ease: "easeOut" }}
+          />
+          <motion.circle cx="15" cy="68" r="2.5" fill={`url(#bubble-${uniqueId})`} opacity="0.75"
+            initial={{ y: 20, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.75, scale: 1 }}
+            transition={{ duration: 0.8, delay: 1.0, ease: "easeOut" }}
+          />
+        </motion.g>
+
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.6 }}
+        >
+          <motion.path
+            d="M 50 5 L 51.5 10 L 56 10 L 52.5 13 L 54 18 L 50 15 L 46 18 L 47.5 13 L 44 10 L 48.5 10 Z"
+            fill="#FFD700"
+            initial={{ scale: 0, rotate: -15 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.5, delay: 0.7, type: "spring" }}
+          />
+          <motion.path
+            d="M 8 48 L 9.5 52 L 14 52 L 10.5 55 L 12 59 L 8 56 L 4 59 L 5.5 55 L 2 52 L 6.5 52 Z"
+            fill="#E8D5B7"
+            initial={{ scale: 0, rotate: 15 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.5, delay: 0.8, type: "spring" }}
+          />
+          <motion.path
+            d="M 92 48 L 93.5 52 L 98 52 L 94.5 55 L 96 59 L 92 56 L 88 59 L 89.5 55 L 86 52 L 90.5 52 Z"
+            fill="#E8D5B7"
+            initial={{ scale: 0, rotate: -15 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.5, delay: 0.9, type: "spring" }}
+          />
+        </motion.g>
+      </svg>
+    </motion.div>
+  );
+}
+
+function NewYearO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ scale: 0, rotateX: 20 }}
+      animate={{ scale: 1, rotateX: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 22 }}
+      style={{ 
+        transformStyle: "preserve-3d",
+        perspective: "900px"
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <radialGradient id={`champOGrad-${uniqueId}`} cx="35%" cy="35%">
+            <stop offset="0%" style={{ stopColor: "#F5E6D3", stopOpacity: 1 }} />
+            <stop offset="40%" style={{ stopColor: "#D4AF37", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#8B6914", stopOpacity: 1 }} />
+          </radialGradient>
+          <radialGradient id={`bubbleO-${uniqueId}`} cx="30%" cy="30%" r="50%">
+            <stop offset="0%" style={{ stopColor: "#FFFFFF", stopOpacity: 0.9 }} />
+            <stop offset="50%" style={{ stopColor: "#F5E6D3", stopOpacity: 0.6 }} />
+            <stop offset="100%" style={{ stopColor: "#D4AF37", stopOpacity: 0.3 }} />
+          </radialGradient>
+          <filter id={`champOGlow-${uniqueId}`}>
+            <feGaussianBlur stdDeviation="1.5" result="glow"/>
+            <feMerge>
+              <feMergeNode in="glow"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="30"
+          stroke={`url(#champOGrad-${uniqueId})`}
+          strokeWidth="13"
+          fill="none"
+          filter={`url(#champOGlow-${uniqueId})`}
+          initial={{ pathLength: 0, rotate: -90 }}
+          animate={{ pathLength: 1, rotate: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          style={{ originX: "50%", originY: "50%" }}
+        />
+
+        <motion.g>
+          <motion.circle cx="50" cy="10" r="3.5" fill={`url(#bubbleO-${uniqueId})`} opacity="0.85"
+            initial={{ y: 15, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.85, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+          />
+          <motion.circle cx="75" cy="25" r="2.5" fill={`url(#bubbleO-${uniqueId})`} opacity="0.8"
+            initial={{ y: 15, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+          />
+          <motion.circle cx="90" cy="50" r="3" fill={`url(#bubbleO-${uniqueId})`} opacity="0.85"
+            initial={{ y: 15, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.85, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
+          />
+          <motion.circle cx="75" cy="75" r="3.5" fill={`url(#bubbleO-${uniqueId})`} opacity="0.8"
+            initial={{ y: 15, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+          />
+          <motion.circle cx="50" cy="90" r="3" fill={`url(#bubbleO-${uniqueId})`} opacity="0.85"
+            initial={{ y: 15, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.85, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }}
+          />
+          <motion.circle cx="25" cy="75" r="2.5" fill={`url(#bubbleO-${uniqueId})`} opacity="0.8"
+            initial={{ y: 15, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
+          />
+          <motion.circle cx="10" cy="50" r="3" fill={`url(#bubbleO-${uniqueId})`} opacity="0.85"
+            initial={{ y: 15, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.85, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.9, ease: "easeOut" }}
+          />
+          <motion.circle cx="25" cy="25" r="2.5" fill={`url(#bubbleO-${uniqueId})`} opacity="0.8"
+            initial={{ y: 15, opacity: 0, scale: 0 }}
+            animate={{ y: 0, opacity: 0.8, scale: 1 }}
+            transition={{ duration: 0.8, delay: 1.0, ease: "easeOut" }}
+          />
+        </motion.g>
+
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+        >
+          <motion.path
+            d="M 50 40 L 52 45 L 58 45 L 53 49 L 55 55 L 50 51 L 45 55 L 47 49 L 42 45 L 48 45 Z"
+            fill="#FFD700"
+            initial={{ scale: 0, rotate: -20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.5, delay: 0.6, type: "spring" }}
+          />
+          <motion.path
+            d="M 50 58 L 51 61 L 54 61 L 52 63 L 53 66 L 50 64 L 47 66 L 48 63 L 46 61 L 49 61 Z"
+            fill="#E8D5B7"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.8, type: "spring" }}
+          />
+        </motion.g>
+      </svg>
     </motion.div>
   );
 }

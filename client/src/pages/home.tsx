@@ -258,13 +258,23 @@ export default function Home() {
     };
 
     const handleJoinRoomError = (event: any) => {
-      const { message } = event.detail;
-      const isCoinsError = message && message.toLowerCase().includes('coins');
-      setErrorModalData({
-        title: isCoinsError ? 'Insufficient Coins' : 'Join Room Error',
-        message: message || 'Failed to join room. Please try again.',
-        type: isCoinsError ? 'coins' : 'error'
-      });
+      const { message, error } = event.detail;
+      const isVipError = error === 'VIP Pass Required' || (message && message.toLowerCase().includes('vip pass'));
+      const isCoinsError = !isVipError && message && message.toLowerCase().includes('coins');
+      
+      if (isVipError) {
+        setErrorModalData({
+          title: 'VIP Pass Required',
+          message: 'Buy VIP Pass to Play VIP Bet. You can purchase a VIP Pass from the Shop to access 30M coin bet rooms!',
+          type: 'vip'
+        });
+      } else {
+        setErrorModalData({
+          title: isCoinsError ? 'Insufficient Coins' : 'Join Room Error',
+          message: message || 'Failed to join room. Please try again.',
+          type: isCoinsError ? 'coins' : 'error'
+        });
+      }
       setShowErrorModal(true);
     };
 
@@ -795,6 +805,14 @@ export default function Home() {
           // Set game mode to online
           setSelectedMode('online');
 
+          // Prefetch game context before game starts for faster loading
+          if (message.game.playerXId && message.game.playerOId) {
+            queryClient.prefetchQuery({
+              queryKey: [`/api/game-context?playerXId=${message.game.playerXId}&playerOId=${message.game.playerOId}`],
+              staleTime: 30000,
+            });
+          }
+
           // Set the room state immediately
           setCurrentRoom({
             id: message.roomId,
@@ -898,6 +916,9 @@ export default function Home() {
             sessionStorage.removeItem('currentGameState');
             localStorage.removeItem('currentRoomState');
             sessionStorage.removeItem('currentRoomState');
+
+            // NOTE: Game context prefetch is handled in matchmaking_message_received handler
+            // to avoid duplicate API calls - only prefetch there, not here
 
             setTimeout(() => {
               // Ensure game mode is set to online when receiving game_started

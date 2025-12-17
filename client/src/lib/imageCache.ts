@@ -1,38 +1,134 @@
-const IMAGE_CACHE_KEY = 'profile_image_cache_v3';
-const CACHE_VERSION = 3;
+const IMAGE_CACHE_KEY = 'profile_image_cache_v8';
+const CACHE_VERSION = 8;
 const STANDARD_SIZE = 256;
+const DB_NAME = 'ProfileImageCacheDB';
+const DB_VERSION = 5;
+const STORE_NAME = 'images8';
 
-interface CachedImage {
+interface CachedImageMeta {
   url: string;
-  optimized: string;
   cachedAt: number;
 }
 
-interface ImageCache {
+interface ImageCacheMeta {
   version: number;
-  images: Record<string, CachedImage>;
+  images: Record<string, CachedImageMeta>;
+}
+
+let dbInstance: IDBDatabase | null = null;
+
+// In-memory cache for instant access (no IndexedDB delay)
+const memoryCache = new Map<string, string>();
+const MAX_MEMORY_CACHE_SIZE = 100;
+
+function openDB(): Promise<IDBDatabase> {
+  if (dbInstance) return Promise.resolve(dbInstance);
+  
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !window.indexedDB) {
+      reject(new Error('IndexedDB not available'));
+      return;
+    }
+    
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = () => reject(request.error);
+    
+    request.onsuccess = () => {
+      dbInstance = request.result;
+      resolve(request.result);
+    };
+    
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
+
+async function getFromDB(key: string): Promise<string | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(key);
+      
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function saveToDB(key: string, value: string): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(value, key);
+      
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+  }
+}
+
+async function deleteFromDB(key: string): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(key);
+      
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+    });
+  } catch {
+  }
+}
+
+async function clearDB(): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.clear();
+      
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+    });
+  } catch {
+  }
 }
 
 function isStorageAvailable(): boolean {
   if (typeof window === 'undefined') return false;
   try {
     const test = '__storage_test__';
-    sessionStorage.setItem(test, test);
-    sessionStorage.removeItem(test);
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
     return true;
   } catch {
     return false;
   }
 }
 
-function getCache(): ImageCache {
+function getMetaCache(): ImageCacheMeta {
   if (!isStorageAvailable()) {
     return { version: CACHE_VERSION, images: {} };
   }
   try {
-    const cached = sessionStorage.getItem(IMAGE_CACHE_KEY);
+    const cached = localStorage.getItem(IMAGE_CACHE_KEY);
     if (cached) {
-      const parsed = JSON.parse(cached) as ImageCache;
+      const parsed = JSON.parse(cached) as ImageCacheMeta;
       if (parsed.version === CACHE_VERSION) {
         return parsed;
       }
@@ -42,58 +138,121 @@ function getCache(): ImageCache {
   return { version: CACHE_VERSION, images: {} };
 }
 
-function saveCache(cache: ImageCache): void {
+function saveMetaCache(cache: ImageCacheMeta): void {
   if (!isStorageAvailable()) return;
   try {
-    sessionStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(cache));
+    localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(cache));
   } catch {
   }
 }
 
+function getCacheKey(url: string): string {
+  let hash = 0;
+  for (let i = 0; i < url.length; i++) {
+    const char = url.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return `img_${Math.abs(hash)}`;
+}
+
 export function getCachedImage(originalUrl: string): string | null {
   if (!originalUrl) return null;
-  const cache = getCache();
-  const cached = cache.images[originalUrl];
-  if (cached) {
-    return cached.optimized;
+  // Check in-memory cache first for instant access
+  return memoryCache.get(originalUrl) || null;
+}
+
+export async function getCachedImageAsync(originalUrl: string): Promise<string | null> {
+  if (!originalUrl) return null;
+  
+  // Check in-memory cache first (instant)
+  const memoryCached = memoryCache.get(originalUrl);
+  if (memoryCached) return memoryCached;
+  
+  const meta = getMetaCache();
+  const cachedMeta = meta.images[originalUrl];
+  
+  if (!cachedMeta) return null;
+  
+  const cacheKey = getCacheKey(originalUrl);
+  const imageData = await getFromDB(cacheKey);
+  
+  // Store in memory cache for future instant access
+  if (imageData) {
+    if (memoryCache.size >= MAX_MEMORY_CACHE_SIZE) {
+      const firstKey = memoryCache.keys().next().value;
+      if (firstKey) memoryCache.delete(firstKey);
+    }
+    memoryCache.set(originalUrl, imageData);
   }
-  return null;
+  
+  return imageData;
 }
 
 export function getCachedThumbnail(originalUrl: string): string | null {
   return getCachedImage(originalUrl);
 }
 
-export function setCachedImage(originalUrl: string, optimized: string): void {
+export async function setCachedImage(originalUrl: string, optimized: string): Promise<void> {
   if (!originalUrl || !optimized) return;
-  const cache = getCache();
-  cache.images[originalUrl] = {
+  
+  // Store in memory cache immediately for instant access
+  if (memoryCache.size >= MAX_MEMORY_CACHE_SIZE) {
+    const firstKey = memoryCache.keys().next().value;
+    if (firstKey) memoryCache.delete(firstKey);
+  }
+  memoryCache.set(originalUrl, optimized);
+  
+  const cacheKey = getCacheKey(originalUrl);
+  await saveToDB(cacheKey, optimized);
+  
+  const meta = getMetaCache();
+  meta.images[originalUrl] = {
     url: originalUrl,
-    optimized,
     cachedAt: Date.now()
   };
-  saveCache(cache);
+  saveMetaCache(meta);
 }
 
 export function setCachedThumbnail(originalUrl: string, thumbnail: string): void {
   setCachedImage(originalUrl, thumbnail);
 }
 
-export function clearImageCache(): void {
-  if (!isStorageAvailable()) return;
-  try {
-    sessionStorage.removeItem(IMAGE_CACHE_KEY);
-  } catch {
+export async function clearImageCache(): Promise<void> {
+  // Clear memory cache
+  memoryCache.clear();
+  
+  if (isStorageAvailable()) {
+    try {
+      localStorage.removeItem(IMAGE_CACHE_KEY);
+    } catch {
+    }
+  }
+  await clearDB();
+}
+
+export async function invalidateCacheEntry(originalUrl: string): Promise<void> {
+  if (!originalUrl) return;
+  
+  // Clear from memory cache immediately
+  memoryCache.delete(originalUrl);
+  
+  const cacheKey = getCacheKey(originalUrl);
+  await deleteFromDB(cacheKey);
+  
+  if (isStorageAvailable()) {
+    const meta = getMetaCache();
+    if (meta.images[originalUrl]) {
+      delete meta.images[originalUrl];
+      saveMetaCache(meta);
+    }
   }
 }
 
-export function invalidateCacheEntry(originalUrl: string): void {
-  if (!originalUrl || !isStorageAvailable()) return;
-  const cache = getCache();
-  if (cache.images[originalUrl]) {
-    delete cache.images[originalUrl];
-    saveCache(cache);
-  }
+export function isImageCached(originalUrl: string): boolean {
+  if (!originalUrl) return false;
+  const meta = getMetaCache();
+  return !!meta.images[originalUrl];
 }
 
 export async function generateOptimizedImage(
@@ -171,14 +330,14 @@ export async function loadAndCacheImage(
 ): Promise<string> {
   if (!imageUrl) return '';
   
-  const cached = getCachedImage(imageUrl);
-  if (cached) {
-    return cached;
+  const cachedImage = await getCachedImageAsync(imageUrl);
+  if (cachedImage) {
+    return cachedImage;
   }
   
   try {
     const optimized = await generateOptimizedImage(imageUrl, STANDARD_SIZE);
-    setCachedImage(imageUrl, optimized);
+    await setCachedImage(imageUrl, optimized);
     return optimized;
   } catch {
     return imageUrl;

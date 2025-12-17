@@ -1,4 +1,3 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 interface AnimatedStickerProps {
@@ -12,40 +11,37 @@ interface AnimatedStickerProps {
 }
 
 export function AnimatedSticker({ sticker, onComplete }: AnimatedStickerProps) {
-  const [isVisible, setIsVisible] = useState(true);
+  const [opacity, setOpacity] = useState(1);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(() => {
-        onComplete?.();
-      }, 300);
+    // Show sticker for 3 seconds, then fade out over 500ms
+    const showTimer = setTimeout(() => {
+      setOpacity(0);
     }, 3000);
-    return () => clearTimeout(timer);
+    
+    const completeTimer = setTimeout(() => {
+      onComplete?.();
+    }, 3500);
+    
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(completeTimer);
+    };
   }, [onComplete]);
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <div 
-          className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none"
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="relative w-32 h-32">
-              <img 
-                src={`/gif/${sticker.assetPath}`}
-                alt={sticker.name}
-                className="w-full h-full object-contain"
-              />
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    <div 
+      className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none"
+      style={{ opacity, transition: 'opacity 0.5s ease-out' }}
+    >
+      <div className="w-32 h-32">
+        <img 
+          src={`/gif/${sticker.assetPath}`}
+          alt={sticker.name}
+          className="w-full h-full object-contain"
+          decoding="async"
+        />
+      </div>
+    </div>
   );
 }

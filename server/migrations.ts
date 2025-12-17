@@ -110,6 +110,27 @@ export async function runMigrations(): Promise<void> {
       );
     `);
     
+    // Create vip_passes table if it doesn't exist
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS vip_passes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        week_number INTEGER NOT NULL,
+        year INTEGER NOT NULL,
+        purchased_at TIMESTAMP DEFAULT NOW(),
+        price BIGINT NOT NULL
+      );
+    `);
+    
+    // Create indexes for vip_passes
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS unique_user_vip_week ON vip_passes(user_id, week_number, year);
+    `);
+    
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_vip_user ON vip_passes(user_id);
+    `);
+    
     console.log('✅ Database migrations completed successfully');
   } catch (error) {
     console.error('❌ Error running database migrations:', error);

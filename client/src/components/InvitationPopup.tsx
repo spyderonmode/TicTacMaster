@@ -10,6 +10,7 @@ import { UserPlus, X, Check, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { ErrorModal } from "@/components/ErrorModal";
+import { parseErrorMessage } from "@/lib/errorUtils";
 
 interface InvitationPopupProps {
   onRoomJoin: (room: any) => void;
@@ -107,15 +108,15 @@ export function InvitationPopup({ onRoomJoin }: InvitationPopupProps) {
         setErrorModal({
           open: true,
           title: 'Insufficient Coins',
-          message: error.data.message || error.message,
+          message: error.data.message || parseErrorMessage(error),
           type: 'coins'
         });
       } else {
-        // For other errors, show a generic error modal
+        // For other errors, show a generic error modal with parsed message
         setErrorModal({
           open: true,
           title: t('error'),
-          message: error.message,
+          message: parseErrorMessage(error),
           type: 'error'
         });
       }

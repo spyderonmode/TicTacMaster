@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Loader2, Users, X, Zap, Coins } from "lucide-react";
+import { Loader2, Users, X, Zap, Coins, Crown, Lock } from "lucide-react";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -40,6 +40,16 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
   const { toast } = useToast();
   const { lastMessage } = useWebSocket();
   const { isOnline } = useOnlineStatus();
+
+  // Check if user has active VIP Pass - only query when modal is open and user is authenticated
+  const { data: vipPassData, isError: vipPassError } = useQuery<{ hasActivePass: boolean }>({
+    queryKey: ['/api/vip-pass'],
+    enabled: open && !!user && !user.isGuest,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+  // Only show VIP option if query succeeded and user explicitly has active pass - not for guests
+  const hasVipPass = !vipPassError && vipPassData?.hasActivePass === true && !!user && !user.isGuest;
 
   // Reset timer when modal opens
   useEffect(() => {
@@ -672,6 +682,63 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                     </div>
                     <div style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>
                       Elite
+                    </div>
+                  </button>
+                </div>
+                {/* VIP Bet Option - Shows for all users but only available for VIP users */}
+                <div style={{ marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => hasVipPass && setSelectedBet(30000000)}
+                    data-testid="bet-30m-vip"
+                    disabled={!hasVipPass}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '10px',
+                      background: !hasVipPass
+                        ? 'rgba(100, 100, 100, 0.1)'
+                        : selectedBet === 30000000
+                          ? 'linear-gradient(135deg, #fbbf24, #f59e0b)'
+                          : 'rgba(251, 191, 36, 0.1)',
+                      border: !hasVipPass
+                        ? '2px solid rgba(100, 100, 100, 0.3)'
+                        : selectedBet === 30000000
+                          ? '2px solid rgba(251, 191, 36, 0.7)'
+                          : '2px solid rgba(251, 191, 36, 0.3)',
+                      color: 'white',
+                      cursor: hasVipPass ? 'pointer' : 'not-allowed',
+                      opacity: hasVipPass ? 1 : 0.7,
+                      position: 'relative'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (hasVipPass && selectedBet !== 30000000) {
+                        e.currentTarget.style.background = 'rgba(251, 191, 36, 0.2)';
+                        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (hasVipPass && selectedBet !== 30000000) {
+                        e.currentTarget.style.background = 'rgba(251, 191, 36, 0.1)';
+                        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)';
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      {!hasVipPass && <Lock style={{ width: '16px', height: '16px', color: '#888' }} />}
+                      <Crown style={{ width: '20px', height: '20px', color: !hasVipPass ? '#888' : (selectedBet === 30000000 ? '#000' : '#fbbf24') }} />
+                      <span style={{ fontSize: '20px', fontWeight: '800', color: !hasVipPass ? '#888' : (selectedBet === 30000000 ? '#000' : '#fbbf24') }}>30M</span>
+                      <span style={{ 
+                        fontSize: '10px', 
+                        background: !hasVipPass ? 'linear-gradient(135deg, #888, #666)' : 'linear-gradient(135deg, #fbbf24, #f59e0b)', 
+                        color: !hasVipPass ? '#fff' : '#000', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        fontWeight: '700'
+                      }}>VIP</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: !hasVipPass ? 'rgba(150, 150, 150, 0.8)' : (selectedBet === 30000000 ? 'rgba(0,0,0,0.7)' : 'rgba(251, 191, 36, 0.8)'), fontWeight: '600', marginTop: '2px' }}>
+                      {hasVipPass ? 'Exclusive VIP Pass Bet' : 'VIP Pass Required'}
                     </div>
                   </button>
                 </div>

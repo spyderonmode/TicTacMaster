@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -329,6 +328,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   
   // Use ref to track timeouts to avoid unnecessary renders
   const messageTimeoutsRef = useRef<{ X?: NodeJS.Timeout; O?: NodeJS.Timeout }>({});
+  const stickerTimeoutsRef = useRef<{ X?: NodeJS.Timeout; O?: NodeJS.Timeout }>({});
 
   // Profile modal state
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -336,33 +336,38 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
   // Sticker state - similar to player messages
   const [showStickerPanel, setShowStickerPanel] = useState(false);
-  const [playerXSticker, setPlayerXSticker] = useState<{ sticker: any; timeout?: NodeJS.Timeout } | null>(null);
-  const [playerOSticker, setPlayerOSticker] = useState<{ sticker: any; timeout?: NodeJS.Timeout } | null>(null);
+  const [playerXSticker, setPlayerXSticker] = useState<{ sticker: any } | null>(null);
+  const [playerOSticker, setPlayerOSticker] = useState<{ sticker: any } | null>(null);
 
-  // Fetch user's owned stickers
-  const { data: ownedStickers = [] } = useQuery<Array<{ sticker: any }>>({
-    queryKey: ['/api/stickers/owned'],
-    enabled: gameMode === 'online',
+  // Combined game context fetch - ALL data in ONE API call for slow network optimization
+  // Build query string with player IDs for avatar frame lookup
+  const gameContextUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (game?.playerXId) params.append('playerXId', game.playerXId);
+    if (game?.playerOId) params.append('playerOId', game.playerOId);
+    const queryString = params.toString();
+    return queryString ? `/api/game-context?${queryString}` : '/api/game-context';
+  }, [game?.playerXId, game?.playerOId]);
+
+  const { data: gameContext } = useQuery<{
+    ownedStickers: Array<{ sticker: any }>;
+    userStats: { coins: number; wins: number; losses: number; draws: number };
+    pieceStyles: { activeStyle: string };
+    playerXAvatarFrame: { activeFrameId: string | null };
+    playerOAvatarFrame: { activeFrameId: string | null };
+  }>({
+    queryKey: [gameContextUrl],
+    enabled: gameMode === 'online' && !!user,
+    staleTime: 30000, // Cache for 30 seconds to avoid refetches
   });
 
-  // Fetch user stats for coin balance
-  const { data: userStats } = useQuery<{ coins: number }>({
-    queryKey: ['/api/users/online-stats'],
-    enabled: !!user,
-  });
+  // Extract data from combined response
+  const ownedStickers = gameContext?.ownedStickers || [];
+  const userStats = gameContext?.userStats;
+  const playerXAvatarFrame = gameContext?.playerXAvatarFrame;
+  const playerOAvatarFrame = gameContext?.playerOAvatarFrame;
 
-  // Fetch avatar frames for both players
-  const { data: playerXAvatarFrame } = useQuery<{ activeFrameId: string | null }>({
-    queryKey: ['/api/users', game?.playerXId, 'avatar-frame'],
-    enabled: !!game?.playerXId,
-  });
-
-  const { data: playerOAvatarFrame } = useQuery<{ activeFrameId: string | null }>({
-    queryKey: ['/api/users', game?.playerOId, 'avatar-frame'],
-    enabled: !!game?.playerOId,
-  });
-
-  // Sticker send mutation
+  // Sticker send mutation - WebSocket only
   const sendStickerMutation = useMutation({
     mutationFn: async ({ stickerId, recipientSymbol }: { stickerId: string; recipientSymbol: string }) => {
       if (!game?.id || !sendMessage || !currentUserSymbol || !game.roomId) {
@@ -377,17 +382,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         throw new Error('Opponent not found');
       }
 
-      // Send sticker via API to validate ownership
-      const response = await apiRequest('/api/stickers/send', {
-        method: 'POST',
-        body: {
-          stickerId,
-          gameId: game.id,
-          recipientPlayerId: opponentId,
-        },
-      });
-
-      // Send via WebSocket for real-time animation and database recording
+      // Send via WebSocket only for real-time animation and database recording
       sendMessage({
         type: 'send_sticker',
         roomId: game.roomId,
@@ -397,7 +392,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         sticker: ownedStickers.find(s => s.sticker.id === stickerId)?.sticker,
       });
 
-      return response;
+      return { success: true };
     },
     onSuccess: () => {
       setShowStickerPanel(false);
@@ -411,11 +406,8 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     },
   });
 
-  // Fetch current user's active piece style
-  const { data: pieceStyleData } = useQuery<{ activeStyle: string }>({
-    queryKey: ["/api/piece-styles"],
-  });
-  const currentUserPieceStyle = pieceStyleData?.activeStyle || 'default';
+  // Get piece style from combined game context (no separate API call needed)
+  const currentUserPieceStyle = gameContext?.pieceStyles?.activeStyle || 'default';
 
   // Determine which player is the current user (X or O)
   const currentUserSymbol = useMemo(() => {
@@ -590,9 +582,10 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       Object.values(messageTimeoutsRef.current).forEach(timeout => {
         if (timeout) clearTimeout(timeout);
       });
-      // Clean up sticker timeouts
-      if (playerXSticker?.timeout) clearTimeout(playerXSticker.timeout);
-      if (playerOSticker?.timeout) clearTimeout(playerOSticker.timeout);
+      // Clean up sticker timeouts using ref
+      Object.values(stickerTimeoutsRef.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
     };
   }, []); // Empty dependency array safe because it uses ref
 
@@ -681,24 +674,26 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       // Determine which player sent the sticker
       const senderSymbol = senderId === game?.playerXId ? 'X' : 'O';
 
-      // Clear any existing timeout for this player
-      if (senderSymbol === 'X' && playerXSticker?.timeout) {
-        clearTimeout(playerXSticker.timeout);
-      } else if (senderSymbol === 'O' && playerOSticker?.timeout) {
-        clearTimeout(playerOSticker.timeout);
+      // Clear any existing timeout for this player using ref
+      if (stickerTimeoutsRef.current[senderSymbol]) {
+        clearTimeout(stickerTimeoutsRef.current[senderSymbol]);
       }
 
       // Set sticker for the correct player with auto-clear timeout
       if (senderSymbol === 'X') {
         const timeout = setTimeout(() => {
           setPlayerXSticker(null);
+          delete stickerTimeoutsRef.current.X;
         }, 5000);
-        setPlayerXSticker({ sticker, timeout });
+        stickerTimeoutsRef.current.X = timeout;
+        setPlayerXSticker({ sticker });
       } else {
         const timeout = setTimeout(() => {
           setPlayerOSticker(null);
+          delete stickerTimeoutsRef.current.O;
         }, 5000);
-        setPlayerOSticker({ sticker, timeout });
+        stickerTimeoutsRef.current.O = timeout;
+        setPlayerOSticker({ sticker });
       }
     }
   }, [lastMessage, game?.id, game?.roomId, game?.playerXId]);
@@ -723,7 +718,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
       // Making move with current game state
 
-      // For online games, use WebSocket for instant synchronization
+      // For online games, use WebSocket only for instant synchronization
       if (sendMessage && gameMode === 'online') {
         // Send move via WebSocket for real-time sync
         sendMessage({
@@ -736,8 +731,8 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         return Promise.resolve({ success: true });
       }
 
-      // Fallback to HTTP API if WebSocket not available
-      return await apiRequest(`/api/games/${game.id}/moves`, { method: 'POST', body: { position } });
+      // No fallback - WebSocket is required for online games
+      throw new Error('WebSocket connection required for online games');
     },
     onSuccess: (data) => {
       // Move successful
@@ -1323,7 +1318,9 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                     <img 
                       src={`/gif/${playerXSticker.sticker.assetPath}`} 
                       alt={playerXSticker.sticker.name} 
-                      className="w-full h-full object-contain" 
+                      className="w-full h-full object-contain"
+                      decoding="async"
+                      loading="eager"
                     />
                   </div>
                 </motion.div>
@@ -1386,7 +1383,9 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                     <img 
                       src={`/gif/${playerOSticker.sticker.assetPath}`} 
                       alt={playerOSticker.sticker.name} 
-                      className="w-full h-full object-contain" 
+                      className="w-full h-full object-contain"
+                      decoding="async"
+                      loading="eager"
                     />
                   </div>
                 </motion.div>

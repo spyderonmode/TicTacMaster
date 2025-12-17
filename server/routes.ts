@@ -1457,13 +1457,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cannot send gift to yourself" });
       }
 
-      // Check gift limit (20M) - unlimited for admin users
-      const GIFT_LIMIT = 20000000; // 20M coins
+      // Check gift limit - 20M for regular users, 300M for VIP Pass holders, unlimited for admin users
+      const REGULAR_GIFT_LIMIT = 20000000; // 20M coins
+      const VIP_GIFT_LIMIT = 300000000; // 300M coins for VIP Pass holders
       const UNLIMITED_USER_IDS = ['c9122c48-3c24-4891-a6b5-f02aa8362af2'];
       
-      if (!UNLIMITED_USER_IDS.includes(senderId) && amount > GIFT_LIMIT) {
+      // Check if sender has active VIP Pass
+      const senderVipPass = await storage.getActiveVipPass(senderId);
+      const hasVipPass = !!senderVipPass;
+      const effectiveGiftLimit = hasVipPass ? VIP_GIFT_LIMIT : REGULAR_GIFT_LIMIT;
+      
+      if (!UNLIMITED_USER_IDS.includes(senderId) && amount > effectiveGiftLimit) {
+        const limitMessage = hasVipPass 
+          ? `VIP gift limit is 300M coins` 
+          : `Gift amount cannot exceed 20M coins. Get VIP Pass for 300M limit!`;
         return res.status(400).json({ 
-          message: `Gift amount cannot exceed 20M coins` 
+          message: limitMessage 
         });
       }
 
@@ -1689,6 +1698,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get player's VIP status
+  app.get('/api/players/:playerId/vip-status', async (req, res) => {
+    try {
+      const { playerId } = req.params;
+      const vipPass = await storage.getActiveVipPass(playerId);
+      res.json({ hasActivePass: !!vipPass });
+    } catch (error) {
+      console.error('❌ Error fetching player VIP status:', error);
+      res.status(500).json({ error: 'Failed to fetch VIP status' });
+    }
+  });
+
   // Get head-to-head statistics between two players
   app.get('/api/head-to-head/:currentUserId/:targetUserId', async (req, res) => {
     try {
@@ -1817,6 +1838,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error claiming daily reward:", error);
       res.status(500).json({ message: "Failed to claim daily reward" });
+    }
+  });
+
+  // ===== VIP Pass Routes =====
+
+  // Get VIP Pass status for current user
+  app.get('/api/vip-pass', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const vipPass = await storage.getActiveVipPass(userId);
+      const hasActivePass = vipPass !== null;
+      res.json({ 
+        hasActivePass, 
+        vipPass,
+        weekNumber: vipPass?.weekNumber,
+        year: vipPass?.year
+      });
+    } catch (error) {
+      console.error("Error fetching VIP pass status:", error);
+      res.status(500).json({ message: "Failed to fetch VIP pass status" });
+    }
+  });
+
+  // Purchase VIP Pass
+  app.post('/api/vip-pass/purchase', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const result = await storage.purchaseVipPass(userId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error purchasing VIP pass:", error);
+      res.status(500).json({ message: "Failed to purchase VIP pass" });
     }
   });
 
@@ -2549,6 +2607,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Combined game context endpoint - fetches all data needed for GameBoard in ONE call
+  // This significantly reduces network requests for slow internet users
+  app.get('/api/game-context', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const { playerXId, playerOId } = req.query;
+      
+      // Fetch all data in parallel for maximum efficiency
+      const [
+        ownedStickers,
+        userStats,
+        pieceStyleData,
+        playerXFrame,
+        playerOFrame  
+      ] = await Promise.all([
+        storage.getUserStickers(userId),
+        storage.getOnlineGameStats(userId),
+        (async () => {
+          const pieceStyles = await storage.getUserPieceStyles(userId);
+          const activePieceStyle = await storage.getActivePieceStyle(userId);
+          return {
+            pieceStyles,
+            activeStyle: activePieceStyle?.styleName || 'default'
+          };
+        })(),
+        playerXId ? storage.getActiveAvatarFrame(playerXId as string) : Promise.resolve(null),
+        playerOId ? storage.getActiveAvatarFrame(playerOId as string) : Promise.resolve(null)
+      ]);
+      
+      res.json({
+        ownedStickers,
+        userStats, // Return full stats object matching /api/users/online-stats
+        pieceStyles: pieceStyleData,
+        playerXAvatarFrame: { activeFrameId: playerXFrame },
+        playerOAvatarFrame: { activeFrameId: playerOFrame }
+      });
+    } catch (error) {
+      console.error("Error fetching game context:", error);
+      res.status(500).json({ message: "Failed to fetch game context" });
+    }
+  });
+
   // Player rankings route
   app.get('/api/rankings', requireAuth, async (req: any, res) => {
     try {
@@ -2978,6 +3078,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: 'Room not found' });
         }
 
+        // Check VIP requirement for VIP tables (30M bet amount)
+        const VIP_BET_AMOUNT = 30000000;
+        if (room.betAmount === VIP_BET_AMOUNT) {
+          const vipPass = await storage.getActiveVipPass(userId);
+          if (!vipPass) {
+            return res.status(403).json({ 
+              error: 'VIP Required',
+              message: 'You need a VIP Pass to join this VIP table. Purchase a VIP Pass from the shop to unlock 30M bet tables!'
+            });
+          }
+        }
+
         const requiredCoins = room.betAmount || 100;
         const userCoins = await storage.getUserCoins(userId);
 
@@ -3395,12 +3507,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.user.userId;
       const betAmount = req.body.betAmount || 1000000; // Default to 1M if not specified
 
-      // Validate bet amount (only allow 5k, 1M, or 10M for quick match)
-      if (betAmount !== 5000 && betAmount !== 1000000 && betAmount !== 10000000) {
+      // Validate bet amount (only allow 5k, 1M, 10M, or 30M VIP for quick match)
+      const VIP_BET_AMOUNT = 30000000;
+      if (betAmount !== 5000 && betAmount !== 1000000 && betAmount !== 10000000 && betAmount !== VIP_BET_AMOUNT) {
         return res.status(400).json({ 
           error: 'Invalid bet amount',
-          message: 'Quick match only supports 5k, 1M, or 10M coin bets.'
+          message: 'Quick match only supports 5k, 1M, 10M, or 30M VIP coin bets.'
         });
+      }
+
+      // VIP Pass validation - 30M bet requires active VIP Pass
+      if (betAmount === VIP_BET_AMOUNT) {
+        const vipPass = await storage.getActiveVipPass(userId);
+        if (!vipPass) {
+          return res.status(403).json({
+            error: 'VIP Pass Required',
+            message: 'The 30M VIP bet requires an active VIP Pass. Purchase a VIP Pass from the Shop to access VIP bets!'
+          });
+        }
       }
 
       // Check if user has enough coins for the selected bet
@@ -4140,6 +4264,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requiredCoins: requiredBet,
           currentCoins: userCoins
         });
+      }
+
+      // VIP Pass validation - 30M bet rooms require active VIP Pass
+      const VIP_BET_AMOUNT = 30000000;
+      if (role === 'player' && room.betAmount === VIP_BET_AMOUNT) {
+        const vipPass = await storage.getActiveVipPass(userId);
+        if (!vipPass) {
+          return res.status(403).json({
+            error: 'VIP Pass Required',
+            message: 'This is a VIP bet room (30M coins). You need an active VIP Pass to join. Purchase a VIP Pass from the Shop to access VIP bets!'
+          });
+        }
       }
 
       // Check if user is already in the room
@@ -6320,6 +6456,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       }));
                     }
                     break;
+                  }
+
+                  // VIP Pass validation - 30M bet rooms require active VIP Pass
+                  const VIP_BET_AMOUNT = 30000000;
+                  if (room.betAmount === VIP_BET_AMOUNT) {
+                    const vipPass = await storage.getActiveVipPass(userId);
+                    if (!vipPass) {
+                      if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                        joinConnection.ws.send(JSON.stringify({
+                          type: 'join_room_error',
+                          requestId,
+                          error: 'VIP Pass Required',
+                          message: 'This is a VIP bet room (30M coins). You need an active VIP Pass to join. Purchase a VIP Pass from the Shop to access VIP bets!'
+                        }));
+                      }
+                      break;
+                    }
                   }
                 }
 

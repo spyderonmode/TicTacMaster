@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users, Palette, Bird, Lightbulb, Moon } from "lucide-react";
+import { Coins, Zap, Sparkles, Check, ArrowLeft, Flame, Stars, Hammer, Leaf, Heart, Gift, ShoppingCart, Flower2, Sprout, Cat, Users, Palette, Bird, Lightbulb, Moon, Crown, Clock, Trophy } from "lucide-react";
 import { AnimatedPiece } from "@/components/AnimatedPieces";
 import { PurchaseSuccessModal } from "@/components/PurchaseSuccessModal";
 import { AvatarWithFrame } from "@/components/AvatarWithFrame";
@@ -176,7 +176,21 @@ const PIECE_STYLES = [
     id: "hypernova",
     name: "Hypernova Halo",
     description: "Jaw-dropping twin-helix energy rings with molten neon cores and glassy starburst highlights",
-    price: 400000000, // 500 million coins
+    price: 400000000,
+    isDefault: false,
+  },
+  {
+    id: "christmas",
+    name: "Christmas Magic",
+    description: "Festive 3D Christmas design with snowflakes, ornaments and holiday cheer - spread the Christmas spirit!",
+    price: 600000000,
+    isDefault: false,
+  },
+  {
+    id: "newyear",
+    name: "New Year Fireworks",
+    description: "Elegant 3D champagne bubbles with golden shimmer - toast to victory in style!",
+    price: 550000000,
     isDefault: false,
   },
 ];
@@ -412,6 +426,37 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
     ...staticDataQueryOptions,
   });
 
+  // VIP Pass query and mutation
+  const { data: vipPassData } = useQuery<{ hasActivePass: boolean; weekNumber?: number; year?: number }>({
+    queryKey: ['/api/vip-pass'],
+    ...userDataQueryOptions,
+  });
+  const hasVipPass = vipPassData?.hasActivePass || false;
+
+  const purchaseVipPassMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/vip-pass/purchase', {
+        method: 'POST',
+        body: {},
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/vip-pass'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.userId] });
+      toast({
+        title: 'VIP Pass Activated!',
+        description: 'You now have access to 30M bet amounts for this league week!',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Purchase Failed',
+        description: error.message || 'Failed to purchase VIP Pass',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const { data: ownedFramesData = [] } = useQuery<Array<{ frameId: string; frame: AvatarFrameItem; isActive: boolean }>>({
     queryKey: ['/api/avatar-frames/owned'],
     ...userDataQueryOptions,
@@ -560,8 +605,19 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
           </div>
         </div>
 
-        <Tabs defaultValue="pieces" className="w-full" onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-3 mb-4 h-auto bg-gradient-to-r from-purple-900/90 to-black/90 backdrop-blur-md p-1 gap-1.5 rounded-xl border-2 border-purple-400/60 shadow-xl">
+        <Tabs defaultValue="vip" className="w-full" onValueChange={setActiveTab}>
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-4 mb-4 h-auto bg-gradient-to-r from-purple-900/90 to-black/90 backdrop-blur-md p-1 gap-1.5 rounded-xl border-2 border-purple-400/60 shadow-xl">
+            <TabsTrigger 
+              value="vip" 
+              className="flex flex-col items-center gap-1 py-2 px-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-yellow-500 data-[state=active]:to-amber-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 rounded-lg transition-all hover:bg-yellow-900/50 relative border border-yellow-500/50" 
+              data-testid="tab-vip"
+            >
+              <Crown className="w-4 h-4 text-yellow-400" />
+              <span className="text-xs font-semibold">VIP Pass</span>
+              {hasVipPass && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              )}
+            </TabsTrigger>
             <TabsTrigger 
               value="pieces" 
               className="flex flex-col items-center gap-1 py-2 px-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-600 data-[state=active]:to-purple-700 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/50 rounded-lg transition-all hover:bg-purple-900/50" 
@@ -721,7 +777,7 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between items-start">
                           <div className="w-14 h-14">
-                            <img src={`/gif/${sticker.assetPath}`} alt={sticker.name} className="w-full h-full object-contain" />
+                            <img src={`/gif/${sticker.assetPath}?v=3`} alt={sticker.name} className="w-full h-full object-contain" decoding="async" loading="eager" />
                           </div>
                           {owned && (
                             <Badge className="bg-green-600 text-white text-xs px-1.5 py-0" data-testid={`badge-owned-${sticker.id}`}>
@@ -933,6 +989,161 @@ export default function ShopPage({ onClose }: ShopPageProps = {}) {
                   </Card>
                 );
               })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="vip">
+            <div className="max-w-5xl mx-auto">
+              {/* Premium VIP Hero Section */}
+              <div className="relative mb-3 overflow-hidden rounded-xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 opacity-10 blur-2xl animate-pulse"></div>
+                <div className="absolute top-0 right-0 w-48 h-48 bg-pink-500/10 rounded-full blur-2xl -mr-24 -mt-24 animate-pulse"></div>
+                
+                <div className="relative bg-gradient-to-br from-purple-950/95 via-purple-900/90 to-black/95 border border-purple-400/40 backdrop-blur-xl p-4 rounded-xl shadow-xl shadow-purple-500/40">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Left Side - Crown & Title */}
+                    <div className="flex flex-col justify-center items-center lg:items-start gap-2">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 rounded-full blur-xl opacity-60 animate-pulse"></div>
+                        <div className="absolute inset-1 bg-gradient-to-r from-yellow-300 via-pink-400 to-purple-500 rounded-full blur-lg opacity-40 animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                        <div className="relative bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 p-2.5 rounded-full shadow-xl shadow-purple-500/60 border border-yellow-200/60">
+                          <Crown className="w-5 h-5 text-white drop-shadow-lg" />
+                        </div>
+                      </div>
+                      <div className="text-center lg:text-left">
+                        <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-300 to-purple-400 mb-1 flex items-center gap-1.5 justify-center lg:justify-start">
+                          <Sparkles className="w-4 h-4 text-yellow-400 animate-bounce" style={{animationDelay: '0s'}} />
+                          VIP PASS
+                          <Sparkles className="w-4 h-4 text-yellow-400 animate-bounce" style={{animationDelay: '0.2s'}} />
+                        </h2>
+                        <p className="text-purple-300/90 text-sm font-semibold">👑 Unlock Premium Benefits</p>
+                        <p className="text-purple-200/60 text-xs mt-1">Experience exclusive perks & high-stakes betting</p>
+                      </div>
+                    </div>
+
+                    {/* Right Side - Price & Action */}
+                    <div className="flex flex-col justify-center gap-2">
+                      {hasVipPass ? (
+                        <div className="bg-gradient-to-br from-emerald-500/30 via-green-500/20 to-emerald-600/20 border border-green-400/60 rounded-xl p-3 text-center shadow-lg shadow-green-500/30 backdrop-blur-sm">
+                          <div className="flex justify-center mb-2">
+                            <div className="relative">
+                              <div className="absolute inset-0 bg-green-400/40 rounded-full blur-md animate-pulse"></div>
+                              <div className="relative bg-gradient-to-br from-green-400 to-emerald-500 p-2 rounded-full border border-green-300/60">
+                                <Check className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                          </div>
+                          <h3 className="text-lg font-black text-green-300 mb-1">VIP ACTIVE!</h3>
+                          <div className="inline-flex items-center gap-1.5 bg-green-500/30 px-2.5 py-1 rounded-lg border border-green-400/60 backdrop-blur-sm">
+                            <Crown className="w-3 h-3 text-yellow-300" />
+                            <span className="text-green-200 font-bold text-xs">Premium Member</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Price Display */}
+                          <div className="bg-gradient-to-br from-pink-500/25 to-purple-500/25 border border-pink-400/60 rounded-lg p-2.5 text-center backdrop-blur-sm shadow-md shadow-pink-500/20">
+                            <p className="text-purple-200/70 text-xs font-semibold mb-0.5">PRICE</p>
+                            <div className="flex items-center justify-center gap-1.5 text-pink-300 text-xl font-black">
+                              <Coins className="w-5 h-5" />
+                              <span>10B</span>
+                            </div>
+                            <p className="text-purple-300/60 text-[10px] mt-0.5">10 Billion Coins</p>
+                          </div>
+
+                          {/* Purchase Button */}
+                          <Button
+                            onClick={() => purchaseVipPassMutation.mutate()}
+                            disabled={userCoins < 10000000000 || purchaseVipPassMutation.isPending}
+                            className="w-full py-2.5 text-sm font-black bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 hover:from-yellow-300 hover:via-pink-400 hover:to-purple-500 text-white disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-pink-500/50 border border-yellow-200/60 transition-all duration-300 rounded-lg hover:scale-105 active:scale-95"
+                            data-testid="button-purchase-vip"
+                          >
+                            {purchaseVipPassMutation.isPending ? (
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                Purchasing VIP...
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <Crown className="w-4 h-4" />
+                                Purchase VIP Pass
+                                <Sparkles className="w-4 h-4" />
+                              </div>
+                            )}
+                          </Button>
+
+                          {userCoins < 10000000000 && (
+                            <p className="text-orange-400 text-[10px] text-center font-semibold">
+                              💰 Need {formatNumber(10000000000 - userCoins)} more coins
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Benefits Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                {/* Benefit 1 */}
+                <div className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-yellow-900/40 to-yellow-950/20 border border-yellow-400/40 backdrop-blur-sm p-3 shadow-md hover:shadow-yellow-500/30 hover:border-yellow-400/70 transition-all duration-300 hover:scale-105 hover:-translate-y-1">
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="bg-yellow-500/30 p-1.5 rounded border border-yellow-400/50">
+                        <Coins className="w-3 h-3 text-yellow-400" />
+                      </div>
+                      <h3 className="text-yellow-300 font-bold text-xs">HIGH ROLLER</h3>
+                    </div>
+                    <p className="text-yellow-200/80 text-[10px] font-semibold mb-0.5">30M Bet Amount</p>
+                    <p className="text-yellow-200/50 text-[10px]">Exclusive high-stakes betting access</p>
+                  </div>
+                </div>
+
+                {/* Benefit 2 */}
+                <div className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-green-900/40 to-green-950/20 border border-green-400/40 backdrop-blur-sm p-3 shadow-md hover:shadow-green-500/30 hover:border-green-400/70 transition-all duration-300 hover:scale-105 hover:-translate-y-1">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="bg-green-500/30 p-1.5 rounded border border-green-400/50">
+                        <Gift className="w-3 h-3 text-green-400" />
+                      </div>
+                      <h3 className="text-green-300 font-bold text-xs">GENEROUS</h3>
+                    </div>
+                    <p className="text-green-200/80 text-[10px] font-semibold mb-0.5">300M Gift Limit</p>
+                    <p className="text-green-200/50 text-[10px]">15x higher than regular limit!</p>
+                  </div>
+                </div>
+
+                {/* Benefit 3 */}
+                <div className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-purple-900/40 to-purple-950/20 border border-purple-400/40 backdrop-blur-sm p-3 shadow-md hover:shadow-purple-500/30 hover:border-purple-400/70 transition-all duration-300 hover:scale-105 hover:-translate-y-1">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="bg-purple-500/30 p-1.5 rounded border border-purple-400/50">
+                        <Crown className="w-3 h-3 text-purple-400" />
+                      </div>
+                      <h3 className="text-purple-300 font-bold text-xs">EXCLUSIVE</h3>
+                    </div>
+                    <p className="text-purple-200/80 text-[10px] font-semibold mb-0.5">VIP Profile Badge</p>
+                    <p className="text-purple-200/50 text-[10px]">Showcase your elite status</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Duration Info */}
+              <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-amber-900/50 via-orange-900/40 to-amber-900/50 border border-amber-400/50 backdrop-blur-sm p-2 shadow-md shadow-amber-500/20">
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 to-orange-500/10 animate-pulse"></div>
+                <div className="relative flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-amber-300 font-bold text-xs">⏰ WEEKLY PASS</p>
+                    <p className="text-amber-200/70 text-[10px]">Valid for current league week only</p>
+                  </div>
+                  <Sparkles className="w-3 h-3 text-amber-300 flex-shrink-0 animate-spin" />
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

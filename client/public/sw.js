@@ -1,8 +1,7 @@
-// Cache version - this will automatically update when sw.js content changes
-// You can also manually increment the number below to force a cache update
-const CACHE_VERSION = '51.8';
-const CACHE_NAME = `tictactoe-v${CACHE_VERSION}`;
-const RUNTIME_CACHE = `tictactoe-runtime-v${CACHE_VERSION}`;
+// Persistent cache for native app wrapper
+const CACHE_NAME = 'tictactoe-persistent';
+const RUNTIME_CACHE = 'tictactoe-runtime';
+const PROFILE_IMAGE_CACHE = 'tictactoe-profile-images';
 
 const STATIC_ASSETS = [
   '/',
@@ -10,11 +9,13 @@ const STATIC_ASSETS = [
 ];
 
 const CACHE_DURATION = {
-  images: 7 * 24 * 60 * 60 * 1000,      // 7 days
-  scripts: 7 * 24 * 60 * 60 * 1000,     // 7 days
-  styles: 7 * 24 * 60 * 60 * 1000,      // 7 days
-  fonts: 30 * 24 * 60 * 60 * 1000,      // 30 days
-  api: 5 * 60 * 1000,                   // 5 minutes
+  images: 30 * 24 * 60 * 60 * 1000,
+  scripts: 30 * 24 * 60 * 60 * 1000,
+  styles: 30 * 24 * 60 * 60 * 1000,
+  fonts: 90 * 24 * 60 * 60 * 1000,
+  audio: 90 * 24 * 60 * 60 * 1000,
+  api: 5 * 60 * 1000,
+  html: 24 * 60 * 60 * 1000,
 };
 
 self.addEventListener('install', (event) => {
@@ -26,15 +27,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE)
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
-  );
+  event.waitUntil(self.clients.claim());
 });
 
 function shouldCacheRequest(url) {
@@ -51,12 +44,13 @@ function shouldCacheRequest(url) {
     url.pathname.endsWith('.gif') ||
     url.pathname.endsWith('.webp') ||
     url.pathname.endsWith('.wav') ||
-    url.pathname.endsWith('.mp3')
+    url.pathname.endsWith('.mp3') ||
+    url.pathname.endsWith('.ico')
   );
 }
 
 function getCacheDuration(url) {
-  if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp)$/)) {
+  if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|ico)$/)) {
     return CACHE_DURATION.images;
   }
   if (url.pathname.match(/\.(js|mjs)$/)) {
@@ -65,17 +59,42 @@ function getCacheDuration(url) {
   if (url.pathname.match(/\.css$/)) {
     return CACHE_DURATION.styles;
   }
-  if (url.pathname.match(/\.(woff2|woff|ttf)$/)) {
+  if (url.pathname.match(/\.(woff2|woff|ttf|eot)$/)) {
     return CACHE_DURATION.fonts;
+  }
+  if (url.pathname.match(/\.(wav|mp3|ogg)$/)) {
+    return CACHE_DURATION.audio;
   }
   if (url.pathname.startsWith('/api/')) {
     return CACHE_DURATION.api;
   }
-  return 24 * 60 * 60 * 1000;
+  if (url.pathname.endsWith('.html') || url.pathname === '/') {
+    return CACHE_DURATION.html;
+  }
+  return 7 * 24 * 60 * 60 * 1000;
 }
 
 function isApiRequest(url) {
   return url.pathname.startsWith('/api/');
+}
+
+function isProfileImage(url) {
+  return (
+    url.hostname.includes('googleusercontent') ||
+    url.hostname.includes('githubusercontent') ||
+    url.hostname.includes('facebook') ||
+    url.hostname.includes('fbcdn') ||
+    url.hostname.includes('twimg') ||
+    url.hostname.includes('gravatar') ||
+    url.hostname.includes('cloudinary') ||
+    url.hostname.includes('imgur') ||
+    url.hostname.includes('unsplash') ||
+    url.hostname.includes('firebasestorage')
+  );
+}
+
+function isExternalImage(url) {
+  return url.pathname.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/);
 }
 
 async function cacheWithExpiry(cache, request, response, duration) {
@@ -93,11 +112,15 @@ async function cacheWithExpiry(cache, request, response, duration) {
   await cache.put(request, modifiedResponse);
 }
 
-async function getCachedResponse(cache, request) {
+async function getCachedResponse(cache, request, ignoreExpiry = false) {
   const cachedResponse = await cache.match(request);
   
   if (!cachedResponse) {
     return null;
+  }
+  
+  if (ignoreExpiry) {
+    return cachedResponse;
   }
   
   const cacheTime = cachedResponse.headers.get('sw-cache-time');
@@ -106,12 +129,11 @@ async function getCachedResponse(cache, request) {
   if (cacheTime && cacheDuration) {
     const age = Date.now() - parseInt(cacheTime);
     if (age > parseInt(cacheDuration)) {
-      await cache.delete(request);
-      return null;
+      return { response: cachedResponse, expired: true };
     }
   }
   
-  return cachedResponse;
+  return { response: cachedResponse, expired: false };
 }
 
 self.addEventListener('fetch', (event) => {
@@ -122,10 +144,39 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Profile images from external sources - NEVER re-download if cached
+  if (url.origin !== self.location.origin && (isProfileImage(url) || isExternalImage(url))) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(PROFILE_IMAGE_CACHE);
+        const cached = await cache.match(request);
+        
+        // If cached, return immediately - NO background update
+        if (cached) {
+          return cached;
+        }
+        
+        // Not in cache, fetch and cache permanently
+        try {
+          const response = await fetch(request, { mode: 'cors', credentials: 'omit' });
+          if (response.ok) {
+            await cache.put(request, response.clone());
+          }
+          return response;
+        } catch (error) {
+          throw error;
+        }
+      })()
+    );
+    return;
+  }
+
+  // Skip other external requests
   if (url.origin !== self.location.origin) {
     return;
   }
 
+  // API requests: Network first, cache fallback
   if (isApiRequest(url)) {
     event.respondWith(
       (async () => {
@@ -141,16 +192,16 @@ self.addEventListener('fetch', (event) => {
           
           return networkResponse;
         } catch (error) {
-          const cachedResponse = await getCachedResponse(cache, request);
+          const cached = await getCachedResponse(cache, request, true);
           
-          if (cachedResponse) {
-            const headers = new Headers(cachedResponse.headers);
+          if (cached?.response || cached) {
+            const response = cached.response || cached;
+            const headers = new Headers(response.headers);
             headers.set('X-From-Cache', 'true');
-            headers.set('X-Cache-Fallback', 'network-error');
             
-            return new Response(cachedResponse.body, {
-              status: cachedResponse.status,
-              statusText: cachedResponse.statusText,
+            return new Response(response.body, {
+              status: response.status,
+              statusText: response.statusText,
               headers: headers
             });
           }
@@ -162,18 +213,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Static assets: Cache first, background update
   if (shouldCacheRequest(url)) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(RUNTIME_CACHE);
-        const cachedResponse = await getCachedResponse(cache, request);
+        const cached = await getCachedResponse(cache, request);
         
-        // If we have a valid cached response, use it (no background download)
-        if (cachedResponse) {
-          return cachedResponse;
+        if (cached?.response) {
+          if (cached.expired) {
+            fetch(request).then(async (networkResponse) => {
+              if (networkResponse.ok) {
+                const duration = getCacheDuration(url);
+                await cacheWithExpiry(cache, request, networkResponse.clone(), duration);
+              }
+            }).catch(() => {});
+          }
+          return cached.response;
         }
         
-        // Only fetch from network if not in cache or cache expired
         try {
           const networkResponse = await fetch(request);
           
@@ -191,17 +249,38 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first strategy for HTML files to ensure fresh content
+  // HTML files: Cache first with background update
   if (url.pathname.endsWith('.html') || url.pathname === '/') {
     event.respondWith(
-      fetch(request).catch(() => {
-        return caches.match(request);
-      })
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(request);
+        
+        if (cached) {
+          fetch(request).then(async (networkResponse) => {
+            if (networkResponse.ok) {
+              await cache.put(request, networkResponse.clone());
+            }
+          }).catch(() => {});
+          
+          return cached;
+        }
+        
+        try {
+          const networkResponse = await fetch(request);
+          if (networkResponse.ok) {
+            await cache.put(request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (error) {
+          throw error;
+        }
+      })()
     );
     return;
   }
 
-  // Cache-first for everything else
+  // Everything else: Cache first
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
@@ -211,7 +290,11 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       
-      return fetch(request);
+      const networkResponse = await fetch(request);
+      if (networkResponse.ok) {
+        await cache.put(request, networkResponse.clone());
+      }
+      return networkResponse;
     })()
   );
 });
@@ -227,6 +310,20 @@ self.addEventListener('message', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => caches.delete(cacheName))
         );
+      })
+    );
+  }
+  
+  // Allow clearing only profile image cache
+  if (event.data && event.data.type === 'CLEAR_PROFILE_IMAGES') {
+    event.waitUntil(caches.delete(PROFILE_IMAGE_CACHE));
+  }
+  
+  // Invalidate specific image URL from cache
+  if (event.data && event.data.type === 'INVALIDATE_IMAGE') {
+    event.waitUntil(
+      caches.open(PROFILE_IMAGE_CACHE).then((cache) => {
+        return cache.delete(event.data.url);
       })
     );
   }

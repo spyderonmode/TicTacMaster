@@ -1,13 +1,13 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Coins, X } from "lucide-react";
+import { AlertTriangle, Coins, X, Crown } from "lucide-react";
 
 interface ErrorModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
   message: string;
-  type?: 'error' | 'coins' | 'warning';
+  type?: 'error' | 'coins' | 'warning' | 'vip';
 }
 
 export function ErrorModal({ open, onClose, title, message, type = 'error' }: ErrorModalProps) {
@@ -17,6 +17,8 @@ export function ErrorModal({ open, onClose, title, message, type = 'error' }: Er
         return <Coins className="w-8 h-8 text-yellow-500" />;
       case 'warning':
         return <AlertTriangle className="w-8 h-8 text-orange-500" />;
+      case 'vip':
+        return <Crown className="w-8 h-8 text-purple-500" />;
       default:
         return <AlertTriangle className="w-8 h-8 text-red-500" />;
     }
@@ -28,6 +30,8 @@ export function ErrorModal({ open, onClose, title, message, type = 'error' }: Er
         return 'text-yellow-600 dark:text-yellow-400';
       case 'warning':
         return 'text-orange-600 dark:text-orange-400';
+      case 'vip':
+        return 'text-purple-600 dark:text-purple-400';
       default:
         return 'text-red-600 dark:text-red-400';
     }
