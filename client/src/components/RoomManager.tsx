@@ -308,48 +308,48 @@ export function RoomManager({
 
   return (
     <Card className="bg-slate-800 border-slate-700">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-          <DoorOpen className="w-5 h-5 text-orange-400" />
+      <CardHeader className="pb-2 pt-3 px-3">
+        <CardTitle className="text-sm sm:text-base flex items-center gap-1.5">
+          <DoorOpen className="w-4 h-4 text-orange-400" />
           {t('roomManagement')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 pt-0">
+      <CardContent className="space-y-3 pt-0 px-3 pb-3">
         {!currentRoom ? (
           <>
             {/* Join Room Section with Graphics */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="relative">
                 <Input
                   placeholder={t('roomCode')}
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  className="bg-slate-700/50 border-slate-600 text-white pl-10 h-12 text-base font-medium tracking-wider"
+                  className="bg-slate-700/50 border-slate-600 text-white pl-8 h-9 text-sm font-medium tracking-wider"
                   maxLength={8}
                   data-testid="input-room-code"
                 />
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  <DoorOpen className="w-5 h-5" />
+                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+                  <DoorOpen className="w-4 h-4" />
                 </div>
               </div>
               
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2">
-                <span className="text-amber-400 text-lg">💰</span>
-                <p className="text-xs text-amber-200/90 leading-relaxed">
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-2 flex items-start gap-1.5">
+                <span className="text-amber-400 text-sm">💰</span>
+                <p className="text-[10px] text-amber-200/90 leading-relaxed">
                   Rooms have different bet amounts (50k, 250k, or 1M coins). Make sure you have enough coins to join as a player.
                 </p>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleJoinRoom('player')}
                   disabled={!joinCode.trim() || isJoiningAsPlayer}
-                  className="flex-1 relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-medium transition-all duration-300 shadow-lg hover:shadow-green-500/25"
+                  className="flex-1 relative overflow-hidden rounded-md px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-green-500/25"
                   data-testid="button-join-player"
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <Users2 className="w-4 h-4" />
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Users2 className="w-3.5 h-3.5" />
                     <span>{isJoiningAsPlayer ? t('loading') : t('joinAsPlayer')}</span>
                   </div>
                 </button>
@@ -358,11 +358,11 @@ export function RoomManager({
                   type="button"
                   onClick={() => handleJoinRoom('spectator')}
                   disabled={!joinCode.trim() || isJoiningAsSpectator}
-                  className="flex-1 relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-medium transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
+                  className="flex-1 relative overflow-hidden rounded-md px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
                   data-testid="button-join-spectator"
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <Eye className="w-4 h-4" />
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5" />
                     <span>{isJoiningAsSpectator ? t('loading') : t('joinAsSpectator')}</span>
                   </div>
                 </button>
@@ -370,16 +370,16 @@ export function RoomManager({
             </div>
 
             {/* Create Room Button with Graphics */}
-            <div className="relative pt-2">
+            <div className="relative pt-1.5">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
               <button
                 type="button"
                 onClick={onCreateRoom}
-                className="w-full mt-2 relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-medium transition-all duration-300 shadow-lg hover:shadow-purple-500/25"
+                className="w-full mt-1.5 relative overflow-hidden rounded-md px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-purple-500/25"
                 data-testid="button-create-room"
               >
-                <div className="flex items-center justify-center gap-2">
-                  <Plus className="w-5 h-5" />
+                <div className="flex items-center justify-center gap-1.5">
+                  <Plus className="w-4 h-4" />
                   <span>{t('createNewRoom')}</span>
                 </div>
                 {/* Shine effect */}
@@ -390,36 +390,36 @@ export function RoomManager({
         ) : (
           <>
             {/* Current Room with Graphics */}
-            <div className="relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 border border-slate-600">
+            <div className="relative overflow-hidden rounded-md p-2.5 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 border border-slate-600">
               {/* Background pattern */}
               <div className="absolute inset-0 opacity-5">
                 <div className="absolute inset-0" style={{
                   backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-                  backgroundSize: '24px 24px'
+                  backgroundSize: '18px 18px'
                 }}></div>
               </div>
               
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-orange-500/20 p-2 rounded-lg">
-                      <DoorOpen className="w-4 h-4 text-orange-400" />
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="bg-orange-500/20 p-1.5 rounded-md">
+                      <DoorOpen className="w-3.5 h-3.5 text-orange-400" />
                     </div>
-                    <span className="font-semibold text-white">{t('currentRoom')}</span>
+                    <span className="text-sm font-semibold text-white">{t('currentRoom')}</span>
                   </div>
                   <Badge variant="secondary" className={`${
                     currentRoom.status === 'playing' ? 'bg-gradient-to-r from-orange-600 to-red-600' : 
                     currentRoom.status === 'waiting' ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-gray-600'
-                  } text-white border-0`}>
+                  } text-white border-0 text-[10px] px-1.5 py-0.5`}>
                     {currentRoom.status === 'playing' ? t('playing') : 
                      currentRoom.status === 'waiting' ? t('waiting') : t('active')}
                   </Badge>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-sm font-mono font-bold text-blue-400">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-mono font-bold text-blue-400">
                     {t('roomLabel')} #{currentRoom.code}
                   </div>
-                  <div className="text-sm text-gray-300">
+                  <div className="text-xs text-gray-300">
                     {currentRoom.name}
                   </div>
                 </div>
@@ -427,20 +427,20 @@ export function RoomManager({
             </div>
 
             {/* Room Actions with Graphics */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {/* Main action buttons */}
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 {/* Check if user is the room creator */}
                 {currentRoom.ownerId === (user?.userId || user?.id) ? (
                   <button
                     type="button"
                     onClick={handleStartGame}
                     disabled={isStartingGame || currentRoom.status === 'playing'}
-                    className="flex-1 relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-medium transition-all duration-300 shadow-lg hover:shadow-green-500/25"
+                    className="flex-1 relative overflow-hidden rounded-md px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-green-500/25"
                     data-testid="button-start-game"
                   >
-                    <div className="flex items-center justify-center gap-2">
-                      <Play className="w-4 h-4" />
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Play className="w-3.5 h-3.5" />
                       <span>{isStartingGame ? t('starting') : 
                        currentRoom.status === 'playing' ? t('gameRunning') : t('startGame')}</span>
                     </div>
@@ -449,10 +449,10 @@ export function RoomManager({
                   <button
                     type="button"
                     disabled
-                    className="flex-1 rounded-lg px-4 py-3 bg-gray-700 text-gray-400 font-medium cursor-not-allowed"
+                    className="flex-1 rounded-md px-3 py-2 bg-gray-700 text-gray-400 text-sm font-medium cursor-not-allowed"
                   >
-                    <div className="flex items-center justify-center gap-2">
-                      <Play className="w-4 h-4" />
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Play className="w-3.5 h-3.5" />
                       <span>{currentRoom.status === 'playing' ? t('gameRunning') : t('waitForStart')}</span>
                     </div>
                   </button>
@@ -460,9 +460,9 @@ export function RoomManager({
                 <button
                   type="button"
                   onClick={handleLeaveRoom}
-                  className="px-4 py-3 rounded-lg border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-all duration-300"
+                  className="px-2.5 py-2 rounded-md border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-all duration-300"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -471,10 +471,10 @@ export function RoomManager({
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(true)}
-                  className="w-full relative overflow-hidden rounded-lg px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-medium transition-all duration-300 shadow-lg hover:shadow-blue-500/25 border border-blue-500/30"
+                  className="w-full relative overflow-hidden rounded-md px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-blue-500/25 border border-blue-500/30"
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <UserPlus className="w-4 h-4" />
+                  <div className="flex items-center justify-center gap-1.5">
+                    <UserPlus className="w-3.5 h-3.5" />
                     <span>{t('inviteFriends')}</span>
                   </div>
                 </button>

@@ -1,9 +1,9 @@
-const IMAGE_CACHE_KEY = 'profile_image_cache_v8';
-const CACHE_VERSION = 8;
+const IMAGE_CACHE_KEY = 'profile_image_cache_v10';
+const CACHE_VERSION = 10;
 const STANDARD_SIZE = 256;
 const DB_NAME = 'ProfileImageCacheDB';
-const DB_VERSION = 5;
-const STORE_NAME = 'images8';
+const DB_VERSION = 10;
+const STORE_NAME = 'images10';
 
 interface CachedImageMeta {
   url: string;

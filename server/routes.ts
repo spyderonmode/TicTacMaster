@@ -999,12 +999,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeGame.playerOId ? storage.getUser(activeGame.playerOId) : Promise.resolve(null)
       ]);
 
-      // Get achievements and piece styles for both players
-      const [playerXAchievements, playerOAchievements, playerXPieceStyle, playerOPieceStyle] = await Promise.all([
+      // Get achievements, piece styles, and VIP pass status for both players
+      const [playerXAchievements, playerOAchievements, playerXPieceStyle, playerOPieceStyle, playerXVipPass, playerOVipPass] = await Promise.all([
         playerXInfo ? storage.getUserAchievements(activeGame.playerXId!) : Promise.resolve([]),
         playerOInfo ? storage.getUserAchievements(activeGame.playerOId!) : Promise.resolve([]),
         playerXInfo ? storage.getActivePieceStyle(activeGame.playerXId!) : Promise.resolve(undefined),
-        playerOInfo ? storage.getActivePieceStyle(activeGame.playerOId!) : Promise.resolve(undefined)
+        playerOInfo ? storage.getActivePieceStyle(activeGame.playerOId!) : Promise.resolve(undefined),
+        playerXInfo ? storage.getActiveVipPass(activeGame.playerXId!) : Promise.resolve(null),
+        playerOInfo ? storage.getActiveVipPass(activeGame.playerOId!) : Promise.resolve(null)
       ]);
 
       // Create enhanced game object
@@ -1013,12 +1015,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         playerXInfo: playerXInfo ? {
           ...playerXInfo,
           achievements: playerXAchievements.slice(0, 3),
-          activePieceStyle: playerXPieceStyle?.styleName || 'default'
+          activePieceStyle: playerXPieceStyle?.styleName || 'default',
+          hasVipPass: !!playerXVipPass
         } : null,
         playerOInfo: playerOInfo ? {
           ...playerOInfo,
           achievements: playerOAchievements.slice(0, 3),
-          activePieceStyle: playerOPieceStyle?.styleName || 'default'
+          activePieceStyle: playerOPieceStyle?.styleName || 'default',
+          hasVipPass: !!playerOVipPass
         } : null,
         gameMode: 'online',
         serverTime: new Date().toISOString(),
@@ -3805,7 +3809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('🤖 Error in bot matchmaking:', error);
           matchmakingTimers.delete(userId);
         }
-      }, 15000); // 25 seconds
+      }, 12000); // 25 seconds
 
       // Store timer for cleanup
       matchmakingTimers.set(userId, botTimer);
@@ -5379,6 +5383,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               clearTimeout(pendingDisconnect.timeoutId);
               pendingDisconnects.delete(data.userId);
               //console.log(`✅ User ${data.userId} reconnected within grace period - disconnect cancelled`);
+            }
+
+            // 🔧 NETWORK SWITCH FIX: Clean up stale matchmaking state from old connection
+            // When user reconnects after network switch, old matchmaking queue entry + timer still exist
+            const staleQueueIndex = matchmakingQueue.findIndex(entry => entry.userId === data.userId);
+            if (staleQueueIndex > -1) {
+              //console.log(`🧹 Removing stale matchmaking queue entry for user ${data.userId} (network switch)`);
+              matchmakingQueue.splice(staleQueueIndex, 1);
+            }
+            if (matchmakingTimers.has(data.userId)) {
+              clearTimeout(matchmakingTimers.get(data.userId)!);
+              matchmakingTimers.delete(data.userId);
+              //console.log(`🧹 Clearing stale matchmaking timer for user ${data.userId} (network switch)`);
             }
 
             // Update online users list

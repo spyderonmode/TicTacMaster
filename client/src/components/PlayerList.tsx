@@ -90,61 +90,61 @@ export function PlayerList({ roomId }: PlayerListProps) {
 
   return (
     <Card className="bg-slate-800 border-slate-700">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-          <Users className="w-5 h-5 text-green-400" />
+      <CardHeader className="pb-2 pt-3 px-3">
+        <CardTitle className="text-sm sm:text-base flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-green-400" />
           {t('playersAndSpectators')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 pt-0">
+      <CardContent className="space-y-3 pt-0 px-3 pb-3">
         {/* Players Section with Graphics */}
-        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-3">
+        <div className="relative overflow-hidden rounded-md bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-2">
           {/* Background pattern */}
           <div className="absolute inset-0 opacity-5">
             <div className="absolute inset-0" style={{
               backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-              backgroundSize: '16px 16px'
+              backgroundSize: '14px 14px'
             }}></div>
           </div>
 
           <div className="relative z-10">
-            <h4 className="text-sm font-semibold text-blue-300 mb-3 flex items-center gap-2">
-              <Crown className="w-4 h-4 text-yellow-400" />
+            <h4 className="text-xs font-semibold text-blue-300 mb-2 flex items-center gap-1.5">
+              <Crown className="w-3 h-3 text-yellow-400" />
               {t('players')} ({players.length}/2)
             </h4>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {players.length === 0 ? (
-                <div className="text-sm text-gray-400 text-center py-6 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                <div className="text-xs text-gray-400 text-center py-4 bg-slate-800/30 rounded-md border border-slate-700/50">
                   {t('noPlayersInRoom')}
                 </div>
               ) : (
                 players.map((participant, index) => (
-                  <div key={participant.id} className="relative overflow-hidden flex items-center justify-between p-3 bg-slate-700/50 backdrop-blur-sm rounded-lg border border-slate-600/50 hover:bg-slate-700/70 transition-all duration-300">
-                    <div className="flex items-center space-x-3">
+                  <div key={participant.id} className="relative overflow-hidden flex items-center justify-between p-2 bg-slate-700/50 backdrop-blur-sm rounded-md border border-slate-600/50 hover:bg-slate-700/70 transition-all duration-300">
+                    <div className="flex items-center space-x-2">
                       <div className="relative">
                         <CachedProfileImage
                           src={participant.user.profileImageUrl}
                           alt={t('playerAvatar')}
-                          className="w-10 h-10 rounded-full object-cover border-2 border-blue-400/50"
-                          fallbackClassName="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center border-2 border-blue-400/50"
-                          fallbackIconClassName="w-5 h-5 text-white"
+                          className="w-8 h-8 rounded-full object-cover border-2 border-blue-400/50"
+                          fallbackClassName="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center border-2 border-blue-400/50"
+                          fallbackIconClassName="w-4 h-4 text-white"
                         />
                         {/* Player number badge */}
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-black border border-yellow-300">
+                        <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold text-black border border-yellow-300">
                           {index + 1}
                         </div>
                       </div>
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-xs font-medium text-white">
                         {participant.user.firstName || participant.user.username || t('anonymous')}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className={`px-3 py-1.5 rounded-lg ${
+                    <div className="flex items-center gap-1.5">
+                      <div className={`px-2 py-1 rounded-md ${
                         index === 0 
                           ? 'bg-gradient-to-r from-blue-600 to-cyan-600' 
                           : 'bg-gradient-to-r from-red-600 to-pink-600'
                       } shadow-lg`}>
-                        <span className="text-sm font-bold text-white">
+                        <span className="text-xs font-bold text-white">
                           {index === 0 ? 'X' : 'O'}
                         </span>
                       </div>
@@ -157,42 +157,42 @@ export function PlayerList({ roomId }: PlayerListProps) {
         </div>
 
         {/* Spectators Section with Graphics */}
-        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-700/30 to-slate-800/30 border border-slate-600 p-3">
+        <div className="relative overflow-hidden rounded-md bg-gradient-to-br from-slate-700/30 to-slate-800/30 border border-slate-600 p-2">
           {/* Background pattern */}
           <div className="absolute inset-0 opacity-5">
             <div className="absolute inset-0" style={{
               backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-              backgroundSize: '16px 16px'
+              backgroundSize: '14px 14px'
             }}></div>
           </div>
 
           <div className="relative z-10">
-            <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-cyan-400" />
+            <h4 className="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-1.5">
+              <Eye className="w-3 h-3 text-cyan-400" />
               {t('spectators')} ({spectators.length})
             </h4>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {spectators.length === 0 ? (
-                <div className="text-sm text-gray-400 text-center py-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                <div className="text-xs text-gray-400 text-center py-3 bg-slate-800/30 rounded-md border border-slate-700/50">
                   {t('noSpectators')}
                 </div>
               ) : (
                 spectators.map((participant) => (
-                  <div key={participant.id} className="flex items-center justify-between p-3 bg-slate-700/50 backdrop-blur-sm rounded-lg border border-slate-600/50 hover:bg-slate-700/70 transition-all duration-300">
-                    <div className="flex items-center space-x-3">
+                  <div key={participant.id} className="flex items-center justify-between p-2 bg-slate-700/50 backdrop-blur-sm rounded-md border border-slate-600/50 hover:bg-slate-700/70 transition-all duration-300">
+                    <div className="flex items-center space-x-2">
                       <CachedProfileImage
                         src={participant.user.profileImageUrl}
                         alt={t('spectatorAvatar')}
-                        className="w-9 h-9 rounded-full object-cover border-2 border-cyan-400/30"
-                        fallbackClassName="w-9 h-9 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center border-2 border-cyan-400/30"
-                        fallbackIconClassName="w-4 h-4 text-gray-300"
+                        className="w-7 h-7 rounded-full object-cover border-2 border-cyan-400/30"
+                        fallbackClassName="w-7 h-7 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center border-2 border-cyan-400/30"
+                        fallbackIconClassName="w-3 h-3 text-gray-300"
                       />
-                      <span className="text-sm text-gray-200">
+                      <span className="text-xs text-gray-200">
                         {participant.user.firstName || participant.user.username || t('anonymous')}
                       </span>
                     </div>
-                    <Badge variant="secondary" className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-xs border-0">
-                      <Eye className="w-3 h-3 mr-1" />
+                    <Badge variant="secondary" className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-[10px] border-0 px-1.5 py-0.5">
+                      <Eye className="w-2.5 h-2.5 mr-0.5" />
                       {t('watching')}
                     </Badge>
                   </div>

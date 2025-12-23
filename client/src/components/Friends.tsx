@@ -71,11 +71,12 @@ export function Friends() {
     staleTime: 30000,
   });
 
-  // Fetch online friends only (optimized - not all users)
-  const { data: onlineFriendsData } = useQuery<{ total: number; friends: { odaId: string; odaUsername: string }[] }>({
+  // ✅ FIXED: Fetch online friends - now using correct type matching QuickChat
+  const { data: onlineFriendsData = [] } = useQuery<BasicFriendInfo[]>({
     queryKey: ['/api/friends/online'],
     enabled: isOpen,
     staleTime: 30000,
+    refetchInterval: 30000,
   });
 
   // Send friend request mutation
@@ -149,9 +150,9 @@ export function Friends() {
     setShowProfileModal(true);
   };
 
-  // Helper function to check if a friend is online
+  // ✅ FIXED: Helper function to check if a friend is online - now using correct field
   const isUserOnline = (friendId: string) => {
-    return onlineFriendsData?.friends?.some(friend => friend.odaId === friendId) || false;
+    return onlineFriendsData?.some(friend => friend.id === friendId) || false;
   };
 
   // Helper function to check if there's a pending outgoing request to a user
@@ -166,14 +167,14 @@ export function Friends() {
     setIsSearching(true);
     try {
       const response = await apiRequest('/api/users/search', { method: 'POST', body: { name: searchName.trim() } });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.users) {
         setSearchResults(data.users);
       } else {
@@ -213,17 +214,17 @@ export function Friends() {
             <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-pulse" />
           </DialogTitle>
         </DialogHeader>
-        
+
         <Tabs defaultValue="friends" className="w-full">
           <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/40 dark:to-blue-900/40 p-1 rounded-xl border border-purple-200 dark:border-purple-800">
-            <TabsTrigger 
-              value="friends" 
+            <TabsTrigger
+              value="friends"
               className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-lg data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 font-semibold transition-all duration-300"
             >
               <Users className="h-4 w-4 mr-2" />
               {t('friends')} ({friends.length})
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="requests"
               className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-lg data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 font-semibold transition-all duration-300"
             >
@@ -234,7 +235,7 @@ export function Friends() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="add"
               className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-lg data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 font-semibold transition-all duration-300"
             >
@@ -242,7 +243,7 @@ export function Friends() {
               {t('addFriend')}
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="friends" className="space-y-3 mt-6">
             {friendsLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
@@ -274,7 +275,7 @@ export function Friends() {
                     >
                       {/* Premium background gradient on hover */}
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-blue-500/0 to-purple-500/0 group-hover:from-purple-500/5 group-hover:via-blue-500/5 group-hover:to-purple-500/5 transition-all duration-500"></div>
-                      
+
                       <div className="flex items-center gap-2.5 relative z-10">
                         <div className="relative">
                           {friend.profileImageUrl ? (
@@ -353,7 +354,7 @@ export function Friends() {
               </ScrollArea>
             )}
           </TabsContent>
-          
+
           <TabsContent value="requests" className="space-y-3 mt-6">
             {requestsLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
@@ -421,7 +422,7 @@ export function Friends() {
               </ScrollArea>
             )}
           </TabsContent>
-          
+
           <TabsContent value="add" className="space-y-4 mt-6">
             <div className="space-y-3">
               <label htmlFor="name" className="text-sm font-semibold bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
@@ -450,7 +451,7 @@ export function Friends() {
                 </Button>
               </div>
             </div>
-            
+
             {searchResults.length > 0 && (
               <div className="space-y-3">
                 <div className="text-sm font-semibold bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent flex items-center gap-2">
@@ -461,7 +462,7 @@ export function Friends() {
                   <div className="space-y-3">
                     {searchResults.map((user) => {
                       const isPending = hasPendingOutgoingRequest(user.id);
-                      
+
                       return (
                         <div
                           key={user.id}
@@ -509,7 +510,7 @@ export function Friends() {
             )}
           </TabsContent>
         </Tabs>
-        
+
         {/* Profile Modal */}
         {profileUser && (
           <UserProfileModal

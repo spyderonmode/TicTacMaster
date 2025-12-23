@@ -333,7 +333,6 @@ export function GameOverModal({
           padding: '16px',
           overflowY: 'auto'
         }}
-        onClick={onClose}
       >
         {/* Main Premium Modal Card */}
         <div
@@ -784,12 +783,8 @@ export function GameOverModal({
               marginBottom: '16px'
             }}>
               <button
-                onClick={() => {
-                  onClose();
-                  if (onPlayWithAI) {
-                    onPlayWithAI();
-                  }
-                }}
+                onClick={onClose}
+                data-testid="button-home"
                 style={{
                   padding: '8px 16px',
                   borderRadius: '8px',

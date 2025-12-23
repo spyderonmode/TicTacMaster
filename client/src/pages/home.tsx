@@ -43,6 +43,8 @@ import { CustomLanguageSelector } from "@/components/CustomLanguageSelector";
 import { useLocation } from "wouter";
 import { formatNumber } from "@/lib/utils";
 import { CachedProfileImage } from "@/components/CachedProfileImage";
+import quickMatchImg from "@/lib/Quick Match.png";
+import roomImg from "@/lib/Room.png";
 
 
 export default function Home() {
@@ -85,9 +87,10 @@ export default function Home() {
   const [errorModalData, setErrorModalData] = useState<{ title: string; message: string; type?: 'error' | 'coins' | 'warning' }>({ title: '', message: '' });
   const [showGameRules, setShowGameRules] = useState(false);
   const [showDailyReward, setShowDailyReward] = useState(false);
-  const [hasPendingDailyReward, setHasPendingDailyReward] = useState(false);
   const [dailyRewardCanClaim, setDailyRewardCanClaim] = useState(false);
   const [showShop, setShowShop] = useState(false);
+  const [showOnlineModePopup, setShowOnlineModePopup] = useState(false);
+  const [hasUserStartedGame, setHasUserStartedGame] = useState(false);
   const dailyRewardTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasCheckedDailyReward = useRef(false);
   const headerSidebarRef = useRef<HTMLDivElement>(null);
@@ -123,7 +126,7 @@ export default function Home() {
 
   const checkPendingLevelUps = async () => {
     if (!user || showGameOver) return;
-    
+
     const now = Date.now();
     if (now - lastLevelUpCheckRef.current < 2000) {
       return;
@@ -215,34 +218,6 @@ export default function Home() {
     checkDailyReward();
   }, [user]);
 
-  // Handle showing daily reward based on weekly popup state
-  useEffect(() => {
-    // Clear any pending timers
-    if (dailyRewardTimerRef.current) {
-      clearTimeout(dailyRewardTimerRef.current);
-      dailyRewardTimerRef.current = null;
-    }
-
-    // If daily reward can be claimed and weekly popup is not active
-    if (dailyRewardCanClaim && !showMonthlyRankPopup && !monthlyRankData) {
-      // Show daily reward after a delay
-      dailyRewardTimerRef.current = setTimeout(() => {
-        setShowDailyReward(true);
-        setDailyRewardCanClaim(false);
-      }, 1000);
-    } else if (dailyRewardCanClaim && (showMonthlyRankPopup || monthlyRankData)) {
-      // Weekly popup is active, mark daily reward as pending
-      setHasPendingDailyReward(true);
-    }
-
-    // Cleanup timer on unmount
-    return () => {
-      if (dailyRewardTimerRef.current) {
-        clearTimeout(dailyRewardTimerRef.current);
-        dailyRewardTimerRef.current = null;
-      }
-    };
-  }, [dailyRewardCanClaim, showMonthlyRankPopup, monthlyRankData]);
 
   // Global error handler for all WebSocket error events
   useEffect(() => {
@@ -261,7 +236,7 @@ export default function Home() {
       const { message, error } = event.detail;
       const isVipError = error === 'VIP Pass Required' || (message && message.toLowerCase().includes('vip pass'));
       const isCoinsError = !isVipError && message && message.toLowerCase().includes('coins');
-      
+
       if (isVipError) {
         setErrorModalData({
           title: 'VIP Pass Required',
@@ -355,16 +330,11 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error checking for pending rank popup:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to check for rank updates',
-          variant: 'destructive',
-        });
       }
     };
 
     checkPendingRankPopup();
-  }, [user, toast]);
+  }, [user]);
 
   const handleLevelUpAcknowledge = async () => {
     if (!levelUpData) return;
@@ -388,6 +358,12 @@ export default function Home() {
 
   const handleGameOverClose = () => {
     setShowGameOver(false);
+    // CRITICAL: Clear game state to return user to home screen
+    setCurrentGame(null);
+    setCurrentRoom(null);
+    setGameResult(null);
+    setHasUserStartedGame(false);
+    setSelectedMode(null);
     lastLevelUpCheckRef.current = 0;
     setTimeout(() => checkPendingLevelUps(), 500);
   };
@@ -425,13 +401,6 @@ export default function Home() {
   useEffect(() => {
     const handleSpectatorTransitionToAI = (event: any) => {
       try {
-        // Show toast notification
-        toast({
-          title: "Left Room",
-          description: event.detail?.message || "You have left the room.",
-          duration: 2000,
-        });
-
         // Immediate smooth state transition to AI mode without any delays
         setCurrentGame(null);
         setCurrentRoom(null);
@@ -553,13 +522,6 @@ export default function Home() {
           queryClient.invalidateQueries({ queryKey: ['/api/rooms', event.detail.roomId, 'participants'] });
         }
 
-        // Show toast notification
-        toast({
-          title: "Room Closed",
-          description: `${triggeredBy?.displayName || 'A player'} left the room. You've been returned home.`,
-          duration: 3000,
-        });
-
         // Navigate to home
         setLocation('/');
       } catch (error) {
@@ -619,13 +581,6 @@ export default function Home() {
         setCurrentRoom(null);
         setSelectedMode('ai');
 
-        // Show notification
-        toast({
-          title: "Play Again Declined",
-          description: "The play again request was declined. Starting a new AI game.",
-          duration: 3000,
-        });
-
         // Initialize a fresh AI game after a short delay
         setTimeout(() => {
           initializeLocalGame();
@@ -671,13 +626,6 @@ export default function Home() {
 
         setShowPlayAgainRequest(false);
         setPlayAgainRequest(null);
-
-        toast({
-          variant: "destructive",
-          title: "Cannot Play Again",
-          description: errorData.error || "Unable to start play again. Please try again.",
-          duration: 5000,
-        });
       } catch (error) {
         console.error('❌ Error handling play again error:', error);
       }
@@ -693,10 +641,6 @@ export default function Home() {
 
         if (responseData.response === 'rejected') {
           setShowGameOver(false);
-          toast({
-            description: "Your play again request was declined",
-            duration: 3000,
-          });
         }
       } catch (error) {
         console.error('❌ Error handling play again response:', error);
@@ -764,6 +708,7 @@ export default function Home() {
 
       // Switch to AI mode
       setSelectedMode('ai');
+      setHasUserStartedGame(true);
 
       // Initialize local AI game
       setTimeout(() => {
@@ -776,7 +721,7 @@ export default function Home() {
     window.addEventListener('navigate_to_ai_mode', handleNavigateToAI);
 
     // Handle matchmaking messages (including game_started from play again)
-    const handleMatchmakingMessage = (event: any) => {
+    const handleMatchmakingMessage = async (event: any) => {
       const message = event.detail;
       console.log('🎮 Matchmaking message received:', message.type, message);
 
@@ -804,16 +749,23 @@ export default function Home() {
 
           // Set game mode to online
           setSelectedMode('online');
+          setHasUserStartedGame(true);
 
-          // Prefetch game context before game starts for faster loading
+          // CRITICAL: Wait for game context to load BEFORE starting game
           if (message.game.playerXId && message.game.playerOId) {
-            queryClient.prefetchQuery({
-              queryKey: [`/api/game-context?playerXId=${message.game.playerXId}&playerOId=${message.game.playerOId}`],
-              staleTime: 30000,
-            });
+            try {
+              console.log('🎮 Fetching game context before starting game...');
+              await queryClient.fetchQuery({
+                queryKey: [`/api/game-context?playerXId=${message.game.playerXId}&playerOId=${message.game.playerOId}`],
+                staleTime: 30000,
+              });
+              console.log('✅ Game context loaded successfully');
+            } catch (error) {
+              console.error('⚠️ Failed to fetch game context, continuing anyway:', error);
+            }
           }
 
-          // Set the room state immediately
+          // Set the room state after game context is loaded
           setCurrentRoom({
             id: message.roomId,
             status: 'playing',
@@ -838,6 +790,26 @@ export default function Home() {
 
     window.addEventListener('matchmaking_message_received', handleMatchmakingMessage);
 
+    // Handle network state sync - reset countdown and refresh game state if needed
+    // This fixes the issue where countdown gets stuck on 1 after network switch
+    const handleNetworkStateSync = (event: any) => {
+      console.log('🔄 Network state synced - resetting play again countdown and refreshing game state');
+      setShowCountdown(false);
+      setCountdownNumber(5);
+      
+      // If currently in a game, trigger a game state refresh to ensure timers sync with server
+      // This ensures MoveTimer and GameExpirationTimer have fresh data after network change
+      if (currentGame && currentGame.id) {
+        console.log('🔄 Requesting fresh game state after network reconnection');
+        // Dispatch event to request game state refresh from WebSocket
+        window.dispatchEvent(new CustomEvent('request_game_state_refresh', {
+          detail: { gameId: currentGame.id, roomId: currentRoom?.id }
+        }));
+      }
+    };
+
+    window.addEventListener('matchmaking_status_sync', handleNetworkStateSync);
+
     return () => {
       window.removeEventListener('game_abandoned', handleGameAbandoned);
       window.removeEventListener('room_closed', handleRoomClosed);
@@ -850,6 +822,7 @@ export default function Home() {
       window.removeEventListener('game_reconnection', handleGameReconnection);
       window.removeEventListener('navigate_to_ai_mode', handleNavigateToAI);
       window.removeEventListener('matchmaking_message_received', handleMatchmakingMessage);
+      window.removeEventListener('matchmaking_status_sync', handleNetworkStateSync);
     };
   }, []); // Remove toast dependency to prevent effect recreation
 
@@ -917,14 +890,28 @@ export default function Home() {
             localStorage.removeItem('currentRoomState');
             sessionStorage.removeItem('currentRoomState');
 
-            // NOTE: Game context prefetch is handled in matchmaking_message_received handler
-            // to avoid duplicate API calls - only prefetch there, not here
+            // CRITICAL: Async function to fetch game context BEFORE starting game
+            const startGameAfterContext = async () => {
+              // Fetch game context first and wait for it to complete
+              if (lastMessage.game.playerXId && lastMessage.game.playerOId) {
+                try {
+                  console.log('🎮 Fetching game context before starting game...');
+                  await queryClient.fetchQuery({
+                    queryKey: [`/api/game-context?playerXId=${lastMessage.game.playerXId}&playerOId=${lastMessage.game.playerOId}`],
+                    staleTime: 30000,
+                  });
+                  console.log('✅ Game context loaded successfully');
+                } catch (error) {
+                  console.error('⚠️ Failed to fetch game context, continuing anyway:', error);
+                }
+              }
 
-            setTimeout(() => {
+              // Now set game state AFTER context is loaded
               // Ensure game mode is set to online when receiving game_started
               setSelectedMode('online');
+              setHasUserStartedGame(true);
 
-              // Set the room state immediately
+              // Set the room state
               setCurrentRoom({
                 id: lastMessage.roomId,
                 status: 'playing',
@@ -955,18 +942,10 @@ export default function Home() {
               setGameResult(null);
               setIsResettingState(false);
 
-              // Show game started toast only once per game
-              const gameToastKey = `${lastMessage.game.id}-${lastMessage.roomId}`;
-              if (!shownGameStartedToasts.has(gameToastKey)) {
-                setShownGameStartedToasts(prev => new Set(Array.from(prev).concat(gameToastKey)));
-                toast({
-                  title: "Game Started!",
-                  description: "Your match has begun. Good luck!",
-                  duration: 3000,
-                });
-              }
+            };
 
-            }, 100); // Ensure proper state synchronization
+            // Execute the async function
+            startGameAfterContext();
 
             // Invalidate queries to refresh room data
             queryClient.invalidateQueries({ queryKey: ["/api/rooms", lastMessage.roomId, "participants"] });
@@ -1190,20 +1169,13 @@ export default function Home() {
           // Handle room ending - refresh the page
           if (currentRoom && lastMessage.roomId === currentRoom.id) {
             //console.log('🎮 Room ended, refreshing page');
-            toast({
-              title: "Room Ended",
-              description: `${lastMessage.playerName || 'A player'} left the room. Refreshing page...`,
-                duration: 1000,
-            });
-            // Reset to AI mode after a short delay
-            setTimeout(() => {
-              setCurrentGame(null);
-              setCurrentRoom(null);
-              setSelectedMode('ai');
-              setShowGameOver(false);
-              setGameResult(null);
-              setIsCreatingGame(false);
-            }, 1000);
+            // Reset to AI mode immediately
+            setCurrentGame(null);
+            setCurrentRoom(null);
+            setSelectedMode('ai');
+            setShowGameOver(false);
+            setGameResult(null);
+            setIsCreatingGame(false);
           }
           break;
         case 'spectator_left':
@@ -1237,11 +1209,6 @@ export default function Home() {
 
             // Join the room via WebSocket to receive game updates
             joinRoom(lastMessage.room.id);
-
-            toast({
-              title: "Match Found!",
-              description: lastMessage.message || "You've been matched with an opponent. Game starting...",
-            });
           } else {
             console.log('🎮 Warning: No room data in matchmaking message');
           }
@@ -1251,10 +1218,6 @@ export default function Home() {
           //console.log('🔄 Reconnection room join:', lastMessage);
           if (lastMessage.room) {
             handleRoomJoin(lastMessage.room);
-            toast({
-              title: "Reconnected!",
-              description: lastMessage.message || "You've been reconnected to your game room.",
-            });
           }
           break;
         case 'game_reconnection':
@@ -1278,11 +1241,6 @@ export default function Home() {
             setGameResult(null);
             setShowMatchmaking(false);
 
-            toast({
-              title: "Game Reconnected",
-              description: "Your game has been restored successfully.",
-            });
-
             //console.log('✅ Game reconnection completed');
           }
           break;
@@ -1303,12 +1261,6 @@ export default function Home() {
             setShowGameOver(false);
             setGameResult(null);
             setIsCreatingGame(false);
-
-            toast({
-              title: "Game Expired",
-              description: lastMessage.message || "Game expired due to inactivity. Returning to lobby.",
-              variant: "destructive",
-            });
 
             // Complete reset and initialize game only if in AI mode
             setTimeout(() => {
@@ -1340,12 +1292,6 @@ export default function Home() {
             setShowGameOver(false);
             setGameResult(null);
             setIsCreatingGame(false);
-
-            toast({
-              title: "Game Ended",
-              description: lastMessage.message || "Game ended because a player left the room.",
-              variant: "destructive",
-            });
 
             // Quick reset without delay to prevent visual artifacts
             setTimeout(() => {
@@ -1403,12 +1349,6 @@ export default function Home() {
           break;
         case 'play_again_response':
           console.log('🔄 Play again response received:', lastMessage);
-          // Only show notification for declined requests
-          if (lastMessage.response === 'rejected') {
-            toast({
-              description: "Your play again request was declined",
-            });
-          }
           break;
         case 'play_again_rejected':
           console.log('🔄 Play again request rejected, redirecting to home');
@@ -1421,9 +1361,6 @@ export default function Home() {
           setPlayAgainRequest(null);
           // Redirect to home
           setLocation('/');
-          toast({
-            description: "Play again request was declined. Returning to home.",
-          });
           break;
       }
     }
@@ -1609,13 +1546,6 @@ export default function Home() {
         joinRoom(room.id);
       }
 
-      // Show success toast
-      toast({
-        title: "Match Found!",
-        description: "Connecting to your opponent...",
-        duration: 2000,
-      });
-
       console.log('🎮 Match found processing complete - room set and joined');
     }, 50); // Small delay for proper state synchronization
   };
@@ -1653,9 +1583,10 @@ export default function Home() {
     }
   };
 
-  // Auto-initialize game when switching to AI or pass-play mode
+  // Auto-initialize game when switching to AI or pass-play mode - only if user has started a game
   useEffect(() => {
     if (isResettingState) return; // Skip during reset operations
+    if (!hasUserStartedGame) return; // Don't auto-initialize until user explicitly starts
 
     if (selectedMode === 'ai' || selectedMode === 'pass-play') {
       //console.log('🎮 Mode changed to:', selectedMode);
@@ -1677,18 +1608,19 @@ export default function Home() {
         }, 100);
       }
     }
-  }, [selectedMode, currentGame, user, isResettingState]);
+  }, [selectedMode, currentGame, user, isResettingState, hasUserStartedGame]);
 
-  // Fix white screen issue by ensuring game exists for all modes
+  // Fix white screen issue by ensuring game exists for all modes - only if user has started a game
   useEffect(() => {
     if (isResettingState) return; // Skip during reset operations
+    if (!hasUserStartedGame) return; // Don't auto-initialize until user explicitly starts
 
     //console.log('🎮 Effect check - currentGame:', !!currentGame, 'currentRoom:', !!currentRoom, 'selectedMode:', selectedMode);
     if (!currentGame && !currentRoom && selectedMode !== 'online') {
       //console.log('🎮 White screen fix - initializing local game');
       initializeLocalGame();
     }
-  }, [currentGame, currentRoom, selectedMode, user, isResettingState]);
+  }, [currentGame, currentRoom, selectedMode, user, isResettingState, hasUserStartedGame]);
 
   // Handle WebSocket game over events for online games
   useEffect(() => {
@@ -2028,7 +1960,7 @@ export default function Home() {
       </div>
 
       {/* Enhanced Navigation Header - Larger Topbar */}
-      <nav className="sticky top-0 z-40 bg-slate-800 border-b border-slate-600 shadow-lg px-2 py-3 sm:px-4 sm:py-5 md:py-6">
+      <nav className="sticky top-0 z-40 bg-slate-800 border-b border-slate-600 shadow-lg px-2 py-4 sm:px-4 sm:py-6 md:py-7">
         <div className="relative max-w-7xl mx-auto flex items-center justify-between">
           {/* Epic Gaming Profile Section - Larger Layout */}
           <div 
@@ -2041,23 +1973,23 @@ export default function Home() {
               {/* Epic Profile Picture with Multiple Visual Effects */}
               <div className="relative">
                 {/* Outer Glow Ring - Slightly larger */}
-                <div className="absolute inset-0 w-11 h-11 sm:w-14 sm:h-14 md:w-20 md:h-20 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-full blur-md opacity-75 group-hover:opacity-100 animate-pulse"></div>
+                <div className="absolute inset-0 w-14 h-14 sm:w-20 sm:h-20 md:w-28 md:h-28 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-full blur-md opacity-75 group-hover:opacity-100 animate-pulse"></div>
 
                 {/* Main Profile Picture Container - Slightly larger sizing */}
-                <div className="relative w-11 h-11 sm:w-14 sm:h-14 md:w-20 md:h-20 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-full p-0.5 sm:p-1 shadow-2xl">
+                <div className="relative w-14 h-14 sm:w-20 sm:h-20 md:w-28 md:h-28 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-full p-0.5 sm:p-1 shadow-2xl">
                   <CachedProfileImage
                     src={user?.profilePicture}
                     alt="Profile"
                     className="w-full h-full rounded-full object-cover border-2 border-white/30 shadow-lg"
                     fallbackClassName="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 rounded-full flex items-center justify-center border-2 border-white/30"
-                    fallbackIconClassName="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-white"
+                    fallbackIconClassName="w-7 h-7 sm:w-10 sm:h-10 md:w-14 md:h-14 text-white"
                   />
 
                   {/* Online Status with Enhanced Glow - Mobile responsive */}
-                  <div className={`absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-3 h-3 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 sm:border-3 border-slate-800 ${actualOnlineStatus ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-red-500 shadow-lg shadow-red-500/50'} animate-pulse`}></div>
+                  <div className={`absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 md:-bottom-1.5 md:-right-1.5 w-3 h-3 sm:w-5 sm:h-5 md:w-7 md:h-7 rounded-full border-2 sm:border-3 md:border-4 border-slate-800 ${actualOnlineStatus ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-red-500 shadow-lg shadow-red-500/50'} animate-pulse`}></div>
 
                   {/* Level Badge - Mobile responsive */}
-                  <div className="absolute -top-3 -left-3 sm:-top-4 sm:-left-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs sm:text-sm font-black px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-lg border border-yellow-300">
+                  <div className="absolute -top-3 -left-3 sm:-top-4 sm:-left-4 md:-top-5 md:-left-5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs sm:text-sm md:text-base font-black px-1.5 py-0.5 sm:px-2 sm:py-1 md:px-3 md:py-1.5 rounded-full shadow-lg border border-yellow-300">
                     Lv.{userStats?.level || '0'}
                   </div>
                 </div>
@@ -2224,27 +2156,6 @@ export default function Home() {
                       />
                     </div>
 
-                    {/* Shop */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <ShoppingBag className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-300">Shop</span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowHeaderSidebar(false);
-                          setShowShop(true);
-                        }}
-                        className="bg-gradient-to-r from-purple-600 to-pink-600 border-purple-500/50 text-white hover:from-purple-500 hover:to-pink-500 text-xs"
-                        data-testid="button-shop-menu"
-                      >
-                        Visit
-                      </Button>
-                    </div>
-
                     {/* Profile Settings */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -2295,9 +2206,9 @@ export default function Home() {
       <div className="relative z-0 overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
-          {/* Game Board Section */}
+          {/* Game Board Section - Only show when user has started a game */}
           <div ref={gameBoardRef} className="lg:col-span-2">
-            {currentGame ? (
+            {hasUserStartedGame && currentGame ? (
               <div>
                 <GameBoard 
                   key={currentGame?.id}
@@ -2310,11 +2221,7 @@ export default function Home() {
                   isSpectator={isSpectator}
                 />
               </div>
-            ) : (
-              <div className="text-center p-8 text-gray-400">
-                <p>No active game. Select a game mode to start playing.</p>
-              </div>
-            )}
+            ) : null}
 
             {/* Room Management - Positioned after GameBoard for online mode */}
             {selectedMode === 'online' && (
@@ -2331,225 +2238,185 @@ export default function Home() {
               </div>
             )}
 
-            {/* Game Rules - Small Trigger Card */}
-            <Card 
-              className="mt-4 sm:mt-6 bg-gradient-to-r from-blue-600 to-purple-600 border-blue-500/50 cursor-pointer hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg hover:shadow-blue-500/25" 
-              onClick={() => setShowGameRules(true)}
-              data-testid="card-game-rules-trigger"
-            >
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-white/20 p-2 rounded-lg">
-                    <BookOpen className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm">{t('gameRules')}</h3>
-                    <p className="text-white/80 text-xs">{t('clickToView') || 'Click to view rules'}</p>
-                  </div>
-                </div>
-                <div className="text-white/60">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6">
-            {/* Game Mode Selection */}
-            <GameModeSelector 
-              selectedMode={selectedMode}
-              onModeChange={(mode) => {
-                // Sound effects removed as requested
-                setSelectedMode(mode);
-              }}
-              aiDifficulty={aiDifficulty}
-              onDifficultyChange={setAiDifficulty}
-            />
-
-
-
-            {/* Online Room Management */}
-            {selectedMode === 'online' && (
-              <Card className="bg-slate-800 border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-lg">{t('onlineMode')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {!currentRoom && (
-                      <>
-                        <div className="p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-lg border border-blue-500/20">
-                          <div className="text-center space-y-3">
-                            <div className="text-sm font-semibold text-blue-300">{t('quickMatch')}</div>
-                            <p className="text-xs text-gray-400">
-                              {t('getMatchedWithAnotherPlayer')}
-                            </p>
-                            <Button 
-                              onClick={handleMatchmakingStart}
-                              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                              disabled={isMatchmaking}
-                            >
-                              {isMatchmaking ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  {t('thinking')}
-                                </>
-                              ) : (
-                                <>
-                                  <Zap className="w-4 h-4 mr-2" />
-                                  {t('findMatch')}
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="text-center text-sm text-gray-500">
-                          <span>{t('or')}</span>
-                        </div>
-
-                        <div className="text-center">
-                          <p className="text-sm text-gray-300 mb-2">
-                            {t('createOrJoinRoom')}
-                          </p>
-                        </div>
-                      </>
-                    )}
-
-                    {currentRoom && (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-sm">{t('connectedToRoom')} {currentRoom.code}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Players & Spectators */}
             {currentRoom && (
               <PlayerList roomId={currentRoom.id} />
             )}
 
-            {/* Audio Controls removed as requested */}
+            {/* Game Mode Selection */}
+            <GameModeSelector 
+              selectedMode={hasUserStartedGame ? selectedMode : undefined}
+              onModeChange={(mode) => {
+                if (mode === 'online') {
+                  setShowOnlineModePopup(true);
+                } else {
+                  setSelectedMode(mode);
+                  setHasUserStartedGame(true);
+                  initializeLocalGame();
+                }
+              }}
+              aiDifficulty={aiDifficulty}
+              onDifficultyChange={setAiDifficulty}
+            />
 
-            {/* Game Statistics */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base sm:text-lg">{t('gameStats')}</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 gap-3 text-center">
-                  <div className="p-2 sm:p-3 bg-slate-700 rounded-lg">
-                    <div className="text-xl sm:text-2xl font-bold text-blue-500">
-                      {userStats?.wins || 0}
-                    </div>
-                    <div className="text-xs text-gray-400">{t('wins')}</div>
-                  </div>
-                  <div className="p-2 sm:p-3 bg-slate-700 rounded-lg">
-                    <div className="text-xl sm:text-2xl font-bold text-red-500">
-                      {userStats?.losses || 0}
-                    </div>
-                    <div className="text-xs text-gray-400">{t('losses')}</div>
-                  </div>
-                  <div className="p-2 sm:p-3 bg-slate-700 rounded-lg">
-                    <div className="text-xl sm:text-2xl font-bold text-yellow-500">
-                      {userStats?.draws || 0}
-                    </div>
-                    <div className="text-xs text-gray-400">{t('draws')}</div>
-                  </div>
-                  <div className="p-2 sm:p-3 bg-slate-700 rounded-lg">
-                    <div className="text-xl sm:text-2xl font-bold text-gray-400">
-                      {(userStats?.wins || 0) + (userStats?.losses || 0) + (userStats?.draws || 0)}
-                    </div>
-                    <div className="text-xs text-gray-400">{t('total')}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Audio Controls removed as requested */}
           </div>
         </div>
+
+        {/* Game Rules - Small Trigger Card (Moved to Bottom) */}
+        <Card 
+          className="mt-4 sm:mt-6 bg-gradient-to-r from-blue-600 to-purple-600 border-blue-500/50 cursor-pointer hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg hover:shadow-blue-500/25" 
+          onClick={() => setShowGameRules(true)}
+          data-testid="card-game-rules-trigger"
+        >
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-sm">{t('gameRules')}</h3>
+                <p className="text-white/80 text-xs">{t('clickToView') || 'Click to view rules'}</p>
+              </div>
+            </div>
+            <div className="text-white/60">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Daily Reward Card */}
+        <Card 
+          className="mt-3 sm:mt-4 bg-gradient-to-r from-amber-600 to-orange-600 border-amber-500/50 cursor-pointer hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-lg hover:shadow-amber-500/25" 
+          onClick={() => setShowDailyReward(true)}
+          data-testid="card-daily-reward-trigger"
+        >
+          <CardContent className="p-5 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="bg-white/20 p-3 rounded-lg">
+                <svg className="w-6 h-6 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-base">💎 Daily Reward</h3>
+                <p className="text-white/80 text-sm">Click to open</p>
+              </div>
+            </div>
+            <div className="text-white/80">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Shop Card */}
+        <Card 
+          className="mt-3 sm:mt-4 bg-gradient-to-r from-purple-600 to-pink-600 border-purple-500/50 cursor-pointer hover:from-purple-500 hover:to-pink-500 transition-all duration-300 shadow-lg hover:shadow-purple-500/25" 
+          onClick={() => setShowShop(true)}
+          data-testid="card-shop-trigger"
+        >
+          <CardContent className="p-5 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="bg-white/20 p-3 rounded-lg">
+                <ShoppingBag className="w-6 h-6 text-pink-300" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-base">🛍️ Shop</h3>
+                <p className="text-white/80 text-sm">Browse items</p>
+              </div>
+            </div>
+            <div className="text-white/80">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Game Rules Modal */}
       <Dialog open={showGameRules} onOpenChange={setShowGameRules}>
-        <DialogContent className="max-w-[90%] md:max-w-[70%] max-h-[90vh] md:max-h-[80vh] overflow-y-auto bg-slate-900 border-slate-700" data-testid="dialog-game-rules">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-blue-400" />
+        <DialogContent className="max-w-[60%] md:max-w-[44%] max-h-[56vh] md:max-h-[52vh] overflow-y-auto bg-slate-900 border-slate-700" data-testid="dialog-game-rules">
+          <DialogHeader className="pb-1">
+            <DialogTitle className="text-sm font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-1">
+              <BookOpen className="w-3.5 h-3.5 text-blue-400" />
               {t('gameRules')}
             </DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogDescription className="text-gray-400 text-[10px]">
               {t('gameRulesDescription') || 'Learn how to play TicTac 3x5'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="space-y-1.5 py-1">
             {/* Grid Layout */}
-            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+            <div className="bg-slate-800 rounded p-1.5 border border-slate-700">
+              <div className="flex items-start space-x-1.5">
+                <div className="w-1 h-1 bg-yellow-500 rounded-full mt-1"></div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-2">{t('gridLayout')}</h3>
-                  <p className="text-gray-300 text-sm">{t('gridDescription') || 'The game is played on a 3x5 grid with 15 positions (numbered 1-15)'}</p>
+                  <h3 className="text-[10px] font-semibold text-white mb-0.5">{t('gridLayout')}</h3>
+                  <p className="text-gray-300 text-[8px]">{t('gridDescription') || 'The game is played on a 3x5 grid with 15 positions (numbered 1-15)'}</p>
                 </div>
               </div>
             </div>
 
             {/* Win Conditions */}
-            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-400" />
+            <div className="bg-slate-800 rounded p-1.5 border border-slate-700">
+              <h3 className="text-[10px] font-semibold text-white mb-1 flex items-center gap-1">
+                <Trophy className="w-2.5 h-2.5 text-yellow-400" />
                 {t('winConditionsTitle') || 'Win Conditions'}
               </h3>
 
-              <div className="space-y-4">
+              <div className="space-y-1">
                 {/* Horizontal Win */}
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <div className="flex items-start space-x-1.5">
+                  <div className="w-1 h-1 bg-green-500 rounded-full mt-1"></div>
                   <div>
-                    <h4 className="text-white font-medium mb-1">{t('horizontalWin')}</h4>
-                    <p className="text-gray-400 text-sm">{t('horizontalWinDescription') || '4 consecutive symbols in any row'}</p>
+                    <h4 className="text-white font-medium text-[8px]">{t('horizontalWin')}</h4>
+                    <p className="text-gray-400 text-[7px]">{t('horizontalWinDescription') || '4 consecutive symbols in any row'}</p>
                   </div>
                 </div>
 
                 {/* Vertical Win */}
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                <div className="flex items-start space-x-1.5">
+                  <div className="w-1 h-1 bg-blue-500 rounded-full mt-1"></div>
                   <div>
-                    <h4 className="text-white font-medium mb-1">{t('verticalWin')}</h4>
-                    <p className="text-gray-400 text-sm">{t('verticalWinDescription') || '3 consecutive symbols in any column'}</p>
+                    <h4 className="text-white font-medium text-[8px]">{t('verticalWin')}</h4>
+                    <p className="text-gray-400 text-[7px]">{t('verticalWinDescription') || '3 consecutive symbols in any column'}</p>
                   </div>
                 </div>
 
                 {/* Diagonal Win */}
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                <div className="flex items-start space-x-1.5">
+                  <div className="w-1 h-1 bg-purple-500 rounded-full mt-1"></div>
                   <div>
-                    <h4 className="text-white font-medium mb-1">{t('diagonalWin')}</h4>
-                    <p className="text-gray-400 text-sm">{t('diagonalWinDescription') || '3 consecutive symbols diagonally (positions 5, 10, 15 excluded)'}</p>
+                    <h4 className="text-white font-medium text-[8px]">{t('diagonalWin')}</h4>
+                    <p className="text-gray-400 text-[7px]">{t('diagonalWinDescription') || '3 consecutive symbols diagonally (positions 5, 10, 15 excluded)'}</p>
                   </div>
                 </div>
 
                 {/* First Move Rule */}
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                <div className="flex items-start space-x-1.5">
+                  <div className="w-1 h-1 bg-red-500 rounded-full mt-1"></div>
                   <div>
-                    <h4 className="text-white font-medium mb-1">{t('firstMoveRule')}</h4>
-                    <p className="text-gray-400 text-sm">{t('firstMoveRuleDescription') || 'The center position (8) cannot be played on the first move'}</p>
+                    <h4 className="text-white font-medium text-[8px]">{t('firstMoveRule')}</h4>
+                    <p className="text-gray-400 text-[7px]">{t('firstMoveRuleDescription') || 'The center position (8) cannot be played on the first move'}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-slate-700">
+            <div className="flex justify-end pt-1.5 border-t border-slate-700">
               <Button 
                 onClick={() => setShowGameRules(false)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-[10px] py-0.5 px-2 h-6"
                 data-testid="button-close-rules"
               >
                 Got it!
@@ -2558,8 +2425,147 @@ export default function Home() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Online Mode Selection Popup */}
+      {showOnlineModePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-20">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowOnlineModePopup(false)}
+          />
+          {/* Modal */}
+          <div 
+            className="relative w-full max-w-[90vw] max-h-[85vh] rounded-xl border border-slate-600/50 p-3 sm:p-4 shadow-2xl overflow-y-auto"
+            style={{ background: '#0f172a' }}
+          >
+            {/* Animated square grid texture */}
+            <div 
+              className="absolute inset-0 pointer-events-none opacity-30"
+              style={{
+                backgroundImage: `
+                  linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
+                `,
+                backgroundSize: '20px 20px',
+                animation: 'gridMove 20s linear infinite',
+              }}
+            />
+            {/* Glowing squares overlay */}
+            <div 
+              className="absolute inset-0 pointer-events-none opacity-40"
+              style={{
+                backgroundImage: `
+                  linear-gradient(45deg, transparent 48%, rgba(139, 92, 246, 0.3) 49%, rgba(139, 92, 246, 0.3) 51%, transparent 52%),
+                  linear-gradient(-45deg, transparent 48%, rgba(59, 130, 246, 0.3) 49%, rgba(59, 130, 246, 0.3) 51%, transparent 52%)
+                `,
+                backgroundSize: '30px 30px',
+                animation: 'gridPulse 4s ease-in-out infinite alternate',
+              }}
+            />
+            {/* Moving highlight */}
+            <div 
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(135deg, transparent 0%, rgba(139, 92, 246, 0.15) 50%, transparent 100%)',
+                backgroundSize: '200% 200%',
+                animation: 'diagonalShift 6s ease-in-out infinite',
+              }}
+            />
+            <style>{`
+              @keyframes gridMove {
+                0% { background-position: 0 0; }
+                100% { background-position: 20px 20px; }
+              }
+              @keyframes gridPulse {
+                0% { opacity: 0.2; }
+                100% { opacity: 0.5; }
+              }
+              @keyframes diagonalShift {
+                0% { background-position: 0% 0%; }
+                50% { background-position: 100% 100%; }
+                100% { background-position: 0% 0%; }
+              }
+            `}</style>
+
+            {/* Close button */}
+            <button 
+              onClick={() => setShowOnlineModePopup(false)}
+              className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors z-20"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Content */}
+            <div className="relative z-10">
+              <div className="text-center mb-4">
+                <h2 className="text-lg font-bold text-white flex items-center justify-center gap-2">
+                  <Users className="w-5 h-5 text-blue-400" />
+                  {t('onlineMode')}
+                </h2>
+              </div>
+
+              <div className="space-y-6">
+                {/* Quick Match Option */}
+                <div className="cursor-pointer" onClick={() => {
+                  setShowOnlineModePopup(false);
+                  setSelectedMode('online');
+                  handleMatchmakingStart();
+                }}>
+                  <div className="rounded-lg overflow-hidden mb-2 h-28 flex items-center justify-center bg-slate-900">
+                    <img 
+                      src={quickMatchImg} 
+                      alt="Quick Match" 
+                      className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setShowOnlineModePopup(false);
+                      setSelectedMode('online');
+                      handleMatchmakingStart();
+                    }}
+                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 flex items-center justify-center gap-2 px-3 text-sm font-semibold"
+                    disabled={isMatchmaking}
+                  >
+                    <Zap className="w-5 h-5 text-white" />
+                    <span>{t('quickMatch')}</span>
+                  </Button>
+                </div>
+
+                {/* Room Option - Create or Join */}
+                <div className="cursor-pointer" onClick={() => {
+                  setShowOnlineModePopup(false);
+                  setSelectedMode('online');
+                  setShowCreateRoom(true);
+                }}>
+                  <div className="rounded-lg overflow-hidden mb-2 h-28 flex items-center justify-center bg-slate-900">
+                    <img 
+                      src={roomImg} 
+                      alt="Room" 
+                      className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setShowOnlineModePopup(false);
+                      setSelectedMode('online');
+                      setShowCreateRoom(true);
+                    }}
+                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 flex items-center justify-center gap-2 px-3 text-sm font-semibold"
+                  >
+                    <Users className="w-5 h-5 text-blue-400" />
+                    <span>{t('room') || 'Room'}</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
       {/* End of Main Content Wrapper */}
+
 
     </div>
 
@@ -2635,12 +2641,6 @@ export default function Home() {
           onClose={() => {
             setShowMonthlyRankPopup(false);
             setMonthlyRankData(null);
-
-            // If daily reward is pending, trigger it to show
-            if (hasPendingDailyReward) {
-              setHasPendingDailyReward(false);
-              setDailyRewardCanClaim(true); // This will trigger the effect to show it
-            }
           }}
           rankData={monthlyRankData}
           userDisplayName={(user as any)?.displayName || (user as any)?.firstName || (user as any)?.username || 'Player'}

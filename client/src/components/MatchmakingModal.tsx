@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,18 +18,14 @@ interface MatchmakingModalProps {
   onMatchFound: (room: any) => void;
   user: any;
   isWebSocketConnected?: boolean;
-  refreshWebSocketConnection?: () => void;
   currentRoom?: any;
   leaveRoom?: (roomId: string) => void;
 }
 
-export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocketConnected = true, refreshWebSocketConnection, currentRoom, leaveRoom }: MatchmakingModalProps) {
+export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocketConnected = true, currentRoom, leaveRoom }: MatchmakingModalProps) {
   const { t } = useTranslation();
   const [isSearching, setIsSearching] = useState(false);
   const [searchTime, setSearchTime] = useState(0);
-  const [queuePosition, setQueuePosition] = useState(0);
-  const [searchStartTime, setSearchStartTime] = useState<number | null>(null);
-  const [isWebSocketHandlingEnabled, setIsWebSocketHandlingEnabled] = useState(false);
   const [selectedBet, setSelectedBet] = useState(1000000);
   const [errorModal, setErrorModal] = useState<{open: boolean, title: string, message: string, type?: 'error' | 'coins' | 'warning'}>({
     open: false,
@@ -41,15 +37,55 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
   const { lastMessage } = useWebSocket();
   const { isOnline } = useOnlineStatus();
 
-  // Check if user has active VIP Pass - only query when modal is open and user is authenticated
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const emergencyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionLostToastShownRef = useRef(false);
+
+  const clearAllTimers = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (emergencyTimeoutRef.current) {
+      clearTimeout(emergencyTimeoutRef.current);
+      emergencyTimeoutRef.current = null;
+    }
+  }, []);
+
+  const resetMatchmakingState = useCallback(() => {
+    console.log('🔄 MatchmakingModal: Resetting matchmaking state');
+    clearAllTimers();
+    connectionLostToastShownRef.current = false;
+    setIsSearching(false);
+    setSearchTime(0);
+  }, [clearAllTimers]);
+
+  // Check if user has active VIP Pass
   const { data: vipPassData, isError: vipPassError } = useQuery<{ hasActivePass: boolean }>({
     queryKey: ['/api/vip-pass'],
     enabled: open && !!user && !user.isGuest,
     staleTime: 0,
     refetchOnMount: true,
   });
-  // Only show VIP option if query succeeded and user explicitly has active pass - not for guests
   const hasVipPass = !vipPassError && vipPassData?.hasActivePass === true && !!user && !user.isGuest;
+
+  // Listen for matchmaking success - SINGLE SOURCE OF TRUTH
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    const isMatchmakingSuccess = ['matchmaking_success', 'game_started', 'match_found'].includes(lastMessage.type);
+    
+    if (isMatchmakingSuccess && open && isSearching) {
+      console.log('🎮 MatchmakingModal: Match found!', lastMessage.type);
+      resetMatchmakingState();
+
+      if (lastMessage.room) {
+        onMatchFound(lastMessage.room);
+      }
+
+      onClose();
+    }
+  }, [lastMessage, open, isSearching, onMatchFound, onClose, resetMatchmakingState]);
 
   // Reset timer when modal opens
   useEffect(() => {
@@ -57,113 +93,6 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
       setSearchTime(0);
     }
   }, [open]);
-
-  // Simplified: No complex WebSocket handling states needed
-
-  // AGGRESSIVE: Listen for ANY matchmaking message and close modal immediately
-  useEffect(() => {
-    if (lastMessage) {
-      // Handle WebSocket messages
-
-      // CRITICAL FIX: Process game_started messages even if modal shows as closed
-      if (lastMessage) {
-        // SIMPLIFIED: Only listen for essential matchmaking messages
-        const isMatchmakingSuccess = ['matchmaking_success', 'game_started'].includes(lastMessage.type);
-
-        if (isMatchmakingSuccess) {
-          //console.log('🎮 MatchmakingModal: CRITICAL FIX - Received matchmaking message:', lastMessage.type);
-          //console.log('🎮 MatchmakingModal: Current state:', { open, isSearching });
-
-          // Special handling for game_started - always close modal regardless of state
-          if (lastMessage.type === 'game_started') {
-            // Game started - force closing modal
-            setIsSearching(false);
-            setSearchTime(0);
-            setQueuePosition(0);
-            onClose();
-            return; // Exit early for game_started
-          }
-
-          // For other matchmaking messages, only process if modal is open
-          if (open) {
-            // FORCE stop all searching states
-            setIsSearching(false);
-            setSearchTime(0);
-            setQueuePosition(0);
-
-            // Always call onMatchFound if room data is available
-            if (lastMessage.room) {
-              //console.log('🎮 MatchmakingModal: FORCE - Calling onMatchFound with room data');
-              onMatchFound(lastMessage.room);
-            }
-
-            // FORCE close the modal
-            //console.log('🎮 MatchmakingModal: FORCE - Calling onClose to force modal closure');
-            onClose();
-          }
-        }
-      }
-    }
-  }, [lastMessage, open, isSearching, onClose, onMatchFound]);
-
-  // CRITICAL FIX: Always listen for matchmaking events regardless of modal state
-  useEffect(() => {
-    const handleGlobalMatchmaking = (event: CustomEvent) => {
-      const message = event.detail;
-      console.log('🎮 MatchmakingModal: Received matchmaking message:', message.type, 'Modal open:', open);
-
-      // Handle matchmaking messages regardless of modal open state
-      if (['match_found', 'matchmaking_success', 'game_started'].includes(message.type)) {
-        console.log('🎮 MatchmakingModal: Processing critical matchmaking message:', message.type);
-
-        // Reset modal state immediately
-        setIsSearching(false);
-        setSearchTime(0);
-        setQueuePosition(0);
-        setSearchStartTime(null);
-        setIsWebSocketHandlingEnabled(false);
-
-        if (message.type === 'match_found' || message.type === 'matchmaking_success') {
-          if (message.room) {
-            console.log('🎮 MatchmakingModal: Match found! Room data:', message.room);
-
-            // CRITICAL FIX: Force a brief delay to ensure UI state is ready before calling onMatchFound
-            // This fixes the issue where the second player gets auto-connected without proper UI refresh
-            setTimeout(() => {
-              console.log('🎮 MatchmakingModal: Calling onMatchFound with room data');
-              onMatchFound(message.room);
-              onClose();
-            }, 100); // Small delay to ensure proper state synchronization
-          }
-        }
-
-        if (message.type === 'game_started') {
-          console.log('🎮 MatchmakingModal: Game started - ensuring modal is closed');
-          onClose();
-        }
-      }
-    };
-
-    const handleForceClose = (event: CustomEvent) => {
-      // Emergency force close triggered
-      setIsSearching(false);
-      setSearchTime(0);
-      setQueuePosition(0);
-      setSearchStartTime(null);
-      setIsWebSocketHandlingEnabled(false);
-      onClose();
-    };
-
-    window.addEventListener('matchmaking_message_received', handleGlobalMatchmaking as EventListener);
-    window.addEventListener('force_close_matchmaking', handleForceClose as EventListener);
-
-    return () => {
-      window.removeEventListener('matchmaking_message_received', handleGlobalMatchmaking as EventListener);
-      window.removeEventListener('force_close_matchmaking', handleForceClose as EventListener);
-    };
-  }, [onClose, onMatchFound]); // Listen regardless of modal open state
-
-  // WebSocket message handling is now managed by parent component (home.tsx) to prevent conflicts
 
   const joinMatchmakingMutation = useMutation({
     mutationFn: async () => {
@@ -173,19 +102,9 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
     onSuccess: (data) => {
       if (data.status === 'matched') {
         setIsSearching(false);
-        // Parent component handles WebSocket messages and room joining
-        // No need for onClose() here as parent will handle it
-        toast({
-          title: t('matchFound'),
-          description: t('matchedWithOpponent'),
-        });
       } else if (data.status === 'waiting') {
         setIsSearching(true);
-        setQueuePosition(1);
-        toast({
-          title: t('searchingForOpponent'),
-          description: t('lookingForPlayer'),
-        });
+        setSearchTime(0);
       }
     },
     onError: (error) => {
@@ -203,17 +122,8 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
 
       console.error('🚨 Matchmaking error:', error);
 
-      // Handle specific error types with appropriate styling and messages
-      let toastTitle = t('error');
-      let errorMessage = error.message;
-      let variant: "destructive" | "default" = "destructive";
-
-      // Extract clean message from error object
-      // Priority: error.data.message > error.message
-      // If error.message is a JSON string, try to parse it to get the message field
       let displayMessage = error.data?.message || error.message;
 
-      // If displayMessage looks like JSON, try to parse it to extract the message
       if (displayMessage && typeof displayMessage === 'string' && displayMessage.trim().startsWith('{')) {
         try {
           const parsed = JSON.parse(displayMessage);
@@ -230,35 +140,16 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
           message: displayMessage || 'You need 1000 coins to play online. Win AI games to earn coins!',
           type: 'coins'
         });
-      } else if (displayMessage?.includes('room') || displayMessage?.includes('connection')) {
-        setErrorModal({
-          open: true,
-          title: 'Connection Error',
-          message: 'Connection issue. Please try again.',
-          type: 'error'
-        });
-      } else if (displayMessage?.includes('queue')) {
-        setErrorModal({
-          open: true,
-          title: 'Matchmaking Error',
-          message: 'Matchmaking queue error. Please try again.',
-          type: 'error'
-        });
       } else {
         setErrorModal({
           open: true,
           title: 'Error',
-          message: displayMessage || errorMessage || 'An error occurred. Please try again.',
+          message: displayMessage || 'An error occurred. Please try again.',
           type: 'error'
         });
       }
       setIsSearching(false);
-
-      // Reset modal state on error
       setSearchTime(0);
-      setQueuePosition(0);
-      setSearchStartTime(null);
-      setIsWebSocketHandlingEnabled(false);
     },
   });
 
@@ -270,11 +161,6 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
     onSuccess: () => {
       setIsSearching(false);
       setSearchTime(0);
-      setQueuePosition(0);
-      toast({
-        title: t('leftQueue'),
-        description: t('leftMatchmakingQueue'),
-      });
     },
     onError: (error) => {
       toast({
@@ -285,170 +171,105 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
     },
   });
 
-  const handleStartSearch = async () => {
-    console.log('🎮 MatchmakingModal: Pre-matchmaking connection validation');
+  const handleStartSearch = () => {
+    console.log('🎮 MatchmakingModal: Starting matchmaking search');
 
-    // Auto-leave current room before starting matchmaking to prevent connection conflicts
+    // Auto-leave current room before starting matchmaking
     if (currentRoom && leaveRoom) {
       console.log(`🏠 Auto-leaving current room ${currentRoom.id} before starting matchmaking`);
       leaveRoom(currentRoom.id);
-      toast({
-        title: "Left Room",
-        description: "Left previous room to start matchmaking",
-        duration: 2000,
-      });
     }
 
-    // CRITICAL FIX: Always test WebSocket connectivity with ping before matchmaking
+    // Check WebSocket connection
     if (!isWebSocketConnected) {
-      console.log('🚫 WebSocket not connected, attempting to refresh connection...');
-      toast({
-        title: 'Connection Issue',
-        description: 'Refreshing connection, please wait...',
-        variant: "default",
+      console.log('🚫 WebSocket not connected');
+      setErrorModal({
+        open: true,
+        title: 'Connection Error',
+        message: 'WebSocket connection required for matchmaking. Please try again.',
+        type: 'error'
       });
-
-      // Call refresh function if available
-      if (refreshWebSocketConnection) {
-        refreshWebSocketConnection();
-      }
-
-      // Give some time for connection refresh
-      setTimeout(() => {
-        console.log('🎮 MatchmakingModal: Retrying matchmaking after connection refresh');
-        setSearchTime(0);
-        setQueuePosition(0);
-        setSearchStartTime(Date.now());
-        joinMatchmakingMutation.mutate();
-      }, 2000);
-
       return;
     }
 
-    // Test WebSocket with ping before matchmaking - CRITICAL for idle connections
-    //console.log('🏓 Testing WebSocket connectivity with ping...');
-
-    // Create a promise to wait for pong response
-    const testConnectivity = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Connection test timeout'));
-      }, 5000);
-
-      // Listen for pong response
-      const handlePongResponse = (event: CustomEvent) => {
-        if (event.detail.type === 'pong') {
-          //console.log('🏓 Pong received - WebSocket is active');
-          clearTimeout(timeout);
-          window.removeEventListener('websocket_pong_received', handlePongResponse as EventListener);
-          resolve(true);
-        }
-      };
-
-      window.addEventListener('websocket_pong_received', handlePongResponse as EventListener);
-
-      // Send ping through global WebSocket
-      const pingEvent = new CustomEvent('send_websocket_ping', {
-        detail: { type: 'ping', timestamp: Date.now() }
-      });
-      window.dispatchEvent(pingEvent);
-    });
-
-    try {
-      await testConnectivity;
-      //console.log('🎮 MatchmakingModal: WebSocket connectivity confirmed, starting matchmaking');
-      setSearchTime(0);
-      setQueuePosition(0);
-      setSearchStartTime(Date.now());
-      joinMatchmakingMutation.mutate();
-    } catch (error) {
-      console.error('🚫 WebSocket connectivity test failed:', error);
-      toast({
-        title: 'Quick Match',
-        description: 'We are preparing your room, please wait..',
-        variant: "destructive",
-      });
-
-      // Attempt connection refresh as fallback
-      if (refreshWebSocketConnection) {
-        refreshWebSocketConnection();
-        setTimeout(() => {
-          setSearchTime(0);
-          setQueuePosition(0);
-          setSearchStartTime(Date.now());
-          joinMatchmakingMutation.mutate();
-        }, 3000);
-      }
-    }
+    // Start matchmaking directly
+    setSearchTime(0);
+    joinMatchmakingMutation.mutate();
   };
 
   const handleCancelSearch = () => {
-    setSearchStartTime(null); // Clear search start time
-    setIsWebSocketHandlingEnabled(false); // Disable WebSocket handling
+    console.log('🎮 MatchmakingModal: Cancel search requested');
+    resetMatchmakingState();
     leaveMatchmakingMutation.mutate();
   };
 
   const handleClose = () => {
+    console.log('🎮 MatchmakingModal: Close requested, isSearching:', isSearching);
     if (isSearching) {
       handleCancelSearch();
     } else {
-      setSearchStartTime(null); // Clear search start time on close
-      setIsWebSocketHandlingEnabled(false); // Disable WebSocket handling
+      resetMatchmakingState();
     }
     onClose();
   };
 
-  // Listen for matchmaking state changes from parent
+  // Close modal externally while searching
   useEffect(() => {
     if (!open && isSearching) {
-      // Modal was closed externally (by parent), reset searching state
-      //console.log('🎮 MatchmakingModal: Modal closed externally while searching, resetting state');
-      setIsSearching(false);
-      setSearchTime(0);
-      setQueuePosition(0);
-      setSearchStartTime(null);
-      setIsWebSocketHandlingEnabled(false);
+      console.log('🎮 MatchmakingModal: Modal closed externally while searching');
+      resetMatchmakingState();
     }
-  }, [open, isSearching]);
+  }, [open, isSearching, resetMatchmakingState]);
 
-  // Reset search state when modal opens fresh
+  // Cancel matchmaking if connection is lost while searching
   useEffect(() => {
-    if (open && !isSearching) {
-      setSearchStartTime(null);
-      setSearchTime(0);
-      setQueuePosition(0);
+    if (isSearching && (!isWebSocketConnected || !isOnline)) {
+      // Only show toast once per connection loss event
+      if (!connectionLostToastShownRef.current) {
+        console.log('🚫 MatchmakingModal: Connection lost while searching');
+        connectionLostToastShownRef.current = true;
+        
+        toast({
+          title: 'Connection Lost',
+          description: 'Matchmaking cancelled. Please reconnect and try again.',
+          variant: "destructive",
+        });
+      }
+      
+      resetMatchmakingState();
+      leaveMatchmakingMutation.mutate();
     }
-  }, [open, isSearching]);
+  }, [isWebSocketConnected, isOnline, isSearching, resetMatchmakingState]);
 
   // Search timer and emergency timeout
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    let emergencyTimeout: NodeJS.Timeout;
+    clearAllTimers();
 
     if (isSearching) {
       // Regular search timer
-      timer = setInterval(() => {
+      timerRef.current = setInterval(() => {
         setSearchTime(prev => prev + 1);
       }, 1000);
 
-      // Emergency timeout to force close modal after 60 seconds
-      emergencyTimeout = setTimeout(() => {
-        if (isSearching) {
-          //console.log('🚨 MatchmakingModal: Emergency timeout - forcing modal closure after 60 seconds');
-          setIsSearching(false);
-          setSearchTime(0);
-          setQueuePosition(0);
-          setSearchStartTime(null);
-          setIsWebSocketHandlingEnabled(false);
-          onClose();
-        }
-      }, 60000);
+      // Emergency timeout after 90 seconds
+      emergencyTimeoutRef.current = setTimeout(() => {
+        console.log('🚨 MatchmakingModal: Emergency timeout - closing after 90 seconds');
+        resetMatchmakingState();
+        onClose();
+      }, 90000);
     }
 
     return () => {
-      clearInterval(timer);
-      clearTimeout(emergencyTimeout);
+      clearAllTimers();
     };
-  }, [isSearching, onClose]);
+  }, [isSearching, onClose, clearAllTimers, resetMatchmakingState]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearAllTimers();
+    };
+  }, [clearAllTimers]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -485,7 +306,8 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
             maxHeight: '80vh',
             overflowY: 'auto',
             position: 'relative',
-            border: '1px solid rgba(255, 215, 0, 0.2)'
+            border: '1px solid rgba(255, 215, 0, 0.2)',
+            boxSizing: 'border-box'
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -523,7 +345,7 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
           </button>
 
           {!isSearching && !joinMatchmakingMutation.isPending ? (
-            <div style={{ padding: '24px 20px' }}>
+            <div style={{ padding: '24px 20px', boxSizing: 'border-box', width: '100%' }}>
               {/* Header */}
               <div style={{ textAlign: 'center', marginBottom: '18px' }}>
                 <div style={{
@@ -685,7 +507,7 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                     </div>
                   </button>
                 </div>
-                {/* VIP Bet Option - Shows for all users but only available for VIP users */}
+                {/* VIP Bet Option */}
                 <div style={{ marginTop: '8px' }}>
                   <button
                     type="button"
@@ -800,7 +622,7 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
               </button>
             </div>
           ) : (
-            <div style={{ padding: '28px 24px' }}>
+            <div style={{ padding: '28px 24px', boxSizing: 'border-box', width: '100%' }}>
               {/* Searching Header */}
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                 <div style={{
@@ -825,14 +647,10 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                       </linearGradient>
                     </defs>
                     
-                    {/* Outer beveled rim */}
                     <circle cx="50" cy="50" r="48" fill="url(#rimGradient)" opacity="0.3" />
                     <circle cx="50" cy="50" r="45" fill="none" stroke="url(#rimGradient)" strokeWidth="3" />
-                    
-                    {/* Main gold coin */}
                     <circle cx="50" cy="50" r="42" fill="url(#goldGradient)" />
                     
-                    {/* Radial star-map grid */}
                     <g opacity="0.15" stroke="#000000" strokeWidth="0.5" fill="none">
                       <circle cx="50" cy="50" r="35" />
                       <circle cx="50" cy="50" r="25" />
@@ -843,24 +661,15 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                       <line x1="80" y1="20" x2="20" y2="80" />
                     </g>
                     
-                    {/* Two opposing player silhouettes */}
                     <g fill="#1a1a1a" opacity="0.9">
-                      {/* Left player */}
                       <ellipse cx="32" cy="40" rx="6" ry="7" />
                       <path d="M 32 47 Q 27 52, 27 60 L 27 62 Q 27 64, 29 64 L 35 64 Q 37 64, 37 62 L 37 60 Q 37 52, 32 47 Z" />
-                      
-                      {/* Right player */}
                       <ellipse cx="68" cy="40" rx="6" ry="7" />
                       <path d="M 68 47 Q 63 52, 63 60 L 63 62 Q 63 64, 65 64 L 71 64 Q 73 64, 73 62 L 73 60 Q 73 52, 68 47 Z" />
                     </g>
                     
-                    {/* VS symbol in center */}
                     <text x="50" y="58" textAnchor="middle" fontSize="18" fontWeight="900" fill="#1a1a1a" opacity="0.4">VS</text>
-                    
-                    {/* Inner highlight for depth */}
                     <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255, 255, 255, 0.3)" strokeWidth="1.5" opacity="0.6" />
-                    
-                    {/* Subtle sparkle accents */}
                     <circle cx="25" cy="25" r="2" fill="rgba(255, 255, 255, 0.8)" />
                     <circle cx="75" cy="25" r="1.5" fill="rgba(255, 255, 255, 0.6)" />
                     <circle cx="25" cy="75" r="1.5" fill="rgba(255, 255, 255, 0.6)" />
@@ -929,75 +738,56 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                       width: '8px',
                       height: '8px',
                       borderRadius: '50%',
-                      background: '#fbbf24'
+                      background: '#10b981',
+                      animation: 'pulse 2s infinite'
                     }} />
-                    <span style={{ fontSize: '14px', color: '#fbbf24', fontWeight: '700' }}>
+                    <span style={{ fontSize: '13px', color: '#10b981', fontWeight: '600' }}>
                       {t('searching')}
                     </span>
                   </div>
-                </div>
-
-                <div style={{ marginTop: '16px', fontSize: '12px', textAlign: 'center', color: 'rgba(255, 255, 255, 0.5)' }}>
-                  {searchTime < 10 ? (
-                    t('findingPerfectOpponent')
-                  ) : searchTime < 20 ? (
-                    t('expandingSearch')
-                  ) : searchTime < 25 ? (
-                    t('expandingSearch')
-                  ) : (
-                    t('findingPerfectOpponent')
-                  )}
                 </div>
               </div>
 
               {/* Cancel Button */}
               <button
                 onClick={handleCancelSearch}
-                disabled={leaveMatchmakingMutation.isPending}
                 data-testid="cancel-search-button"
                 style={{
                   width: '100%',
-                  padding: '14px',
+                  padding: '12px',
                   borderRadius: '10px',
-                  background: 'transparent',
-                  border: '1px solid rgba(255, 215, 0, 0.3)',
-                  color: '#ffd700',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: leaveMatchmakingMutation.isPending ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: leaveMatchmakingMutation.isPending ? 0.5 : 1
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '2px solid rgba(239, 68, 68, 0.3)',
+                  color: '#ef4444',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
                 }}
                 onMouseEnter={(e) => {
-                  if (!leaveMatchmakingMutation.isPending) {
-                    e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.5)';
-                  }
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.3)';
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
                 }}
               >
-                <X style={{ width: '18px', height: '18px' }} />
-                {t('cancel')}
+                {t('cancelSearch')}
               </button>
             </div>
           )}
+
+          {/* Error Modal */}
+          <ErrorModal
+            open={errorModal.open}
+            onClose={() => setErrorModal({ ...errorModal, open: false })}
+            title={errorModal.title}
+            message={errorModal.message}
+            type={errorModal.type}
+          />
         </div>
       </div>
     )}
-
-    <ErrorModal
-      open={errorModal.open}
-      onClose={() => setErrorModal(prev => ({ ...prev, open: false }))}
-      title={errorModal.title}
-      message={errorModal.message}
-      type={errorModal.type}
-    />
-  </>
+    </>
   );
 }

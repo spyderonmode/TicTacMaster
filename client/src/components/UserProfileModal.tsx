@@ -199,7 +199,7 @@ export function UserProfileModal({
                 src={profileImage}
                 alt={displayName}
                 size="sm"
-                borderType={activeAvatarFrame || selectedAchievementBorder || stats?.selectedAchievementBorder || null}
+                borderType={activeAvatarFrame ? activeAvatarFrame : ((selectedAchievementBorder === 'level_100_master' || selectedAchievementBorder === 'level100Master' || stats?.selectedAchievementBorder === 'level_100_master' || stats?.selectedAchievementBorder === 'level100Master') ? (selectedAchievementBorder || stats?.selectedAchievementBorder) : null)}
                 fallbackText={displayName.charAt(0).toUpperCase()}
               />
             </div>

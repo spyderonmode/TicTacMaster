@@ -4482,7 +4482,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async claimDailyReward(userId: string): Promise<{ success: boolean; message: string; reward?: DailyReward; coinsEarned?: number }> {
-    const DAILY_REWARD_AMOUNT = 1000000; // 1 million coins
+    const BASE_DAILY_REWARD = 1000000; // 1 million coins base reward
 
     // Check if user can claim
     const { canClaim, reward } = await this.getDailyReward(userId);
@@ -4497,22 +4497,38 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const lastClaim = reward?.lastClaimDate ? new Date(reward.lastClaimDate) : null;
     
-    // Calculate streak
-    let newStreak = 1;
+    // Calculate current streak (checking if user missed a day and should reset)
+    let currentStreak = reward?.currentStreak || 0;
+    
     if (lastClaim) {
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
       const lastClaimStart = new Date(lastClaim.getFullYear(), lastClaim.getMonth(), lastClaim.getDate());
       
-      if (lastClaimStart.getTime() === yesterdayStart.getTime()) {
-        // Claimed yesterday, continue streak
-        newStreak = (reward.currentStreak || 0) + 1;
+      // If last claim was before yesterday, user missed at least one day - reset streak
+      if (lastClaimStart.getTime() < yesterdayStart.getTime()) {
+        currentStreak = 0; // Streak broken, reset to 0
       }
-      // If last claim was before yesterday, streak resets to 1
     }
+    
+    // Calculate new streak for this claim
+    let newStreak = currentStreak + 1; // Always increment by 1 for this claim
 
     const newBestStreak = Math.max(newStreak, reward?.bestStreak || 0);
+
+    // Calculate bonus multiplier based on CURRENT streak (the streak being broken, not the new one)
+    // This gives bonus if they maintained their streak UP TO today
+    let bonusMultiplier = 1;
+    if (currentStreak >= 30) {
+      bonusMultiplier = 3; // 3x bonus if they had 30+ day streak before this claim
+    } else if (currentStreak >= 14) {
+      bonusMultiplier = 2; // 2x bonus if they had 14+ day streak before this claim
+    }
+    // Default is 1x (no bonus) - applies when streak is 0 or less than 14
+
+    // Calculate actual reward with bonus applied
+    const coinsEarned = BASE_DAILY_REWARD * bonusMultiplier;
 
     // Process transaction
     await db.transaction(async (tx) => {
@@ -4523,7 +4539,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       const currentBalance = user.coins || 0;
-      const newBalance = currentBalance + DAILY_REWARD_AMOUNT;
+      const newBalance = currentBalance + coinsEarned;
 
       // Update user coins
       await tx.update(users)
@@ -4533,7 +4549,7 @@ export class DatabaseStorage implements IStorage {
       // Record coin transaction
       await tx.insert(coinTransactions).values({
         userId,
-        amount: DAILY_REWARD_AMOUNT,
+        amount: coinsEarned,
         type: 'daily_reward',
         balanceBefore: currentBalance,
         balanceAfter: newBalance,
@@ -4554,11 +4570,17 @@ export class DatabaseStorage implements IStorage {
     // Get updated reward record
     const [updatedReward] = await db.select().from(dailyRewards).where(eq(dailyRewards.userId, userId));
 
+    // Build bonus message
+    let bonusMessage = '';
+    if (bonusMultiplier > 1) {
+      bonusMessage = ` 🎉 ${bonusMultiplier}x Streak Bonus!`;
+    }
+
     return {
       success: true,
-      message: `Daily reward claimed! You earned ${DAILY_REWARD_AMOUNT.toLocaleString()} coins! ${newStreak > 1 ? `🔥 ${newStreak} day streak!` : ''}`,
+      message: `Daily reward claimed! You earned ${coinsEarned.toLocaleString()} coins! ${newStreak > 1 ? `🔥 ${newStreak} day streak!` : ''}${bonusMessage}`,
       reward: updatedReward,
-      coinsEarned: DAILY_REWARD_AMOUNT,
+      coinsEarned,
     };
   }
 

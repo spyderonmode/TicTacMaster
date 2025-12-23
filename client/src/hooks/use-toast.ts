@@ -55,6 +55,26 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
+// Deduplication system to prevent duplicate toasts
+const toastDeduplication = new Map<string, number>()
+const DEDUP_WINDOW = 500 // 500ms window to detect duplicates
+
+function getToastKey(title?: React.ReactNode, description?: React.ReactNode): string {
+  return `${String(title)}-${String(description)}`
+}
+
+function canShowToast(title?: React.ReactNode, description?: React.ReactNode): boolean {
+  const key = getToastKey(title, description)
+  const lastTime = toastDeduplication.get(key)
+  
+  if (!lastTime || Date.now() - lastTime > DEDUP_WINDOW) {
+    toastDeduplication.set(key, Date.now())
+    return true
+  }
+  
+  return false
+}
+
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
     return
@@ -140,6 +160,15 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
+  // Check if this toast is a duplicate and skip if it is
+  if (!canShowToast(props.title, props.description)) {
+    return {
+      id: "",
+      dismiss: () => {},
+      update: () => {},
+    }
+  }
+
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -179,7 +208,7 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
   return {
     ...state,

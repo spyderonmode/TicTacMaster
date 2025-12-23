@@ -1,7 +1,8 @@
 // Persistent cache for native app wrapper
-const CACHE_NAME = 'tictactoe-persistent';
-const RUNTIME_CACHE = 'tictactoe-runtime';
-const PROFILE_IMAGE_CACHE = 'tictactoe-profile-images';
+const CACHE_VERSION = 'v22';
+const CACHE_NAME = `tictactoe-persistent-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `tictactoe-runtime-${CACHE_VERSION}`;
+const PROFILE_IMAGE_CACHE = `tictactoe-profile-images-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
   '/',
@@ -27,7 +28,25 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((cacheName) => {
+            return (
+              cacheName.startsWith('tictactoe-') &&
+              cacheName !== CACHE_NAME &&
+              cacheName !== RUNTIME_CACHE &&
+              cacheName !== PROFILE_IMAGE_CACHE
+            );
+          })
+          .map((cacheName) => {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 function shouldCacheRequest(url) {

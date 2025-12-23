@@ -29,10 +29,27 @@ export function useWebSocket() {
   useEffect(() => {
     if (!user) return;
 
-    // Close existing connection if any
-    if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
-      ws.current.close();
+    // AGGRESSIVE CLEANUP: Close existing connection if any and prevent callbacks
+    if (ws.current) {
+      console.log(`🧹 Cleaning up old WebSocket connection (state: ${ws.current.readyState})`);
+      
+      // Nullify all handlers first to prevent any callbacks from old connection
+      ws.current.onopen = null;
+      ws.current.onmessage = null;
+      ws.current.onclose = null;
+      ws.current.onerror = null;
+      
+      // Now close the connection
+      if (ws.current.readyState !== WebSocket.CLOSED) {
+        ws.current.close();
+      }
       ws.current = null;
+    }
+
+    // Clear any pending reconnect timeout to start fresh
+    if (reconnectTimeout.current) {
+      clearTimeout(reconnectTimeout.current);
+      reconnectTimeout.current = null;
     }
 
     // Fix: Use strict same-origin WebSocket URL to ensure cookies are sent
@@ -80,6 +97,33 @@ export function useWebSocket() {
           }));
         }
       }, 100); // Fast refresh - only 100ms to ensure auth completes first
+
+      // Always check matchmaking status on reconnection to sync frontend state
+      // This fixes the issue where the matchmaking timer keeps running after network changes
+      setTimeout(async () => {
+        try {
+          const response = await fetch('/api/matchmaking/status', {
+            method: 'GET',
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const status = await response.json();
+            // ALWAYS dispatch event to let MatchmakingModal sync its state after reconnection
+            // This ensures the timer stops if a game started while we were disconnected
+            window.dispatchEvent(new CustomEvent('matchmaking_status_sync', {
+              detail: {
+                isMatchmaking: status.isMatchmaking,
+                hasActiveGame: status.hasActiveGame,
+                gameId: status.gameId,
+                roomId: status.roomId
+              }
+            }));
+          }
+        } catch (error) {
+          // Silently fail - not critical if status check fails
+          console.log('🔄 Matchmaking status check failed on reconnect:', error);
+        }
+      }, 200); // Check after auth completes
     };
 
     ws.current.onmessage = (event) => {
@@ -231,7 +275,7 @@ export function useWebSocket() {
         // Handle room closed - when any player leaves, kick everyone out
         if (message.type === 'room_closed') {
           console.log('🚪 Room closed event received:', message);
-          
+
           // Clear any stored game/room state
           localStorage.removeItem('currentGameState');
           sessionStorage.removeItem('currentGameState');
@@ -579,6 +623,14 @@ export function useWebSocket() {
   // Add a refresh connection method for matchmaking issues
   const refreshConnection = () => {
     if (ws.current) {
+      console.log(`🧹 Manual refresh: Cleaning up old WebSocket connection`);
+      
+      // Nullify all handlers first to prevent any callbacks from old connection
+      ws.current.onopen = null;
+      ws.current.onmessage = null;
+      ws.current.onclose = null;
+      ws.current.onerror = null;
+      
       ws.current.close();
       ws.current = null;
       setIsConnected(false);

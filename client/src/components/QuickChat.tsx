@@ -74,13 +74,14 @@ export function QuickChat() {
     onError: (error: any) => {
       console.error('Chat message error:', error);
       
-      // Parse the error message to get a user-friendly version
-      const friendlyMessage = parseErrorMessage(error);
-      
-      // Check if this is an offline error to show a special cute message
-      const isOfflineError = error?.message?.includes('Target user connection not found') || 
-                             error?.message?.includes('connection not found') ||
-                             friendlyMessage.toLowerCase().includes('offline');
+      // Check if this is an offline error BEFORE parsing to friendly message
+      // The backend returns { error: 'Target user connection not found' } when user is offline
+      const isOfflineError = 
+        error?.message?.includes('Target user connection not found') || 
+        error?.message?.includes('connection not found') ||
+        error?.error?.includes('Target user connection not found') ||
+        error?.error?.includes('connection not found') ||
+        (typeof error === 'string' && error.includes('Target user connection not found'));
       
       if (isOfflineError) {
         // Show a cute, friendly notification for offline friends
@@ -102,7 +103,8 @@ export function QuickChat() {
           className: "bg-gradient-to-r from-slate-800 to-slate-700 border-2 border-orange-500/30 shadow-lg shadow-orange-500/20",
         });
       } else {
-        // Show generic error for other cases
+        // Parse and show generic error for other cases
+        const friendlyMessage = parseErrorMessage(error);
         toast({
           title: t('error'),
           description: friendlyMessage,

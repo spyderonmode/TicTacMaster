@@ -1,8 +1,9 @@
 import victory from "./victory.png";
 import level from "./level.png";
 import vip from "./vip.png";
-
-const URLS = [victory, level, vip];
+import quickMatchImg from "./Quick Match.png";
+import roomImg from "./Room.png";
+const URLS = [victory, level, vip, quickMatchImg, roomImg];
 
 export async function preloadUiImages(): Promise<void> {
   await Promise.all(

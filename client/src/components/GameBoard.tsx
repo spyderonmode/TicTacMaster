@@ -16,7 +16,7 @@ import { PlayerProfileModal } from '@/components/PlayerProfileModal';
 import { AnimatedPiece } from '@/components/AnimatedPieces';
 import { AvatarWithFrame } from '@/components/AvatarWithFrame';
 import { StickerPicker } from '@/components/StickerPicker';
-
+import { ErrorLogModal } from '@/components/ErrorLogModal';
 const VALID_POSITIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
 // Player quick chat system
@@ -79,6 +79,7 @@ const getSelectedAchievementBorder = (playerInfo: any): string | null => {
 
 // Helper function to render achievement borders based on selected type (Optimized with CSS)
 const renderAchievementBorder = (borderType: string | null, playerName: string, theme: any) => {
+  
   switch (borderType) {
     case 'ultimate_veteran':
       return (
@@ -338,6 +339,11 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
   const [showStickerPanel, setShowStickerPanel] = useState(false);
   const [playerXSticker, setPlayerXSticker] = useState<{ sticker: any } | null>(null);
   const [playerOSticker, setPlayerOSticker] = useState<{ sticker: any } | null>(null);
+
+  // Error log modal state
+  const [errorLogOpen, setErrorLogOpen] = useState(false);
+  const [errorLogTitle, setErrorLogTitle] = useState('');
+  const [errorLogMessage, setErrorLogMessage] = useState('');
 
   // Combined game context fetch - ALL data in ONE API call for slow network optimization
   // Build query string with player IDs for avatar frame lookup
@@ -630,6 +636,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     }
   }, [game?.id, gameBoardKeys, gameBoardValues, game?.currentPlayer, game?.lastMove, game?.syncTimestamp]);
 
+
   // Remove WebSocket handling from GameBoard - it's now handled in Home component
   // This prevents double handling and state conflicts
 
@@ -652,6 +659,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       } else {
         // Message doesn't match current game/room
       }
+    }
+
+    // Handle play again rejection
+    if (lastMessage?.type === 'play_again_rejected') {
+      setErrorLogTitle("Play Again Rejected");
+      setErrorLogMessage("The other player declined your play again request");
+      setErrorLogOpen(true);
     }
 
     // Handle move error messages from WebSocket
@@ -1054,15 +1068,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
     }
 
     if (board[position.toString()]) {
-      // Position already occupied
-
-
-
-      toast({
-        title: t('invalidMove'),
-        description: t('positionOccupied'),
-        variant: "destructive",
-      });
+      // Position already occupied - silently ignore
       return;
     }
 
@@ -1098,18 +1104,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
       // Check player symbol and turn
 
       if (currentPlayer !== playerSymbol) {
-        // Not your turn
-
-
-
-        const currentPlayerName = currentPlayer === 'X' ? 
-          (game.playerXInfo?.firstName || 'Player X') : 
-          (game.playerOInfo?.firstName || 'Player O');
-        toast({
-          title: t('notYourTurn'),
-          description: `${t('waitingFor')} ${currentPlayerName} ${t('toMakeMove')}`,
-          variant: "destructive",
-        });
+        // Not your turn - silently ignore
         return;
       }
     }
@@ -1244,7 +1239,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
           src={game.playerXInfo.profileImageUrl || game.playerXInfo.profilePicture}
           alt="Player X"
           size="lg"
-          borderType={playerXAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerXInfo)}
+          borderType={playerXAvatarFrame?.activeFrameId ? playerXAvatarFrame.activeFrameId : ((getSelectedAchievementBorder(game.playerXInfo) === 'level_100_master' || getSelectedAchievementBorder(game.playerXInfo) === 'level100Master') ? getSelectedAchievementBorder(game.playerXInfo) : null)}
           fallbackText={game.playerXInfo.firstName?.charAt(0) || game.playerXInfo.displayName?.charAt(0) || game.playerXInfo.username?.charAt(0) || 'X'}
         />
       </div>
@@ -1408,7 +1403,7 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
                     src={game.playerOInfo.profileImageUrl || game.playerOInfo.profilePicture}
                     alt="Player O"
                     size="lg"
-                    borderType={playerOAvatarFrame?.activeFrameId || getSelectedAchievementBorder(game.playerOInfo)}
+                    borderType={playerOAvatarFrame?.activeFrameId ? playerOAvatarFrame.activeFrameId : ((getSelectedAchievementBorder(game.playerOInfo) === 'level_100_master' || getSelectedAchievementBorder(game.playerOInfo) === 'level100Master') ? getSelectedAchievementBorder(game.playerOInfo) : null)}
                     fallbackText={game.playerOInfo.firstName?.charAt(0) || game.playerOInfo.displayName?.charAt(0) || game.playerOInfo.username?.charAt(0) || 'O'}
                   />
                 </div>
@@ -1433,12 +1428,12 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
 
       <CardContent>
         {/* Current Player Indicator */}
-        <div className={`mb-6 p-4 ${theme.cellStyle.split(' ')[0]} ${theme.borderColor} border rounded-lg`}>
-          <div className="flex items-center justify-center space-x-3">
-            <div className={`w-4 h-4 rounded-full ${
+        <div className={`mb-3 p-2 ${theme.cellStyle.split(' ')[0]} ${theme.borderColor} border rounded-lg`}>
+          <div className="flex items-center justify-center space-x-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${
               currentPlayer === 'X' ? 'bg-blue-500' : 'bg-red-500'
             }`}></div>
-            <span className={`text-lg font-medium ${theme.textColor}`}>
+            <span className={`text-sm font-medium ${theme.textColor}`}>
               {gameMode === 'online' 
                 ? (currentPlayer === 'X' 
                     ? (game?.playerXInfo?.firstName || game?.playerXInfo?.displayName || game?.playerXInfo?.username || 'Player X')
@@ -1584,6 +1579,13 @@ export function GameBoard({ game, onGameOver, gameMode, user, lastMessage, sendM
         />
       )}
 
+      {/* Error Log Modal */}
+      <ErrorLogModal
+        open={errorLogOpen}
+        onClose={() => setErrorLogOpen(false)}
+        title={errorLogTitle}
+        message={errorLogMessage}
+      />
 
     </Card>
   );

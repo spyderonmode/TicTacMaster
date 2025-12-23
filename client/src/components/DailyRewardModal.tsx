@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,10 +7,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import { Gift, Coins, Target } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Gift, Coins, Crown, Sparkles, Flame, Trophy, Star, Zap, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import confetti from "canvas-confetti";
 
 interface DailyRewardStatus {
   canClaim: boolean;
@@ -32,13 +32,59 @@ interface DailyRewardModalProps {
 
 export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [showCelebration, setShowCelebration] = useState(false);
   const [rewardAmount, setRewardAmount] = useState(1000000);
 
+
   const { data: rewardStatus, isLoading } = useQuery<DailyRewardStatus>({
     queryKey: ['/api/daily-reward'],
-    enabled: open,
+    enabled: true, // Disabled for demo - set to `open` for production
+
   });
+
+  const fireConfetti = useCallback(() => {
+    const colors = ['#fbbf24', '#f59e0b', '#d97706', '#fcd34d', '#fef3c7'];
+
+    // Find or create confetti canvas and set z-index
+    setTimeout(() => {
+      const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+      if (canvas) {
+        canvas.style.zIndex = '9999';
+        canvas.style.pointerEvents = 'none';
+      }
+    }, 0);
+
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: colors,
+      zIndex: 9999,
+    });
+
+    setTimeout(() => {
+      confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: colors,
+        zIndex: 9999,
+      });
+    }, 150);
+
+    setTimeout(() => {
+      confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: colors,
+        zIndex: 9999,
+      });
+    }, 300);
+  }, []);
 
   const claimMutation = useMutation({
     mutationFn: async () => {
@@ -53,19 +99,18 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
       return response.json();
     },
     onSuccess: (data) => {
-      // Extract coin amount from response if available
       if (typeof data.coinsEarned === 'number') {
         setRewardAmount(data.coinsEarned);
       }
+      fireConfetti();
       setShowCelebration(true);
       queryClient.invalidateQueries({ queryKey: ['/api/daily-reward'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
 
-      // Auto close after a short delay to let them see the success message
       setTimeout(() => {
         setShowCelebration(false);
         onOpenChange(false);
-      }, 2000);
+      }, 3000);
     },
     onError: (error: Error) => {
       toast({
@@ -77,132 +122,264 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
   });
 
   const handleClaim = () => {
-    // Trigger immediately without animation delay
     claimMutation.mutate();
   };
 
   const formatNextClaimTime = (nextClaimDate?: string) => {
     if (!nextClaimDate) return '';
-    
+
     const now = new Date();
     const next = new Date(nextClaimDate);
     const diff = next.getTime() - now.getTime();
-    
+
+    if (diff <= 0) return 'Now';
+
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     return `${hours}h ${minutes}m`;
+  };
+
+  const getStreakBonus = (streak: number) => {
+    if (streak >= 30) return "3x";
+    if (streak >= 14) return "2x";
+    return "1x";
+  };
+
+  const getStreakColor = (streak: number) => {
+    if (streak >= 30) return "from-purple-500 to-pink-500";
+    if (streak >= 14) return "from-orange-500 to-red-500";
+    if (streak >= 7) return "from-yellow-500 to-orange-500";
+    return "from-blue-500 to-cyan-500";
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="sm:max-w-md bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-500/30"
-        data-testid="dialog-daily-reward"
-      >
+      <DialogContent className="w-[90%] max-w-[420px] p-0 !gap-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-2 border-amber-500/40 shadow-[0_0_60px_rgba(251,191,36,0.15)] overflow-hidden">
+        {/* Animated Background Effects */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        </div>
+
         {showCelebration ? (
-          <div className="flex flex-col items-center justify-center py-10 space-y-6 animate-in fade-in zoom-in duration-300">
-            {/* Static Celebration View */}
-            <div className="relative">
-              <Coins className="h-28 w-28 text-yellow-400 drop-shadow-2xl" />
-              <div className="absolute inset-0 bg-yellow-400/20 rounded-full blur-xl"></div>
+          /* ======================== CELEBRATION VIEW ======================== */
+          <div className="relative flex flex-col items-center justify-center py-8 px-6 space-y-5">
+            {/* Floating Sparkles */}
+            <div className="absolute inset-0 overflow-hidden">
+              {[...Array(8)].map((_, i) => (
+                <Sparkles
+                  key={i}
+                  className="absolute text-yellow-400/60 animate-pulse"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${i * 0.2}s`,
+                    width: `${Math.random() * 10 + 6}px`,
+                    height: `${Math.random() * 10 + 6}px`,
+                  }}
+                />
+              ))}
             </div>
-            
-            <div className="text-center space-y-3">
-              <div className="text-5xl">🪙</div>
-              
-              <h2 className="text-4xl font-black text-yellow-400">
-                Amazing!
-              </h2>
-              
-              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-2xl p-6 border-2 border-yellow-400/50 shadow-xl">
-                <p className="text-sm text-yellow-200 font-semibold mb-2">You earned</p>
-                <p className="text-5xl font-black text-yellow-300 drop-shadow-lg">
-                  +{rewardAmount.toLocaleString()}
-                </p>
-                <p className="text-2xl text-yellow-100 mt-2 font-bold">Coins!</p>
+
+            {/* Main Coin Animation */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 rounded-full blur-xl opacity-60 animate-pulse scale-125"></div>
+              <div className="relative bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-full p-5 shadow-xl shadow-amber-500/50 animate-bounce">
+                <Coins className="h-14 w-14 text-slate-900" />
               </div>
-              
-              <p className="text-lg text-slate-300 italic">
-                Keep your streak going! 🎯
-              </p>
+              <Crown className="absolute -top-4 left-1/2 -translate-x-1/2 h-8 w-8 text-amber-300 animate-pulse" />
+            </div>
+
+            {/* Success Text */}
+            <div className="text-center space-y-4 relative z-10">
+              <div className="flex items-center justify-center gap-2">
+                <Star className="h-6 w-6 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
+                <h2 className="text-3xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
+                  AMAZING!
+                </h2>
+                <Star className="h-6 w-6 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
+              </div>
+
+              <div className="bg-gradient-to-br from-amber-500/20 via-yellow-500/10 to-orange-500/20 rounded-xl p-5 border border-amber-400/30 shadow-lg backdrop-blur-sm">
+                <p className="text-xs text-amber-200/80 font-medium tracking-wider uppercase mb-2">You Earned</p>
+                <div className="flex items-center justify-center gap-2">
+                  <Coins className="h-7 w-7 text-amber-400" />
+                  <p className="text-4xl font-black bg-gradient-to-r from-amber-300 to-yellow-200 bg-clip-text text-transparent">
+                    +{rewardAmount.toLocaleString()}
+                  </p>
+                </div>
+                <p className="text-lg text-amber-100 mt-2 font-bold tracking-wide">COINS</p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-slate-300">
+                <Flame className="h-5 w-5 text-orange-400 animate-pulse" />
+                <p className="text-sm italic">Keep your streak alive!</p>
+                <Flame className="h-5 w-5 text-orange-400 animate-pulse" />
+              </div>
             </div>
           </div>
         ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-2xl text-white">
-                <Gift className="h-6 w-6 text-yellow-500" />
-                Daily Reward
-              </DialogTitle>
-              <DialogDescription className="text-slate-300">
-                Claim your daily reward and build your streak!
-              </DialogDescription>
-            </DialogHeader>
+          /* ======================== MAIN VIEW ======================== */
+          <div className="relative">
+            {/* Premium Header */}
+            <div className="bg-gradient-to-r from-amber-600/20 via-yellow-500/20 to-amber-600/20 border-b border-amber-500/30 px-5 py-4">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-xl font-bold text-white">
+                  <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-2 rounded-lg shadow-lg shadow-amber-500/30">
+                    <Gift className="h-5 w-5 text-slate-900" />
+                  </div>
+                  <span className="bg-gradient-to-r from-amber-200 to-yellow-100 bg-clip-text text-transparent">
+                    Daily Reward
+                  </span>
+                  <Sparkles className="h-5 w-5 text-amber-400 animate-pulse ml-auto" />
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-sm mt-1">
+                  Claim your reward and build your streak!
+                </DialogDescription>
+              </DialogHeader>
+            </div>
 
-            <div className="space-y-6 py-4">
+            <div className="px-5 py-5 space-y-5">
               {isLoading ? (
-                <div className="text-center text-slate-400">Loading...</div>
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-400"></div>
+                </div>
               ) : rewardStatus?.canClaim ? (
                 <>
-                  {/* Static Premium Chest Display */}
-                  <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 border-2 border-yellow-500/30 rounded-lg p-6 text-center space-y-4 relative">
-                    <div className="relative inline-block">
-                      <Gift className="h-20 w-20 text-yellow-500 mx-auto drop-shadow-lg" />
-                      <div className="absolute inset-0 bg-yellow-500/20 rounded-full blur-lg"></div>
+                  {/* Premium Treasure Chest */}
+                  <div className="relative bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-orange-500/10 border border-amber-500/30 rounded-xl p-5 text-center overflow-hidden group hover:border-amber-400/50 transition-all duration-500">
+                    {/* Glow Effect */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                    {/* Chest Icon */}
+                    <div className="relative mb-4">
+                      <div className="absolute inset-0 bg-amber-400/20 rounded-full blur-xl scale-125 animate-pulse"></div>
+                      <div className="relative inline-block">
+                        <div className="bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-xl p-4 shadow-xl shadow-amber-500/40 transform group-hover:scale-105 transition-transform duration-300">
+                          <Gift className="h-12 w-12 text-slate-900" />
+                        </div>
+                        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full p-1.5 shadow-lg animate-bounce">
+                          <Zap className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div>
-                      <p className="text-4xl font-bold text-yellow-500">
-                        1,000,000
-                      </p>
-                      <p className="text-sm text-slate-300 mt-1">Coins</p>
+
+                    {/* Reward Amount */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-center gap-2">
+                        <Coins className="h-7 w-7 text-amber-400" />
+                        <p className="text-4xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
+                          1,000,000
+                        </p>
+                      </div>
+                      <p className="text-amber-200/70 font-medium tracking-wider uppercase text-sm">Golden Coins</p>
                     </div>
                   </div>
 
-                  {rewardStatus.reward && rewardStatus.reward.currentStreak > 0 && (
-                    <div className="flex items-center justify-center gap-2 text-blue-500">
-                      <Target className="h-5 w-5" />
-                      <span className="font-semibold" data-testid="text-current-streak">
-                        {rewardStatus.reward.currentStreak} Day Streak
-                      </span>
+                  {/* Streak Display */}
+                  {rewardStatus.reward && (
+                    <div className="space-y-3">
+                      {/* Current Streak */}
+                      <div className={`flex items-center justify-between p-4 rounded-lg bg-gradient-to-r ${getStreakColor(rewardStatus.reward.currentStreak)}/10 border border-white/10`}>
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white/10 rounded-lg p-2">
+                            <Flame className="h-5 w-5 text-orange-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-bold">
+                              {rewardStatus.reward.currentStreak} Day Streak
+                            </p>
+                            <p className="text-white/60 text-xs">Keep it going!</p>
+                          </div>
+                        </div>
+                        <div className="bg-white/10 rounded-lg px-3 py-1.5">
+                          <span className="text-white font-bold">{getStreakBonus(rewardStatus.reward.currentStreak)} Bonus</span>
+                        </div>
+                      </div>
+
+                      {/* Stats Row */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-800/50 rounded-lg p-3 text-center border border-slate-700/50">
+                          <Trophy className="h-5 w-5 text-amber-400 mx-auto mb-1" />
+                          <p className="text-white font-bold text-lg">{rewardStatus.reward.bestStreak}</p>
+                          <p className="text-slate-400 text-xs">Best Streak</p>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg p-3 text-center border border-slate-700/50">
+                          <Star className="h-5 w-5 text-amber-400 mx-auto mb-1" />
+                          <p className="text-white font-bold text-lg">{rewardStatus.reward.totalClaimed}</p>
+                          <p className="text-slate-400 text-xs">Total Claims</p>
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {rewardStatus.reward && rewardStatus.reward.bestStreak > 0 && (
-                    <div className="text-center text-sm text-slate-400">
-                      Best Streak: {rewardStatus.reward.bestStreak} days
-                    </div>
-                  )}
-
+                  {/* Claim Button */}
                   <Button
                     onClick={handleClaim}
                     disabled={claimMutation.isPending}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-bold text-lg py-6 transition-all active:scale-95"
-                    data-testid="button-claim-reward"
+                    className="w-full relative overflow-hidden bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-400 text-slate-900 font-bold text-base py-6 rounded-xl shadow-lg shadow-amber-500/30 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 group disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {claimMutation.isPending ? "Claiming..." : "Claim Reward"}
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      {claimMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-900"></div>
+                          Claiming...
+                        </>
+                      ) : (
+                        <>
+                          <Gift className="h-5 w-5" />
+                          Claim Your Reward
+                          <Sparkles className="h-5 w-5 group-hover:animate-spin" />
+                        </>
+                      )}
+                    </span>
+                    {/* Shimmer Effect */}
+                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                   </Button>
                 </>
               ) : (
-                <div className="text-center space-y-4 py-6">
-                  <div className="text-slate-400">
-                    <p className="text-lg">You've already claimed your daily reward!</p>
-                    <p className="text-sm mt-2">
-                      Come back in {formatNextClaimTime(rewardStatus?.nextClaimDate)}
+                /* ======================== ALREADY CLAIMED VIEW ======================== */
+                <div className="text-center space-y-5 py-4">
+                  {/* Clock Icon */}
+                  <div className="relative inline-block">
+                    <div className="absolute inset-0 bg-slate-500/20 rounded-full blur-xl scale-125"></div>
+                    <div className="relative bg-gradient-to-br from-slate-600 to-slate-700 rounded-full p-5 shadow-xl">
+                      <Clock className="h-12 w-12 text-slate-300" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold text-white">Already Claimed!</h3>
+                    <p className="text-slate-400">
+                      Come back in{" "}
+                      <span className="text-amber-400 font-bold">
+                        {formatNextClaimTime(rewardStatus?.nextClaimDate)}
+                      </span>
                     </p>
                   </div>
-                  
+
+                  {/* Current Stats */}
                   {rewardStatus?.reward && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2 text-blue-500">
-                        <Target className="h-5 w-5" />
-                        <span className="font-semibold">
+                    <div className="space-y-3 pt-2">
+                      <div className={`flex items-center justify-center gap-3 p-4 rounded-lg bg-gradient-to-r ${getStreakColor(rewardStatus.reward.currentStreak)}/10 border border-white/10`}>
+                        <Flame className="h-6 w-6 text-orange-400" />
+                        <span className="text-white font-bold text-lg">
                           {rewardStatus.reward.currentStreak} Day Streak
                         </span>
                       </div>
-                      <div className="text-sm text-slate-400">
-                        Total Claimed: {rewardStatus.reward.totalClaimed} rewards
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-800/50 rounded-lg p-3 text-center border border-slate-700/50">
+                          <Trophy className="h-5 w-5 text-amber-400 mx-auto mb-1" />
+                          <p className="text-white font-bold">{rewardStatus.reward.bestStreak}</p>
+                          <p className="text-slate-400 text-xs">Best Streak</p>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg p-3 text-center border border-slate-700/50">
+                          <Star className="h-5 w-5 text-amber-400 mx-auto mb-1" />
+                          <p className="text-white font-bold">{rewardStatus.reward.totalClaimed}</p>
+                          <p className="text-slate-400 text-xs">Total Claims</p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -210,15 +387,14 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                   <Button
                     onClick={() => onOpenChange(false)}
                     variant="outline"
-                    className="w-full mt-4"
-                    data-testid="button-close-modal"
+                    className="w-full mt-2 border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
                   >
                     Close
                   </Button>
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>

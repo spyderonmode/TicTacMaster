@@ -253,6 +253,16 @@ export async function cleanupGuestOnLogout(userId: string) {
       const updatedUsers = users.filter(u => u.id !== userId);
       saveUsers(updatedUsers);
       
+      // Delete dependent records before deleting user (foreign key constraints)
+      try {
+        // Delete daily_rewards records for this user
+        await db.execute(sql`DELETE FROM daily_rewards WHERE user_id = ${userId}`);
+        console.log(`🧹 Deleted daily rewards for guest user: ${userId}`);
+      } catch (rewardError) {
+        console.warn(`⚠️ Failed to delete daily rewards for guest ${userId}:`, rewardError);
+        // Continue with user deletion even if reward cleanup fails
+      }
+      
       // Remove guest from database
       await storage.deleteUser(userId);
       console.log(`🧹 Cleaned up guest user on logout: ${user.username} (${userId})`);

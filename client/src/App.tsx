@@ -14,7 +14,6 @@ import VerifyEmail from "@/pages/verify-email";
 import ResetPassword from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 import LoadingScreen from "@/components/LoadingScreen";
-import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { UpdateNotificationManager } from "@/components/UpdateNotificationManager";
 import { Component, useState, useEffect } from "react";
 
@@ -242,7 +241,6 @@ function App() {
           <ThemeProvider>
             <OnlineStatusProvider>
               <TooltipProvider>
-                <NetworkStatusIndicator />
                 <Toaster />
                 <UpdateNotificationManager />
                 <Router />

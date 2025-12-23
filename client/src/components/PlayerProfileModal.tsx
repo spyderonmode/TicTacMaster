@@ -112,78 +112,21 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
     const isOwnProfile = playerId === currentUserId;
     const winRate = profile ? Math.round((profile.wins / Math.max(profile.totalGames, 1)) * 100) : 0;
 
-    const getAchievementLevel = (profile: PlayerProfile | undefined) => {
-        if (!profile) return 'none';
-        if (profile.level >= 100) return 'level100Master';
-        if (profile.totalGames >= 500) return 'ultimateVeteran';
-        if (profile.wins >= 200) return 'grandmaster';
-        if (profile.wins >= 100) return 'champion';
-        if (profile.wins >= 50) return 'legend';
-        if (profile.totalGames >= 100) return 'veteranPlayer';
-        return 'none';
-    };
+    const getAchievementLevel = (profile: PlayerProfile | undefined) => {
+        if (!profile) return 'none';
+        if (profile.level >= 100) return 'level100Master';
+        return 'none';
+    };
 
-    const renderAchievementBorder = (profile: PlayerProfile | undefined) => {
-        if (!profile) return <span className="font-serif text-lg font-bold truncate text-white">Noble Guest</span>; 
-
-        const baseClasses = "font-serif text-base font-extrabold truncate";
-        
-        // Check if user has manually selected a border (only if it has a non-null value)
-        const borderType = profile.selectedAchievementBorder 
-            ? profile.selectedAchievementBorder 
-            : getAchievementLevel(profile);
-
-        switch (borderType) {
-            case 'level_100_master':
-            case 'level100Master':
-                return (
-                    <span className={`${baseClasses} text-white`}>
-                        {profile.displayName}
-                    </span>
-                );
-            case 'ultimate_veteran':
-            case 'ultimateVeteran':
-                return (
-                    <span className={`${baseClasses} text-white`}>
-                        {profile.displayName}
-                    </span>
-                );
-            case 'grandmaster':
-                return (
-                    <span className={`${baseClasses} text-white`}>
-                        {profile.displayName}
-                    </span>
-                );
-            case 'champion':
-                return (
-                    <span className={`${baseClasses} text-white`}>
-                        {profile.displayName}
-                    </span>
-                );
-            case 'legend':
-            case 'veteran_player':
-            case 'veteranPlayer':
-                return (
-                    <span className={`${baseClasses} text-white`}>
-                        {profile.displayName}
-                    </span>
-                );
-            case null:
-            case '':
-                // User explicitly selected "no border"
-                return (
-                    <span className={`${baseClasses} text-white`}>
-                        {profile.displayName}
-                    </span>
-                );
-            default:
-                return (
-                    <span className={`${baseClasses} text-white`}>
-                        {profile.displayName}
-                    </span>
-                );
-        }
-    };
+    const renderAchievementBorder = (profile: PlayerProfile | undefined) => {
+        if (!profile) return <span className="font-serif text-lg font-bold truncate text-white">Noble Guest</span>;
+        const baseClasses = "font-serif text-base font-extrabold truncate";
+        return (
+            <span className={`${baseClasses} text-white`}>
+                {profile.displayName}
+            </span>
+        );
+    };
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString();
@@ -230,7 +173,7 @@ export function PlayerProfileModal({ playerId, open, onClose, currentUserId }: P
                                         src={profile.profileImageUrl}
                                         alt={`${profile.displayName}'s profile`}
                                         size="md"
-                                        borderType={avatarFrameData?.activeFrameId || profile.selectedAchievementBorder || null}
+                                        borderType={avatarFrameData?.activeFrameId ? avatarFrameData.activeFrameId : ((profile.selectedAchievementBorder === 'level_100_master' || profile.selectedAchievementBorder === 'level100Master') ? profile.selectedAchievementBorder : null)}
                                         fallbackText={profile.displayName.charAt(0).toUpperCase()}
                                     />
                                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-yellow-500 rounded-full"></div>
