@@ -43,8 +43,8 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
 
   const { data: rankings, isLoading } = useQuery({
     queryKey: ['/api/rankings', sortBy],
-    refetchInterval: 30000, // Increased to 30s - rankings don't change frequently
-    staleTime: 25000, // Consider data fresh for 25 seconds
+    refetchInterval: false, // Disable polling - reduces mobile data usage
+    staleTime: 120000, // Cache for 2 minutes - rankings don't change frequently
     refetchOnWindowFocus: false,
   });
 

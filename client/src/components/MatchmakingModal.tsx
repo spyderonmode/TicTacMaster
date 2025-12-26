@@ -62,10 +62,9 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
 
   // Check if user has active VIP Pass
   const { data: vipPassData, isError: vipPassError } = useQuery<{ hasActivePass: boolean }>({
-    queryKey: ['/api/vip-pass'],
+    queryKey: [`/api/players/${user?.userId}/vip-status`],
     enabled: open && !!user && !user.isGuest,
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 3600000, // 1 hour cache for VIP status
   });
   const hasVipPass = !vipPassError && vipPassData?.hasActivePass === true && !!user && !user.isGuest;
 

@@ -94,8 +94,7 @@ export function AchievementModal({ open, onClose, userId, user }: AchievementMod
   const { data: achievements, isLoading, refetch } = useQuery({
     queryKey: userId ? ['/api/users', userId, 'achievements'] : ['/api/achievements'],
     enabled: open,
-    staleTime: 0, // Always fetch fresh data
-    cacheTime: 0, // Don't cache achievement data
+    staleTime: 24 * 60 * 60 * 1000, // Cache for 24 hours - achievements don't change frequently
   });
 
   // Auto-sync achievements when modal opens for current user

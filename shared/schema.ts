@@ -77,6 +77,7 @@ export const games = pgTable("games", {
   playerOAutoPlay: boolean("player_o_auto_play").default(false), // Is player O in auto-play mode
   playerXAutoPlaySince: timestamp("player_x_auto_play_since"), // When player X auto-play started
   playerOAutoPlaySince: timestamp("player_o_auto_play_since"), // When player O auto-play started
+  isMatchmakingGame: boolean("is_matchmaking_game").default(false), // Whether game was from matchmaking queue (league earnings count) or custom room (league earnings don't count)
   createdAt: timestamp("created_at").defaultNow(),
   finishedAt: timestamp("finished_at"),
 });

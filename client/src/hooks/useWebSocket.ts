@@ -98,32 +98,9 @@ export function useWebSocket() {
         }
       }, 100); // Fast refresh - only 100ms to ensure auth completes first
 
-      // Always check matchmaking status on reconnection to sync frontend state
-      // This fixes the issue where the matchmaking timer keeps running after network changes
-      setTimeout(async () => {
-        try {
-          const response = await fetch('/api/matchmaking/status', {
-            method: 'GET',
-            credentials: 'include'
-          });
-          if (response.ok) {
-            const status = await response.json();
-            // ALWAYS dispatch event to let MatchmakingModal sync its state after reconnection
-            // This ensures the timer stops if a game started while we were disconnected
-            window.dispatchEvent(new CustomEvent('matchmaking_status_sync', {
-              detail: {
-                isMatchmaking: status.isMatchmaking,
-                hasActiveGame: status.hasActiveGame,
-                gameId: status.gameId,
-                roomId: status.roomId
-              }
-            }));
-          }
-        } catch (error) {
-          // Silently fail - not critical if status check fails
-          console.log('🔄 Matchmaking status check failed on reconnect:', error);
-        }
-      }, 200); // Check after auth completes
+      // Skip matchmaking status check on reconnect - it causes extra HTTP request
+      // The matchmaking modal will sync state through WebSocket messages instead
+      // This reduces unnecessary API calls and improves network efficiency for slow connections
     };
 
     ws.current.onmessage = (event) => {

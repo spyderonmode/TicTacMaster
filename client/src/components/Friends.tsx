@@ -47,36 +47,36 @@ export function Friends() {
   const { data: friends = [], isLoading: friendsLoading } = useQuery<BasicFriendInfo[]>({
     queryKey: ['/api/friends'],
     enabled: isOpen,
-    staleTime: 30000,
+    staleTime: 300000, // 5 minutes
   });
 
   // Fetch current user data for coin balance
   const { data: currentUserData } = useQuery({
     queryKey: ['/api/users', user?.userId],
     enabled: isOpen && !!user?.userId,
-    staleTime: 60000,
+    staleTime: 300000, // 5 minutes
   });
 
   // Fetch friend requests (incoming)
   const { data: friendRequests = [], isLoading: requestsLoading } = useQuery<FriendRequest[]>({
     queryKey: ['/api/friends/requests'],
     enabled: isOpen,
-    staleTime: 30000,
+    staleTime: 300000, // 5 minutes
   });
 
   // Fetch outgoing friend requests (sent by current user)
   const { data: outgoingRequests = [] } = useQuery<FriendRequest[]>({
     queryKey: ['/api/friends/requests/outgoing'],
     enabled: isOpen,
-    staleTime: 30000,
+    staleTime: 300000, // 5 minutes
   });
 
   // ✅ FIXED: Fetch online friends - now using correct type matching QuickChat
   const { data: onlineFriendsData = [] } = useQuery<BasicFriendInfo[]>({
     queryKey: ['/api/friends/online'],
     enabled: isOpen,
-    staleTime: 30000,
-    refetchInterval: 30000,
+    staleTime: 120000, // Cache for 2 minutes
+    refetchInterval: false, // Disable polling - reduces mobile data usage
   });
 
   // Send friend request mutation

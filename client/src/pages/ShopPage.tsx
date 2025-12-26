@@ -280,6 +280,20 @@ const AVATAR_FRAMES = [
     price: 10000000000, // 8 billion coins
     isDefault: false,
   },
+  {
+    id: 'new_year_celebration',
+    name: 'New Year Celebration',
+    description: 'Elegant 3D frame with golden fireworks bursts, silver champagne sparkles, and festive confetti ribbons - static design with timeless new year elegance!',
+    price: 500000000, // 2.5 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'premium_elite',
+    name: 'Premium Elite',
+    description: 'Clean and elegant premium frame with sleek diamond gradient border - the perfect choice for VIP players!',
+    price: 500000000, // 3.5 billion coins
+    isDefault: false,
+  },
 ];
 
 interface ShopPageProps {

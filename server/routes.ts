@@ -1464,7 +1464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check gift limit - 20M for regular users, 300M for VIP Pass holders, unlimited for admin users
       const REGULAR_GIFT_LIMIT = 20000000; // 20M coins
       const VIP_GIFT_LIMIT = 300000000; // 300M coins for VIP Pass holders
-      const UNLIMITED_USER_IDS = ['c9122c48-3c24-4891-a6b5-f02aa8362af2'];
+      const UNLIMITED_USER_IDS = ['3149a38b-2989-4272-b41e-a70021bccbfb'];
       
       // Check if sender has active VIP Pass
       const senderVipPass = await storage.getActiveVipPass(senderId);
@@ -1627,7 +1627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userId = req.session.user.userId;
-      console.log(`Fetching online stats for authenticated user: ${userId}`);
+      //console.log(`Fetching online stats for authenticated user: ${userId}`);
 
       // Fetching online stats for current user
       const stats = await storage.getOnlineGameStats(userId);
@@ -3761,6 +3761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     currentPlayer: 'X',
                     board: {},
                     status: 'active',
+                    isMatchmakingGame: true,
                   });
 
                   // Get user info with achievements and piece style
@@ -3809,7 +3810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('🤖 Error in bot matchmaking:', error);
           matchmakingTimers.delete(userId);
         }
-      }, 12000); // 25 seconds
+      }, 10000); // 25 seconds
 
       // Store timer for cleanup
       matchmakingTimers.set(userId, botTimer);
@@ -4068,6 +4069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               currentPlayer: 'X',
               board: {},
               status: 'active',
+              isMatchmakingGame: true,
             });
 
             // Get player information with achievements
@@ -4456,6 +4458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'active' as const,
         currentPlayer: 'X' as const,
         board: {},
+        isMatchmakingGame: false,
       };
 
       const game = await storage.createGame(gameData);
@@ -4636,6 +4639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...gameData,
           playerXId: userId,
           playerOId: gameData.playerOId || undefined,
+          isMatchmakingGame: false,
         };
       }
 
@@ -6799,6 +6803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   status: 'active' as const,
                   currentPlayer: 'X' as const,
                   board: {},
+                  isMatchmakingGame: false,
                 };
 
                 const game = await storage.createGame(gameData);

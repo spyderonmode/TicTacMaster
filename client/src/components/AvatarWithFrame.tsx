@@ -1789,26 +1789,6 @@ function AvatarWithFrameComponent({
 
             {/* Avatar with Phoenix Glow */}
             <div className="w-full h-full rounded-full overflow-hidden relative z-10">
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  background: 'radial-gradient(circle at 40% 40%, rgba(255, 215, 0, 0.4), transparent)',
-                }}
-                animate={{
-                  opacity: [0.3, 0.6, 0.3],
-                  background: [
-                    'radial-gradient(circle at 40% 40%, rgba(255, 215, 0, 0.4), transparent)',
-                    'radial-gradient(circle at 40% 40%, rgba(255, 140, 0, 0.5), transparent)',
-                    'radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.3), transparent)',
-                    'radial-gradient(circle at 40% 40%, rgba(255, 215, 0, 0.4), transparent)',
-                  ],
-                }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-              />
               {imageSrc ? (
                 <img 
                   src={imageSrc} 
@@ -2031,6 +2011,196 @@ function AvatarWithFrameComponent({
                     {fallbackText}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'premium_elite':
+        return (
+          <div className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}>
+            <motion.div 
+              className="w-full h-full rounded-full p-[3px] relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #e5b800 0%, #ffd700 25%, #ffffff 50%, #c0c0c0 75%, #a6a6a6 100%)',
+              }}
+            >
+              {/* Subtle rotating shimmer on border */}
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'conic-gradient(from 0deg, #ffd700, #ffffff, #c0c0c0, #ffffff, #ffd700)',
+                }}
+                animate={{
+                  rotate: [0, 360],
+                  opacity: [0.3, 0.6, 0.3],
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              />
+
+              {/* Corner gem decorations */}
+              {[...Array(4)].map((_, i) => {
+                const corners = [
+                  { top: '-2px', right: '-2px' },
+                  { top: '-2px', left: '-2px' },
+                  { bottom: '-2px', right: '-2px' },
+                  { bottom: '-2px', left: '-2px' },
+                ];
+                return (
+                  <motion.div
+                    key={`gem-${i}`}
+                    className="absolute w-2 h-2 rounded-full z-20"
+                    style={{
+                      background: 'radial-gradient(circle at 30% 30%, #ffffff, #ffd700)',
+                      boxShadow: '0 0 8px rgba(255, 215, 0, 0.8)',
+                      ...corners[i],
+                    }}
+                    animate={{
+                      scale: [1, 1.3, 1],
+                      opacity: [0.8, 1, 0.8],
+                    }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.3,
+                    }}
+                  />
+                );
+              })}
+
+              {/* Top accent sparkles */}
+              {[...Array(2)].map((_, i) => {
+                const offset = i === 0 ? -8 : 8;
+                return (
+                  <motion.div
+                    key={`sparkle-top-${i}`}
+                    className="absolute"
+                    style={{
+                      left: `calc(50% + ${offset}px)`,
+                      top: '-4px',
+                      width: '2px',
+                      height: '2px',
+                      background: 'radial-gradient(circle, #ffffff, #ffd700)',
+                      borderRadius: '50%',
+                      boxShadow: '0 0 4px rgba(255, 215, 0, 0.8)',
+                    }}
+                    animate={{
+                      opacity: [0.5, 1, 0.5],
+                      scale: [0.8, 1.2, 0.8],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.5,
+                    }}
+                  />
+                );
+              })}
+
+              <div className="w-full h-full rounded-full overflow-hidden relative z-10">
+                {imageSrc ? (
+                  <img 
+                    src={imageSrc} 
+                    alt={alt}
+                    className="w-full h-full rounded-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg">
+                    {fallbackText}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        );
+
+      case 'new_year_celebration':
+        return (
+          <div className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}>
+            {/* Outer golden fireworks layer */}
+            <div 
+              className="w-full h-full rounded-full p-[4px]"
+              style={{
+                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 25%, #d97706 50%, #b45309 75%, #92400e 100%)',
+              }}
+            >
+              {/* Silver/Platinum inner ring for champagne sparkles */}
+              <div 
+                className="w-full h-full rounded-full p-[3px]"
+                style={{
+                  background: 'linear-gradient(45deg, #e5e7eb 0%, #d1d5db 25%, #9ca3af 50%, #6b7280 75%, #4b5563 100%)',
+                }}
+              >
+                {/* Confetti ribbon accents - 8 static ribbons around border */}
+                {[...Array(8)].map((_, i) => {
+                    const angle = (i * 360) / 8;
+                    const isVertical = i % 2 === 0;
+                    return (
+                      <div
+                        key={`ribbon-${i}`}
+                        className="absolute"
+                        style={{
+                          width: size === 'sm' ? '6px' : size === 'md' ? '8px' : '10px',
+                          height: size === 'sm' ? '12px' : size === 'md' ? '16px' : '20px',
+                          left: '50%',
+                          top: '50%',
+                          marginLeft: size === 'sm' ? '-3px' : size === 'md' ? '-4px' : '-5px',
+                          marginTop: size === 'sm' ? '-16px' : size === 'md' ? '-22px' : '-28px',
+                          background: i % 3 === 0 ? 'linear-gradient(90deg, #fbbf24, #f59e0b)' : i % 3 === 1 ? 'linear-gradient(90deg, #e5e7eb, #f3f4f6)' : 'linear-gradient(90deg, #60a5fa, #3b82f6)',
+                          transform: `rotate(${angle}deg)`,
+                          borderRadius: '2px',
+                          boxShadow: '0 2px 8px rgba(251, 191, 36, 0.4)',
+                        }}
+                      />
+                    );
+                  })}
+
+                {/* Static sparkle dots - champagne bubbles */}
+                {[...Array(12)].map((_, i) => {
+                    const angle = (i * 360) / 12 + 7.5;
+                    const radius = size === 'sm' ? 16 : size === 'md' ? 22 : 32;
+                    const x = Math.cos((angle * Math.PI) / 180) * radius;
+                    const y = Math.sin((angle * Math.PI) / 180) * radius;
+                    const sparkleSize = size === 'sm' ? 2 : size === 'md' ? 2.5 : 3;
+                    return (
+                      <div
+                        key={`sparkle-${i}`}
+                        className="absolute rounded-full"
+                        style={{
+                          width: `${sparkleSize}px`,
+                          height: `${sparkleSize}px`,
+                          left: '50%',
+                          top: '50%',
+                          marginLeft: `-${sparkleSize / 2}px`,
+                          marginTop: `-${sparkleSize / 2}px`,
+                          background: i % 3 === 0 ? 'radial-gradient(circle, #fef3c7, #fbbf24)' : i % 3 === 1 ? 'radial-gradient(circle, #f3f4f6, #e5e7eb)' : 'radial-gradient(circle, #e0f2fe, #bae6fd)',
+                          transform: `translate(${x}px, ${y}px)`,
+                          boxShadow: '0 0 4px rgba(251, 191, 36, 0.5)',
+                        }}
+                      />
+                    );
+                  })}
+
+                <div className="w-full h-full rounded-full overflow-hidden relative z-10">
+                    {imageSrc ? (
+                      <img 
+                        src={imageSrc} 
+                        alt={alt}
+                        className="w-full h-full rounded-full object-cover relative z-10"
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-bold text-lg relative z-10">
+                        {fallbackText}
+                      </div>
+                    )}
+                </div>
               </div>
             </div>
           </div>

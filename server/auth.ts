@@ -322,7 +322,7 @@ async function invalidateAllUserSessions(userId: string): Promise<void> {
 export function setupAuth(app: Express) {
   const PostgreSQLStore = connectPgSimple(session);
 
-  const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_tNTYy7S9AMuP@ep-wandering-wave-aef2douv-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+  const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_Y6D7ZFJQvNTr@ep-wandering-wave-aef2douv-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
   const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
   const isHTTPS = process.env.FORCE_HTTPS === 'true' || isProduction;
 

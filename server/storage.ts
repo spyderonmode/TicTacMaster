@@ -686,14 +686,16 @@ export class DatabaseStorage implements IStorage {
                   await this.processRoomBetTransaction(winnerId, loserId, betAmount, gameId);
                   //console.log(`💰 Processed room bet transaction: ${betAmount} coins`);
 
-                  // Track weekly stats for room games (now includes abandonment wins)
-                  try {
-                    const loserCoins = await this.getUserCoins(loserId);
-                    const actualLoss = loserCoins >= betAmount ? -betAmount : 0;
-                    await this.updateWeeklyStats(winnerId, 'win', betAmount);
-                    await this.updateWeeklyStats(loserId, 'loss', actualLoss);
-                  } catch (error) {
-                    //console.error('📊 Error updating weekly stats for room game:', error);
+                  // Track weekly stats: matchmaking always counts, room games only if normal win (not abandonment)
+                  if (game.isMatchmakingGame || winCondition !== 'abandonment') {
+                    try {
+                      const loserCoins = await this.getUserCoins(loserId);
+                      const actualLoss = loserCoins >= betAmount ? -betAmount : 0;
+                      await this.updateWeeklyStats(winnerId, 'win', betAmount);
+                      await this.updateWeeklyStats(loserId, 'loss', actualLoss);
+                    } catch (error) {
+                      //console.error('📊 Error updating weekly stats for room game:', error);
+                    }
                   }
                 }
               } else {
@@ -741,8 +743,8 @@ export class DatabaseStorage implements IStorage {
             await this.updateUserStats(game.playerXId, 'draw');
             await this.updateUserStats(game.playerOId, 'draw');
 
-            // Track weekly stats for online draws (exclude abandonment - though draws shouldn't happen with abandonment)
-            if (winCondition !== 'abandonment') {
+            // Track weekly stats for draws: matchmaking always counts, room games only if normal draw (not abandonment)
+            if (game.isMatchmakingGame || winCondition !== 'abandonment') {
               try {
                 await this.updateWeeklyStats(game.playerXId, 'draw', 0);
                 await this.updateWeeklyStats(game.playerOId, 'draw', 0);
@@ -4420,6 +4422,18 @@ export class DatabaseStorage implements IStorage {
         name: 'Phoenix Immortal',
         description: 'The ultimate legendary frame! Mythical phoenix with majestic flaming wings, eternal rebirth fire cycles, floating ember particles, and divine golden feathers - the rarest and most powerful frame ever created!',
         price: 10000000000, // 8 billion coins
+      },
+      {
+        id: 'new_year_celebration',
+        name: 'New Year Celebration',
+        description: 'Elegant 3D frame with golden fireworks bursts, silver champagne sparkles, and festive confetti ribbons - static design with timeless new year elegance!',
+        price: 500000000, // 2.5 billion coins
+      },
+      {
+        id: 'premium_elite',
+        name: 'Premium Elite',
+        description: 'Clean and elegant premium frame with sleek diamond gradient border - the perfect choice for VIP players!',
+        price: 500000000, // 3.5 billion coins
       },
     ];
 

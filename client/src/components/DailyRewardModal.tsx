@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Gift, Coins, Crown, Sparkles, Flame, Trophy, Star, Zap, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import confetti from "canvas-confetti";
 
 interface DailyRewardStatus {
   canClaim: boolean;
@@ -39,52 +38,9 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
 
   const { data: rewardStatus, isLoading } = useQuery<DailyRewardStatus>({
     queryKey: ['/api/daily-reward'],
-    enabled: true, // Disabled for demo - set to `open` for production
-
+    enabled: open,
+    staleTime: 3600000, // 1 hour cache
   });
-
-  const fireConfetti = useCallback(() => {
-    const colors = ['#fbbf24', '#f59e0b', '#d97706', '#fcd34d', '#fef3c7'];
-
-    // Find or create confetti canvas and set z-index
-    setTimeout(() => {
-      const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-      if (canvas) {
-        canvas.style.zIndex = '9999';
-        canvas.style.pointerEvents = 'none';
-      }
-    }, 0);
-
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: colors,
-      zIndex: 9999,
-    });
-
-    setTimeout(() => {
-      confetti({
-        particleCount: 50,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors: colors,
-        zIndex: 9999,
-      });
-    }, 150);
-
-    setTimeout(() => {
-      confetti({
-        particleCount: 50,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors: colors,
-        zIndex: 9999,
-      });
-    }, 300);
-  }, []);
 
   const claimMutation = useMutation({
     mutationFn: async () => {
@@ -102,7 +58,6 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
       if (typeof data.coinsEarned === 'number') {
         setRewardAmount(data.coinsEarned);
       }
-      fireConfetti();
       setShowCelebration(true);
       queryClient.invalidateQueries({ queryKey: ['/api/daily-reward'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });

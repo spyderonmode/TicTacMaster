@@ -1,5 +1,5 @@
 // Persistent cache for native app wrapper
-const CACHE_VERSION = 'v22';
+const CACHE_VERSION = 'v35';
 const CACHE_NAME = `tictactoe-persistent-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `tictactoe-runtime-${CACHE_VERSION}`;
 const PROFILE_IMAGE_CACHE = `tictactoe-profile-images-${CACHE_VERSION}`;
@@ -15,7 +15,7 @@ const CACHE_DURATION = {
   styles: 30 * 24 * 60 * 60 * 1000,
   fonts: 90 * 24 * 60 * 60 * 1000,
   audio: 90 * 24 * 60 * 60 * 1000,
-  api: 5 * 60 * 1000,
+  api: 30 * 60 * 1000,
   html: 24 * 60 * 60 * 1000,
 };
 

@@ -227,12 +227,7 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
     },
     enabled: modalOpen,
     retry: 3,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: "always",
-    
-    refetchOnWindowFocus: false,
-    refetchInterval: modalOpen ? 30000 : false,
+    staleTime: 120000, // Cache for 2 minutes
   });
   const { data: serverTimeUntilEnd } = useQuery<TimeLeft>({
     queryKey: ['/api/leaderboard/time-left'],
@@ -242,8 +237,8 @@ export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
       return await response.json();
     },
     enabled: modalOpen,
-    refetchInterval: modalOpen ? 10000 : false,
-    staleTime: 0,
+    refetchInterval: false, // Disable polling
+    staleTime: 60000, // Cache for 60 seconds
   });
   const [timeUntilEnd, setTimeUntilEnd] = useState<TimeLeft | undefined>(serverTimeUntilEnd);
   useEffect(() => {

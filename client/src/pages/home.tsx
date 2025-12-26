@@ -155,8 +155,8 @@ export default function Home() {
   const { data: roomParticipants = [] } = useQuery({
     queryKey: ["/api/rooms", currentRoom?.id, "participants"],
     enabled: !!currentRoom?.id && !!user,
-    refetchInterval: 10000,
-    staleTime: 8000,
+    refetchInterval: false, // Disable polling - use WebSocket for real-time updates
+    staleTime: 60000, // Cache for 60 seconds
   });
 
   // Check if current user is a spectator
@@ -173,7 +173,7 @@ export default function Home() {
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           return await response.json();
         },
-        staleTime: 0,
+        staleTime: 60000, // Cache for 60 seconds to reduce data usage
       });
       queryClient.prefetchQuery({
         queryKey: ['/api/leaderboard/time-left'],
@@ -182,7 +182,7 @@ export default function Home() {
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           return await response.json();
         },
-        staleTime: 0,
+        staleTime: 30000, // Cache for 30 seconds
       });
     }
   }, [user, language, queryClient]);
