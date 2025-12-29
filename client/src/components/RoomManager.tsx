@@ -417,10 +417,7 @@ export function RoomManager({
                 </div>
                 <div className="space-y-0.5">
                   <div className="text-xs font-mono font-bold text-blue-400">
-                    {t('roomLabel')} #{currentRoom.code}
-                  </div>
-                  <div className="text-xs text-gray-300">
-                    {currentRoom.name}
+                    #{currentRoom.code}
                   </div>
                 </div>
               </div>

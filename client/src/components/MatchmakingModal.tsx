@@ -76,6 +76,9 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
     
     if (isMatchmakingSuccess && open && isSearching) {
       console.log('🎮 MatchmakingModal: Match found!', lastMessage.type);
+      
+      // Stop searching immediately to ignore further match messages
+      setIsSearching(false);
       resetMatchmakingState();
 
       if (lastMessage.room) {
@@ -771,7 +774,7 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
                   e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
                 }}
               >
-                {t('cancelSearch')}
+                {t('Cancel Search')}
               </button>
             </div>
           )}

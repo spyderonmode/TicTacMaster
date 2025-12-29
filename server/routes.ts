@@ -741,7 +741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   } catch (error) {
                     console.error('Bot move error after auto-play:', error);
                   }
-                }, 1000 + Math.random() * 1000); // 1-3 second delay for realism
+                }, 1000 + Math.random() * 1500); // 1-3 second delay for realism
               }
             }
           } catch (autoMoveError) {
@@ -752,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('🤖 Error in auto-play monitoring:', error);
     }
-  }, 10000); // Check every 10 seconds
+  }, 20000); // Check every 10 seconds
 
   // Robust weekly leaderboard reset and reward distribution system
   let weeklySchedulerRunning = false; // Process-level mutex
@@ -3810,7 +3810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('🤖 Error in bot matchmaking:', error);
           matchmakingTimers.delete(userId);
         }
-      }, 10000); // 25 seconds
+      }, 8500); // 25 seconds
 
       // Store timer for cleanup
       matchmakingTimers.set(userId, botTimer);

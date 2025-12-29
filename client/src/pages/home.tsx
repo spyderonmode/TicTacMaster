@@ -2555,7 +2555,7 @@ export default function Home() {
                     className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 flex items-center justify-center gap-2 px-3 text-sm font-semibold"
                   >
                     <Users className="w-5 h-5 text-blue-400" />
-                    <span>{t('room') || 'Room'}</span>
+                    <span>{t('Room') || 'Room'}</span>
                   </Button>
                 </div>
               </div>
