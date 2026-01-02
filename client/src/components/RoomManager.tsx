@@ -155,9 +155,23 @@ export function RoomManager({
       return;
     }
 
+    // Prevent multiple clicks while already starting a game
+    if (isStartingGame) {
+      console.warn('⚠️ Start game already in progress, ignoring duplicate click');
+      return;
+    }
+
     const requestId = Math.random().toString(36).substring(7);
     currentStartGameRequestId.current = requestId;
     setIsStartingGame(true);
+
+    // Remove any old listeners before adding new ones (prevents double-firing)
+    if (startGameHandlersRef.current.success) {
+      window.removeEventListener('start_game_success', startGameHandlersRef.current.success);
+    }
+    if (startGameHandlersRef.current.error) {
+      window.removeEventListener('start_game_error', startGameHandlersRef.current.error);
+    }
 
     startGameTimeoutRef.current = setTimeout(() => {
       setIsStartingGame(false);
@@ -170,8 +184,14 @@ export function RoomManager({
       });
 
       // Cleanup listeners on timeout
-      window.removeEventListener('start_game_success', handleSuccess as EventListener);
-      window.removeEventListener('start_game_error', handleError as EventListener);
+      if (startGameHandlersRef.current.success) {
+        window.removeEventListener('start_game_success', startGameHandlersRef.current.success);
+        startGameHandlersRef.current.success = undefined;
+      }
+      if (startGameHandlersRef.current.error) {
+        window.removeEventListener('start_game_error', startGameHandlersRef.current.error);
+        startGameHandlersRef.current.error = undefined;
+      }
     }, 15000);
 
     const handleSuccess = (event: CustomEvent) => {
@@ -194,8 +214,14 @@ export function RoomManager({
       });
 
       // Cleanup listeners
-      window.removeEventListener('start_game_success', handleSuccess as EventListener);
-      window.removeEventListener('start_game_error', handleError as EventListener);
+      if (startGameHandlersRef.current.success) {
+        window.removeEventListener('start_game_success', startGameHandlersRef.current.success);
+        startGameHandlersRef.current.success = undefined;
+      }
+      if (startGameHandlersRef.current.error) {
+        window.removeEventListener('start_game_error', startGameHandlersRef.current.error);
+        startGameHandlersRef.current.error = undefined;
+      }
     };
 
     const handleError = (event: CustomEvent) => {
@@ -228,8 +254,14 @@ export function RoomManager({
       // Note: Error modal is handled by home.tsx, no toast needed here to avoid duplicate messages
 
       // Cleanup listeners
-      window.removeEventListener('start_game_success', handleSuccess as EventListener);
-      window.removeEventListener('start_game_error', handleError as EventListener);
+      if (startGameHandlersRef.current.success) {
+        window.removeEventListener('start_game_success', startGameHandlersRef.current.success);
+        startGameHandlersRef.current.success = undefined;
+      }
+      if (startGameHandlersRef.current.error) {
+        window.removeEventListener('start_game_error', startGameHandlersRef.current.error);
+        startGameHandlersRef.current.error = undefined;
+      }
     };
 
     // Store handlers for unmount cleanup

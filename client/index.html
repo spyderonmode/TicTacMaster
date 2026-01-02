@@ -75,6 +75,7 @@
 <script>
 (function() {
   const UA = navigator.userAgent;
+  const hostname = window.location.hostname;
 
   // Detect if running inside app/WebView
   const isWebView =
@@ -82,16 +83,26 @@
       window.ReactNativeWebView ||
       (window.Android && typeof window.Android !== "undefined");
 
-  if (isWebView) {
-    // Allow access inside app
+  // Allow access in development environments (Replit, localhost)
+  const isDevelopment = 
+      hostname.includes('replit') ||
+      hostname.includes('localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0';
+
+  if (isWebView || isDevelopment) {
+    // Allow access inside app or during development
     document.getElementById("root").style.display = "block";
   } else {
-    // Block browser users
+    // Block browser users in production
     document.getElementById("blocked").style.display = "block";
   }
 })();
 </script>
 
+
+<!-- WebToNative SDK Script (via CDN for stability) -->
+<script src="https://unpkg.com/webtonative@latest/webtonative.min.js"></script>
 
 <!-- Service Worker (RESTORED) -->
 <script>

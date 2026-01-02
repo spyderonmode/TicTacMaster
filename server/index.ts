@@ -8,9 +8,10 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
 // =========================================================
-// 🔒 BROWSER LOCK (WEBVIEW + HEADER SECURITY CHECK) ONLY
+// 🔒 BROWSER LOCK (WEBVIEW + VERSION CHECK VIA USER-AGENT)
 // =========================================================
 const OFFICIAL_APP_ID = "com.darklayerstudio.tictac3x5pro";
+const REQUIRED_UA_MARKER = "DLApp/6";
 
 app.use((req, res, next) => {
   if (app.get("env") === "development") return next();
@@ -22,9 +23,19 @@ app.use((req, res, next) => {
     return res.status(403).json({ message: "unauthorised" });
   }
 
-  // Require Android WebView user-agent marker
-  const ua = h["user-agent"] || "";
-  if (!/wv/i.test(ua)) return res.status(403).json({ message: "unauthorised" });
+  const ua = String(h["user-agent"] || "");
+
+  // Require Android WebView
+  if (!/wv/i.test(ua)) {
+    return res.status(403).json({ message: "unauthorised" });
+  }
+
+  // Require app version marker (blocks old versions)
+  if (!ua.includes(REQUIRED_UA_MARKER)) {
+    return res.status(426).json({
+      message: "Update required",
+    });
+  }
 
   // Restrict origin / referer
   if (h["origin"] && !String(h["origin"]).startsWith("https://darklayerstudios.com")) {
@@ -35,16 +46,11 @@ app.use((req, res, next) => {
     return res.status(403).json({ message: "Blocked: Wrong referer" });
   }
 
-  // Optional platform check (kept commented, as you had it)
-  // if (h["sec-ch-ua-platform"] !== '"Android"') {
-  //   return res.status(403).json({ message: "Blocked: Wrong platform" });
-  // }
-
   next();
 });
 
 // =========================================================
-// BASIC LOGGING MIDDLEWARE (no endpoint tries / rate limit)
+// BASIC LOGGING MIDDLEWARE
 // =========================================================
 app.use((req, res, next) => {
   const start = Date.now();
@@ -93,6 +99,7 @@ app.use((req, res, next) => {
 
 // =========================================================
 // SERVER SETUP
+// =========================================================
 (async () => {
   await runMigrations();
   const { storage } = await import("./storage");

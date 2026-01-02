@@ -24,6 +24,7 @@ import {
   weeklyResetStatus,
   dailyRewards,
   vipPasses,
+  videoRewards,
   VIP_PASS_PRICE,
   VIP_BET_AMOUNT,
   type User,
@@ -251,6 +252,11 @@ export interface IStorage {
   hasActiveVipPass(userId: string): Promise<boolean>;
   getActiveVipPass(userId: string): Promise<VipPass | null>;
   purchaseVipPass(userId: string): Promise<{ success: boolean; message: string; vipPass?: VipPass }>;
+
+  // Video Reward operations
+  getVideoRewardStatus(userId: string): Promise<{ videosRemaining: number; totalVideos: number; nextResetTime: Date }>;
+  generateVideoRewardToken(userId: string): Promise<{ token: string }>;
+  claimVideoReward(userId: string, token: string): Promise<{ success: boolean; coinsEarned: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -426,7 +432,50 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
-    await db.delete(users).where(eq(users.id, id));
+    await db.transaction(async (tx) => {
+      // 1. Handle games involving this user - SET NULL to preserve other player's stats
+      await tx.update(games).set({ playerXId: null }).where(eq(games.playerXId, id));
+      await tx.update(games).set({ playerOId: null }).where(eq(games.playerOId, id));
+      await tx.update(games).set({ winnerId: null }).where(eq(games.winnerId, id));
+
+      // 2. Handle moves involving this user - SET NULL
+      await tx.update(moves).set({ playerId: null }).where(eq(moves.playerId, id));
+
+      // 3. Handle coin transactions - SET NULL
+      await tx.update(coinTransactions).set({ userId: null }).where(eq(coinTransactions.userId, id));
+      await tx.update(coinTransactions).set({ recipientId: null }).where(eq(coinTransactions.recipientId, id));
+      await tx.update(coinTransactions).set({ senderId: null }).where(eq(coinTransactions.senderId, id));
+
+      // 4. Handle game sticker sends - SET NULL
+      await tx.update(gameStickerSends).set({ senderId: null }).where(eq(gameStickerSends.senderId, id));
+      await tx.update(gameStickerSends).set({ recipientId: null }).where(eq(gameStickerSends.recipientId, id));
+
+      // 5. Delete other dependent records
+      await tx.delete(videoRewards).where(eq(videoRewards.userId, id));
+      await tx.delete(dailyRewards).where(eq(dailyRewards.userId, id));
+      await tx.delete(achievements).where(eq(achievements.userId, id));
+      await tx.delete(userThemes).where(eq(userThemes.userId, id));
+      await tx.delete(userPieceStyles).where(eq(userPieceStyles.userId, id));
+      await tx.delete(userStickers).where(eq(userStickers.userId, id));
+      await tx.delete(userAvatarFrames).where(eq(userAvatarFrames.userId, id));
+      await tx.delete(levelUps).where(eq(levelUps.userId, id));
+      await tx.delete(weeklyLeaderboard).where(eq(weeklyLeaderboard.userId, id));
+      await tx.delete(vipPasses).where(eq(vipPasses.userId, id));
+      await tx.delete(roomParticipants).where(eq(roomParticipants.userId, id));
+      
+      // Handle friendships and friend requests
+      await tx.delete(friendships).where(or(eq(friendships.user1Id, id), eq(friendships.user2Id, id)));
+      await tx.delete(friendRequests).where(or(eq(friendRequests.requesterId, id), eq(friendRequests.requestedId, id)));
+      
+      // Handle play again requests
+      await tx.delete(playAgainRequests).where(or(eq(playAgainRequests.requesterId, id), eq(playAgainRequests.requestedId, id)));
+
+      // Handle rooms owned by user
+      await tx.delete(rooms).where(eq(rooms.ownerId, id));
+      
+      // Finally delete the user
+      await tx.delete(users).where(eq(users.id, id));
+    });
   }
 
   // Room operations
@@ -4691,6 +4740,99 @@ export class DatabaseStorage implements IStorage {
       success: true,
       message: `VIP Pass purchased! 30M bet amount unlocked for this week.`,
       vipPass: newVipPass
+    };
+  }
+
+  // Video Reward operations
+  async getVideoRewardStatus(userId: string): Promise<{ videosRemaining: number; totalVideos: number; nextResetTime: Date }> {
+    const VIDEOS_AVAILABLE = 1;
+    const COOLDOWN_HOURS = 3;
+    const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
+
+    // Get the most recent video watched
+    const lastVideo = await db.select()
+      .from(videoRewards)
+      .where(eq(videoRewards.userId, userId))
+      .orderBy(desc(videoRewards.watchedAt))
+      .limit(1);
+
+    const now = Date.now();
+    let videosRemaining = VIDEOS_AVAILABLE;
+    let nextResetTime = new Date(now);
+
+    if (lastVideo.length > 0 && lastVideo[0].watchedAt) {
+      const lastWatchTime = lastVideo[0].watchedAt!.getTime();
+      const timeSinceLastWatch = now - lastWatchTime;
+
+      if (timeSinceLastWatch < COOLDOWN_MS) {
+        // Still in cooldown period
+        videosRemaining = 0;
+        nextResetTime = new Date(lastWatchTime + COOLDOWN_MS);
+      } else {
+        // Cooldown has expired
+        videosRemaining = VIDEOS_AVAILABLE;
+        nextResetTime = new Date(now + COOLDOWN_MS);
+      }
+    } else {
+      // No videos watched yet, video is available immediately
+      videosRemaining = VIDEOS_AVAILABLE;
+      nextResetTime = new Date(now + COOLDOWN_MS);
+    }
+
+    return {
+      videosRemaining,
+      totalVideos: VIDEOS_AVAILABLE,
+      nextResetTime
+    };
+  }
+
+  async generateVideoRewardToken(userId: string): Promise<{ token: string }> {
+    const { nanoid } = await import('nanoid');
+    const token = nanoid(32);
+    return { token };
+  }
+
+  async claimVideoReward(userId: string, token: string): Promise<{ success: boolean; coinsEarned: number }> {
+    const COINS_PER_VIDEO = 2000000;
+
+    // Validate token format (basic security check)
+    if (!token || typeof token !== 'string' || token.length !== 32) {
+      throw new Error('Invalid token');
+    }
+
+    // Check if user can watch more videos
+    const status = await this.getVideoRewardStatus(userId);
+    if (status.videosRemaining <= 0) {
+      throw new Error(`Wait ${Math.ceil((status.nextResetTime.getTime() - Date.now()) / (1000 * 60))} minutes for next video`);
+    }
+
+    // Create video reward record
+    const [videoReward] = await db.insert(videoRewards)
+      .values({
+        userId,
+        coinsEarned: COINS_PER_VIDEO,
+      })
+      .returning();
+
+    // Add coins to user
+    const currentUser = await this.getUser(userId);
+    if (!currentUser) throw new Error('User not found');
+
+    const newBalance = currentUser.coins + COINS_PER_VIDEO;
+    await this.updateUserCoins(userId, newBalance);
+
+    // Create coin transaction record
+    await this.createCoinTransaction({
+      userId,
+      amount: COINS_PER_VIDEO,
+      type: 'video_reward',
+      balanceBefore: currentUser.coins,
+      balanceAfter: newBalance,
+    });
+
+    return {
+      success: true,
+      coinsEarned: COINS_PER_VIDEO
     };
   }
 }

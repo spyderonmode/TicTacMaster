@@ -13,6 +13,8 @@ import Auth from "@/pages/auth";
 import VerifyEmail from "@/pages/verify-email";
 import ResetPassword from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
+import VideoRewards from "@/pages/video-rewards";
+import WatchAd from "@/pages/watch-ad";
 import LoadingScreen from "@/components/LoadingScreen";
 import { UpdateNotificationManager } from "@/components/UpdateNotificationManager";
 import { Component, useState, useEffect } from "react";
@@ -62,7 +64,7 @@ function Router() {
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
- // Global navigation handler
+  // Global navigation handler
   useEffect(() => {
     const handleNavigate = (event: CustomEvent) => {
       setLocation(event.detail.path);
@@ -70,14 +72,17 @@ function Router() {
     window.addEventListener('navigate', handleNavigate as EventListener);
     
     return () => window.removeEventListener('navigate', handleNavigate as EventListener);
-     }, [setLocation]);
-  // Router render state tracking
+  }, [setLocation]);
 
   // Define public routes that don't require authentication
-  const publicRoutes = ['/reset-password', '/verify-email', '/auth', '/'];
+  const publicRoutes = ['/reset-password', '/verify-email', '/auth', '/video-rewards/watch', '/home', '/'];
 
   // Check if current route is public
-  const isPublicRoute = publicRoutes.includes(location) || location.startsWith('/reset-password') || location.startsWith('/verify-email');
+  const isPublicRoute = publicRoutes.includes(location) || 
+                       location.startsWith('/reset-password') || 
+                       location.startsWith('/verify-email') || 
+                       location === '/video-rewards/watch' ||
+                       location === '/home';
 
   // Mark as initially loaded once we get the first auth response (success or failure)
   useEffect(() => {
@@ -150,6 +155,12 @@ function Router() {
         <Route path="/auth">
           <Auth />
         </Route>
+        <Route path="/video-rewards/watch">
+          <WatchAd />
+        </Route>
+        <Route path="/home">
+          <Home />
+        </Route>
         <Route path="/">
           {isAuthenticated && user ? (
             (user as any).isEmailVerified ? (
@@ -162,18 +173,6 @@ function Router() {
         <Route component={NotFound} />
       </Switch>
     );
-  }
-
-  // For protected routes, check authentication
-  if (!isAuthenticated) {
-    // Rendering Auth component - user not authenticated
-    return <Auth />;
-  }
-
-  // If user is authenticated but email is not verified, redirect to auth for verification
-  if (isAuthenticated && user && !(user as any).isEmailVerified) {
-    // Rendering Auth component - email not verified
-    return <Auth />;
   }
 
   // User is authenticated and verified, show main app
@@ -195,6 +194,12 @@ function Router() {
           }, 0);
           return <Home />;
         })()}
+      </Route>
+      <Route path="/video-rewards/watch">
+        <WatchAd />
+      </Route>
+      <Route path="/home">
+        <Home />
       </Route>
       <Route path="/">
         <Home />

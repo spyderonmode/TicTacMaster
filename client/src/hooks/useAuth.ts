@@ -61,8 +61,11 @@ export function useAuth() {
       } catch (error) {
         console.warn('Failed to backup user data:', error);
       }
+    } else if (!userLoading) {
+      // Clear backup if not authenticated
+      localStorage.removeItem('backup_user_data');
     }
-  }, [user]);
+  }, [user, userLoading]);
 
   return {
     user,

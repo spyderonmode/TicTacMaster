@@ -4496,12 +4496,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } : playerOInfo,
       };
 
+      // Get room object to include in broadcast (always has code)
+      const broadcastRoom = await storage.getRoomById(roomId);
+
       // Broadcast to all room participants with unified retry logic
       await broadcastGameStartedWithRetry(roomId, {
         type: 'game_started',
         game: gameWithPlayers,
         gameId: game.id,
         roomId: roomId,
+        room: broadcastRoom ? {
+          ...broadcastRoom,
+          status: 'playing'
+        } : undefined
       });
 
       // Send API response
@@ -4600,12 +4607,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           };
 
+          // Get room object to include in broadcast (always has code)
+          const broadcastRoomData = await storage.getRoomById(gameData.roomId);
+
           // Broadcast refreshed game with unified retry logic
           await broadcastGameStartedWithRetry(gameData.roomId, {
             type: 'game_started',
             game: refreshedGameWithPlayers,
             gameId: refreshedGame.id,
             roomId: gameData.roomId,
+            room: broadcastRoomData ? {
+              ...broadcastRoomData,
+              status: 'playing'
+            } : undefined
           });
 
           return res.json(refreshedGameWithPlayers);
@@ -4678,10 +4692,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Broadcast game start with unified retry logic
       if (gameData.roomId) {
+        const broadcastRoomObj = await storage.getRoomById(gameData.roomId);
         await broadcastGameStartedWithRetry(gameData.roomId, {
           type: 'game_started',
           game: gameWithPlayers,
           roomId: gameData.roomId,
+          room: broadcastRoomObj ? {
+            ...broadcastRoomObj,
+            status: 'playing'
+          } : undefined
         });
       }
 
@@ -6848,12 +6867,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }));
                 }
 
+                // Get room object to include in broadcast (always has code)
+                const broadcastRoomData = await storage.getRoomById(roomId);
+
                 // Broadcast to all room participants with retry logic
                 await broadcastGameStartedWithRetry(roomId, {
                   type: 'game_started',
                   game: gameWithPlayers,
                   gameId: game.id,
                   roomId: roomId,
+                  room: broadcastRoomData ? {
+                    ...broadcastRoomData,
+                    status: 'playing'
+                  } : undefined
                 });
 
                 //console.log(`🎮 Game started via WebSocket: ${game.id} in room ${roomId}`);
@@ -7436,6 +7462,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error marking rank popup as seen:', error);
       res.status(500).json({ error: 'Failed to mark popup as seen' });
+    }
+  });
+
+  // Video Reward routes
+  app.get('/api/video-rewards/status', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const status = await storage.getVideoRewardStatus(userId);
+      res.json(status);
+    } catch (error) {
+      console.error('Error fetching video reward status:', error);
+      res.status(500).json({ error: 'Failed to fetch video reward status' });
+    }
+  });
+
+  app.post('/api/video-rewards/generate-token', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const result = await storage.generateVideoRewardToken(userId);
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating video reward token:', error);
+      res.status(500).json({ error: 'Failed to generate token' });
+    }
+  });
+
+  app.post('/api/video-rewards/claim', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.userId;
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ error: 'Token is required' });
+      }
+      
+      const result = await storage.claimVideoReward(userId, token);
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error claiming video reward:', error);
+      res.status(400).json({ error: error.message || 'Failed to claim video reward' });
     }
   });
 

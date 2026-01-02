@@ -30,6 +30,7 @@ import { ErrorModal } from "@/components/ErrorModal";
 import { ConnectingOverlay } from "@/components/ConnectingOverlay";
 import { QuickChat } from "@/components/QuickChat";
 import { DailyRewardModal } from "@/components/DailyRewardModal";
+import { VideoRewardsButton } from "@/components/VideoRewardsButton";
 import ShopPage from "@/pages/ShopPage";
 
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ export default function Home() {
 
   const playAgainRequestRef = useRef<any>(null);
   const showPlayAgainRequestRef = useRef<boolean>(false);
+  const processedGameStartsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     playAgainRequestRef.current = playAgainRequest;
@@ -110,7 +112,7 @@ export default function Home() {
   const { data: userStats } = useQuery({
     queryKey: ["/api/users", (user as any)?.userId, "online-stats"],
     enabled: !!user && !!(user as any)?.userId,
-    staleTime: 5000,
+    staleTime: 30000, // Increased stale time to 30 seconds
   });
 
   const refreshUserStats = () => {
@@ -363,7 +365,7 @@ export default function Home() {
     setCurrentRoom(null);
     setGameResult(null);
     setHasUserStartedGame(false);
-    setSelectedMode(null);
+    setSelectedMode('ai');
     lastLevelUpCheckRef.current = 0;
     setTimeout(() => checkPendingLevelUps(), 500);
   };
@@ -751,31 +753,37 @@ export default function Home() {
           setSelectedMode('online');
           setHasUserStartedGame(true);
 
-          // CRITICAL: Wait for game context to load BEFORE starting game
+          // CRITICAL: Wait for game context to load BEFORE starting game and capture response
+          let gameContext: any = null;
           if (message.game.playerXId && message.game.playerOId) {
             try {
               console.log('🎮 Fetching game context before starting game...');
-              await queryClient.fetchQuery({
+              gameContext = await queryClient.fetchQuery({
                 queryKey: [`/api/game-context?playerXId=${message.game.playerXId}&playerOId=${message.game.playerOId}`],
                 staleTime: 30000,
               });
-              console.log('✅ Game context loaded successfully');
+              console.log('✅ Game context loaded successfully:', gameContext);
             } catch (error) {
               console.error('⚠️ Failed to fetch game context, continuing anyway:', error);
             }
           }
 
           // Set the room state after game context is loaded
-          setCurrentRoom({
+          // Don't overwrite room if we already have valid data (prevents flickering)
+          setCurrentRoom((prevRoom: any) => ({
+            ...prevRoom,
             id: message.roomId,
             status: 'playing',
-            code: message.room?.code || 'ONLINE'
-          });
+            // Only update code if message has it, otherwise keep existing (no ONLINE fallback)
+            code: message.room?.code || prevRoom?.code
+          }));
 
-          // Set the complete game state from the server message
+          // Set the complete game state from the server message + game context
           setCurrentGame({
             ...message.game,
-            board: message.game.board || {},
+            ...(gameContext || {}),
+            board: gameContext?.board || message.game.board || {},
+            currentPlayer: gameContext?.currentPlayer || message.game.currentPlayer || 'X',
             gameMode: 'online',
             status: 'active'
           });
@@ -868,6 +876,19 @@ export default function Home() {
 
           // Handle game start from WebSocket - ensure both players transition
           if (lastMessage.game && lastMessage.roomId) {
+            // Deduplication: Skip if this game was already processed
+            const gameStartKey = `${lastMessage.game.id}-${lastMessage.roomId}`;
+            if (processedGameStartsRef.current.has(gameStartKey)) {
+              console.log('⚠️ Ignoring duplicate game_started for game:', gameStartKey);
+              break;
+            }
+            processedGameStartsRef.current.add(gameStartKey);
+            // Clean up old entries to prevent memory leak
+            if (processedGameStartsRef.current.size > 10) {
+              const entries = Array.from(processedGameStartsRef.current);
+              entries.slice(0, 5).forEach(entry => processedGameStartsRef.current.delete(entry));
+            }
+
             console.log('🎮 Processing game_started - closing matchmaking modal and setting game state');
 
             // CRITICAL FIX: Force close matchmaking modal when game starts
@@ -892,15 +913,17 @@ export default function Home() {
 
             // CRITICAL: Async function to fetch game context BEFORE starting game
             const startGameAfterContext = async () => {
+              let gameContext: any = null;
+              
               // Fetch game context first and wait for it to complete
               if (lastMessage.game.playerXId && lastMessage.game.playerOId) {
                 try {
                   console.log('🎮 Fetching game context before starting game...');
-                  await queryClient.fetchQuery({
+                  gameContext = await queryClient.fetchQuery({
                     queryKey: [`/api/game-context?playerXId=${lastMessage.game.playerXId}&playerOId=${lastMessage.game.playerOId}`],
                     staleTime: 30000,
                   });
-                  console.log('✅ Game context loaded successfully');
+                  console.log('✅ Game context loaded successfully:', gameContext);
                 } catch (error) {
                   console.error('⚠️ Failed to fetch game context, continuing anyway:', error);
                 }
@@ -911,21 +934,33 @@ export default function Home() {
               setSelectedMode('online');
               setHasUserStartedGame(true);
 
-              // Set the room state
-              setCurrentRoom({
-                id: lastMessage.roomId,
-                status: 'playing',
-                code: lastMessage.room?.code || 'ONLINE'
+              // Set the room state - only update if not already set
+              // This prevents flickering when game_started message lacks room data
+              setCurrentRoom((prevRoom: any) => {
+                // If we already have a valid room, just update status and keep the code
+                if (prevRoom && prevRoom.id === lastMessage.roomId && prevRoom.code) {
+                  return {
+                    ...prevRoom,
+                    status: 'playing'
+                  };
+                }
+                // Otherwise set the full room data (no ONLINE fallback)
+                return {
+                  id: lastMessage.roomId,
+                  status: 'playing',
+                  code: lastMessage.room?.code || prevRoom?.code
+                };
               });
 
-              // Set the complete game state from the server message
+              // Set the complete game state from the server message + game context
               const gameData = {
                 ...lastMessage.game,
+                ...(gameContext || {}),
                 status: 'active',
                 gameMode: 'online',
                 roomId: lastMessage.roomId,
-                board: lastMessage.game.board || {},
-                currentPlayer: lastMessage.game.currentPlayer || 'X',
+                board: gameContext?.board || lastMessage.game.board || {},
+                currentPlayer: gameContext?.currentPlayer || lastMessage.game.currentPlayer || 'X',
                 timestamp: Date.now()
               };
 
@@ -1525,7 +1560,7 @@ export default function Home() {
       setSelectedMode('online');
       setCurrentRoom({
         id: room.id,
-        code: room.code || 'ONLINE',
+        code: room.code,
         status: room.status || 'waiting',
         name: room.name || 'Match Room',
         maxPlayers: room.maxPlayers || 2,
@@ -1942,6 +1977,37 @@ export default function Home() {
 
 
 
+  const loginAsGuest = async () => {
+    try {
+      const res = await apiRequest("POST", "/api/auth/guest");
+      const user = await res.json();
+      queryClient.setQueryData(["/api/auth/user"], user);
+    } catch (e: any) {
+      toast({
+        title: "Guest Login Failed",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        // Clear all caches and state
+        queryClient.clear();
+        localStorage.removeItem('backup_user_data');
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
     <>
     <div className="relative min-h-screen bg-slate-900 text-white">
@@ -2015,26 +2081,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Epic Stats Display - Larger Layout */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 sm:gap-1.5 md:flex md:items-center md:space-x-4 text-xs sm:text-sm">
-                <div className="flex items-center space-x-1 bg-blue-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-blue-500/30">
+              {/* Epic Stats Display - Vertical Layout */}
+              <div className="flex flex-col space-y-1 sm:space-y-1.5 md:space-y-2">
+                <div className="flex items-center space-x-1 bg-blue-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-blue-500/30 w-fit">
                   <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-yellow-400" />
                   <span className="text-yellow-400 font-bold text-xs sm:text-sm">{userStats?.wins || 0}</span>
                   <span className="text-blue-300 hidden sm:inline text-xs">Wins</span>
                 </div>
 
-                <div className="flex items-center space-x-1 bg-purple-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-purple-500/30">
-                  <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-400" />
-                  <span className="text-orange-400 font-bold text-xs sm:text-sm">{userStats?.currentWinStreak || 0}</span>
-                  <span className="text-purple-300 hidden sm:inline text-xs">Streak</span>
-                </div>
-
-                <div className="flex items-center space-x-1 bg-pink-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-pink-500/30">
-                  <span className="text-pink-400 font-bold text-xs sm:text-sm">{Math.round(((userStats?.wins || 0) / Math.max((userStats?.wins || 0) + (userStats?.losses || 0), 1)) * 100)}%</span>
-                  <span className="text-pink-300 hidden sm:inline text-xs">Rate</span>
-                </div>
-
-                <div className="flex items-center space-x-1 bg-green-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-green-500/30">
+                <div className="flex items-center space-x-1 bg-green-500/20 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded border border-green-500/30 w-fit">
                   <span className="text-green-400 font-bold text-xs">🪙</span>
                   <span className="text-green-400 font-bold text-xs sm:text-sm">{formatNumber(userStats?.coins ?? 1000)}</span>
                   <span className="text-green-300 hidden sm:inline text-xs">Coins</span>
@@ -2058,6 +2113,9 @@ export default function Home() {
                 <Trophy className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                 <span className="hidden md:inline ml-2 font-semibold text-sm">{t('leaderboard') || 'Leaderboard'}</span>
               </Button>
+
+              {/* Watch Video Button */}
+              <VideoRewardsButton />
 
               {/* Menu Button - Larger Size */}
               <div className="relative" ref={headerSidebarRef}>
@@ -2156,6 +2214,7 @@ export default function Home() {
                       />
                     </div>
 
+
                     {/* Profile Settings */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -2184,7 +2243,7 @@ export default function Home() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => logout()}
+                        onClick={handleLogout}
                         className="w-full bg-red-700 border-red-600 text-white hover:bg-red-600 justify-start"
                       >
                         <LogOut className="w-4 h-4 mr-2" />
@@ -2566,7 +2625,11 @@ export default function Home() {
       </div>
       {/* End of Main Content Wrapper */}
 
-
+      {/* Hidden image preloader - ensures images are in DOM and fetched immediately */}
+      <div style={{ display: 'none' }}>
+        <img src={quickMatchImg} alt="preload-quick-match" />
+        <img src={roomImg} alt="preload-room" />
+      </div>
     </div>
 
     {/* Modals - Rendered outside main container to avoid z-index stacking context issues */}

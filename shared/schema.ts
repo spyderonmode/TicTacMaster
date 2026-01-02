@@ -364,6 +364,17 @@ export const vipPasses = pgTable("vip_passes", {
   index("idx_vip_user").on(table.userId),
 ]);
 
+// Video rewards tracking table - 3 videos per 24 hours, 1m coins per video
+export const videoRewards = pgTable("video_rewards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  watchedAt: timestamp("watched_at").defaultNow(),
+  coinsEarned: bigint("coins_earned", { mode: 'number' }).default(1000000).notNull(), // 1m coins
+}, (table) => [
+  // Index for quick user lookups within 24 hours
+  index("idx_video_rewards_user_time").on(table.userId, table.watchedAt),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedRooms: many(rooms),
@@ -395,6 +406,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   weeklyRewards: many(weeklyRewards),
   dailyReward: many(dailyRewards),
   vipPasses: many(vipPasses),
+  videoRewards: many(videoRewards),
 }));
 
 export const roomsRelations = relations(rooms, ({ one, many }) => ({

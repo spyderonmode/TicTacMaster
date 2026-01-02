@@ -255,12 +255,20 @@ export async function cleanupGuestOnLogout(userId: string) {
       
       // Delete dependent records before deleting user (foreign key constraints)
       try {
-        // Delete daily_rewards records for this user
-        await db.execute(sql`DELETE FROM daily_rewards WHERE user_id = ${userId}`);
+        // Delete daily_rewards records for this user - using the correct column name userId
+        await db.execute(sql`DELETE FROM daily_rewards WHERE "user_id" = ${userId}`);
         console.log(`🧹 Deleted daily rewards for guest user: ${userId}`);
       } catch (rewardError) {
         console.warn(`⚠️ Failed to delete daily rewards for guest ${userId}:`, rewardError);
         // Continue with user deletion even if reward cleanup fails
+      }
+
+      try {
+        // Delete coin transactions for this user - using the correct column name user_id
+        await db.execute(sql`DELETE FROM coins WHERE "user_id" = ${userId}`);
+        console.log(`🧹 Deleted coin transactions for guest user: ${userId}`);
+      } catch (coinError) {
+        console.warn(`⚠️ Failed to delete coin transactions for guest ${userId}:`, coinError);
       }
       
       // Remove guest from database
