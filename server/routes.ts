@@ -109,6 +109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const connections = new Map<string, WSConnection>();
+  // Set connections on app so they can be accessed from other files
+  app.set('connections', connections);
+
   const roomConnections = new Map<string, Set<string>>();
   const matchmakingQueue: Array<{userId: string, betAmount: number}> = []; // Queue of users waiting for matches with their bet amounts
   const onlineUsers = new Map<string, { userId: string; username: string; displayName: string; roomId?: string; lastSeen: Date }>();
@@ -425,6 +428,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Cleanup offline users every 2 minutes (remove users inactive for more than 90 seconds)
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     const now = new Date();
     const offlineThreshold = 90 * 1000; // 90 seconds
     const activePlayerThreshold = 300 * 1000; // 5 minutes for active players
@@ -476,6 +483,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Game expiration system - check every 2 minutes, but only when users are active
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     // Skip database queries if no users are online - saves compute hours
     if (onlineUsers.size === 0 && connections.size === 0) {
       return;
@@ -533,6 +544,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auto-play monitoring system - check every 10 seconds for inactive players
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     // Skip if no users are online to save compute
     if (onlineUsers.size === 0 && connections.size === 0) {
       return;
@@ -963,6 +978,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Backup polling system - runs every 6 hours as failsafe
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     try {
       // Only run if no users are online to save compute
       if (onlineUsers.size === 0 && connections.size === 0) {
@@ -5522,14 +5541,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Get the current game state
                 const game = await storage.getGameById(gameId);
-                if (!game || game.status !== 'active') {
-                  // Send error back to client
-                  ws.send(JSON.stringify({
-                    type: 'move_error',
-                    gameId,
-                    error: 'Game not active or not found'
-                  }));
-                  break;
+                // IF ON VPS AND game.status IS NOT ACTIVE, LOG IT FOR DEBUGGING
+                if (!game) {
+                   console.error(`❌ Move Error: Game ${gameId} not found`);
+                   moveConnection.ws.send(JSON.stringify({ type: 'error', message: 'game not found' }));
+                   break;
+                }
+                
+                if (game.status !== 'active') {
+                   console.warn(`⚠️ Move Warning: Game ${gameId} status is '${game.status}', not 'active'. Attempting to force active if roomId exists.`);
+                   if (game.roomId) {
+                      await storage.updateRoomStatus(game.roomId, 'active');
+                      await storage.updateGameStatus(gameId, 'active'); // ALSO FORCE GAME STATUS
+                      // Re-fetch game state to ensure we have the updated status for the rest of the logic
+                      const updatedGame = await storage.getGameById(gameId);
+                      // ALLOW TRANSITION FROM EXPIRED TO ACTIVE
+                      if (!updatedGame || (updatedGame.status !== 'active' && updatedGame.status !== 'expired' && updatedGame.status !== 'pending')) {
+                        moveConnection.ws.send(JSON.stringify({ type: 'error', message: 'game not active' }));
+                        break;
+                      }
+                      // Use the updated game state for the rest of the turn validation
+                      Object.assign(game, updatedGame);
+                   } else {
+                      moveConnection.ws.send(JSON.stringify({ type: 'error', message: 'game not active' }));
+                      break;
+                   }
                 }
 
                 // Validate it's the player's turn
@@ -7429,6 +7465,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Clean up expired play again requests periodically
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     try {
       await storage.expireOldPlayAgainRequests();
     } catch (error) {

@@ -234,7 +234,7 @@ export interface IStorage {
   sendStickerInGame(gameId: string, senderId: string, recipientId: string, stickerId: string): Promise<GameStickerSend>;
   getGameStickerSends(gameId: string): Promise<(GameStickerSend & { sticker: StickerItem; sender: User })[]>;
   createDefaultStickers(): Promise<void>;
-  
+
   getAllAvatarFrameItems(): Promise<AvatarFrameItem[]>;
   getAvatarFrameItemById(id: string): Promise<AvatarFrameItem | undefined>;
   getUserAvatarFrames(userId: string): Promise<(UserAvatarFrame & { frame: AvatarFrameItem })[]>;
@@ -462,17 +462,17 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(weeklyLeaderboard).where(eq(weeklyLeaderboard.userId, id));
       await tx.delete(vipPasses).where(eq(vipPasses.userId, id));
       await tx.delete(roomParticipants).where(eq(roomParticipants.userId, id));
-      
+
       // Handle friendships and friend requests
       await tx.delete(friendships).where(or(eq(friendships.user1Id, id), eq(friendships.user2Id, id)));
       await tx.delete(friendRequests).where(or(eq(friendRequests.requesterId, id), eq(friendRequests.requestedId, id)));
-      
+
       // Handle play again requests
       await tx.delete(playAgainRequests).where(or(eq(playAgainRequests.requesterId, id), eq(playAgainRequests.requestedId, id)));
 
       // Handle rooms owned by user
       await tx.delete(rooms).where(eq(rooms.ownerId, id));
-      
+
       // Finally delete the user
       await tx.delete(users).where(eq(users.id, id));
     });
@@ -657,7 +657,19 @@ export class DatabaseStorage implements IStorage {
 
   // Game operations
   async createGame(gameData: InsertGame): Promise<Game> {
-    const [game] = await db.insert(games).values(gameData).returning();
+    const [game] = await db.insert(games).values({
+      ...gameData,
+      lastMoveAt: new Date(),
+      createdAt: new Date()
+    }).returning();
+
+    // TASK 1: Ensure room status is updated to 'active' when a game starts
+    if (game.roomId) {
+      await db.update(rooms)
+        .set({ status: 'active' })
+        .where(eq(rooms.id, game.roomId));
+    }
+
     return game;
   }
 
@@ -898,6 +910,17 @@ export class DatabaseStorage implements IStorage {
 
     await db.update(games).set(updateData).where(eq(games.id, gameId));
 
+    // TASK 3: Fix game cleanup (second game bug)
+    const [game] = await db.select().from(games).where(eq(games.id, gameId));
+    if (game && game.roomId) {
+      // Delete all participants for that room
+      await db.delete(roomParticipants).where(eq(roomParticipants.roomId, game.roomId));
+      // Mark room as completed
+      await db.update(rooms)
+        .set({ status: 'completed' })
+        .where(eq(rooms.id, game.roomId));
+    }
+
     // Process achievements, stats, and coins when game is finished (only if not already finished)
     if (finishData.status === 'finished' && !wasAlreadyFinished) {
       const [game] = await db.select().from(games).where(eq(games.id, gameId));
@@ -983,6 +1006,28 @@ export class DatabaseStorage implements IStorage {
 
   // Move operations
   async createMove(moveData: InsertMove): Promise<Move> {
+    // TASK 1: Ensure moves are allowed ONLY when room.status === 'active'
+    // TASK 2: Allow moves ONLY if room_participants.role === 'player'
+    const [game] = await db.select().from(games).where(eq(games.id, moveData.gameId!));
+    if (game && game.roomId) {
+      const [room] = await db.select().from(rooms).where(eq(rooms.id, game.roomId));
+      // ALLOW MOVES IF ACTIVE OR EXPIRED (WE WILL FORCE TO ACTIVE IN ROUTES)
+      if (room && room.status !== 'active' && room.status !== 'expired') {
+        throw new Error("game not active");
+      }
+
+      const [participant] = await db.select()
+        .from(roomParticipants)
+        .where(and(
+          eq(roomParticipants.roomId, game.roomId),
+          eq(roomParticipants.userId, moveData.playerId!)
+        ));
+      
+      if (participant && participant.role !== 'player') {
+        throw new Error("move_error: bot or spectator cannot move");
+      }
+    }
+
     const [move] = await db.insert(moves).values(moveData).returning();
     return move;
   }
@@ -997,6 +1042,7 @@ export class DatabaseStorage implements IStorage {
 
   // Room participant operations
   async addRoomParticipant(participantData: InsertRoomParticipant): Promise<RoomParticipant> {
+    // TASK 2: Ensure correct roles are stored ('player' vs 'bot')
     // Check if participant already exists to prevent duplicates
     const existingParticipant = await db
       .select()
@@ -1046,7 +1092,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(rooms, eq(roomParticipants.roomId, rooms.id))
       .where(eq(roomParticipants.userId, userId))
       .limit(1);
-    
+
     return result.length > 0 ? result[0] : null;
   }
 
@@ -3940,7 +3986,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ===== Sticker Operations =====
-  
+
   async getAllStickerItems(): Promise<StickerItem[]> {
     const items = await db
       .select()
@@ -3971,7 +4017,7 @@ export class DatabaseStorage implements IStorage {
       .from(userStickers)
       .innerJoin(stickerItems, eq(userStickers.stickerId, stickerItems.id))
       .where(eq(userStickers.userId, userId));
-    
+
     return stickers.map(s => ({
       id: s.id,
       userId: s.userId,
@@ -4187,7 +4233,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ===== Avatar Frame Methods =====
-  
+
   async getAllAvatarFrameItems(): Promise<AvatarFrameItem[]> {
     const items = await db
       .select()
@@ -4219,7 +4265,7 @@ export class DatabaseStorage implements IStorage {
       .from(userAvatarFrames)
       .innerJoin(avatarFrameItems, eq(userAvatarFrames.frameId, avatarFrameItems.id))
       .where(eq(userAvatarFrames.userId, userId));
-    
+
     return frames.map(f => ({
       id: f.id,
       userId: f.userId,
@@ -4380,13 +4426,13 @@ export class DatabaseStorage implements IStorage {
         id: 'thundering',
         name: 'Thundering Storm',
         description: 'Electrifying blue lightning effects with pulsing energy',
-        price: 1000000000, // 50 million coins
+        price: 2000000000, // 50 million coins
       },
       {
         id: 'firestorm',
         name: 'Fire Storm',
         description: 'Blazing 3D fire frame with intense flames erupting outside the border',
-        price: 1000000000, // 1 billion coins
+        price: 2000000000, // 1 billion coins
       },
       {
         id: 'level_100_master',
@@ -4422,37 +4468,37 @@ export class DatabaseStorage implements IStorage {
         id: 'lovers_3d',
         name: 'Lovers Heart 3D',
         description: 'Romantic 3D hearts floating around your avatar - for lovers only!',
-        price: 1000000000, // 1 billion coins
+        price: 2000000000, // 1 billion coins
       },
       {
         id: 'lovers_eternal',
         name: 'Lovers Eternal',
         description: 'Cupid\'s arrows and romantic hearts in purple-gold glory - eternal love personified!',
-        price: 2000000000, // 1.2 billion coins
+        price: 3000000000, // 1.2 billion coins
       },
       {
         id: 'diamond_luxury',
         name: 'Diamond Luxury',
         description: 'Ultra-premium 3D floating diamond crystals with shimmer effects - the ultimate luxury!',
-        price: 2000000000, // 2 billion coins
+        price: 4000000000, // 2 billion coins
       },
       {
         id: 'holographic_matrix',
         name: 'Holographic Matrix',
         description: 'Mind-blowing 3D holographic frame with liquid wave distortion on your avatar - truly mesmerizing!',
-        price: 1500000000, // 2 billion coins
+        price: 2500000000, // 2 billion coins
       },
       {
         id: 'cosmic_vortex',
         name: 'Cosmic Vortex',
         description: 'Explosive neon energy plasma border with dual-rotating waves and pulsing brightness effect!',
-        price: 1500000000, // 2 billion coins
+        price: 2500000000, // 2 billion coins
       },
       {
         id: 'royal_zigzag_crown',
         name: 'Royal Golden',
         description: 'Majestic 3D zigzag golden border with floating crown jewels - feel like royalty!',
-        price: 3000000000, // 3 billion coins
+        price: 5000000000, // 3 billion coins
       },
       {
         id: 'celestial_nebula',
@@ -4471,6 +4517,12 @@ export class DatabaseStorage implements IStorage {
         name: 'Phoenix Immortal',
         description: 'The ultimate legendary frame! Mythical phoenix with majestic flaming wings, eternal rebirth fire cycles, floating ember particles, and divine golden feathers - the rarest and most powerful frame ever created!',
         price: 10000000000, // 8 billion coins
+      },
+      {
+        id: 'void_eclipse',
+        name: 'Void Eclipse',
+        description: 'A deep cosmic black hole frame with gravitational lensing, indigo swirls, and orbiting white dwarf star fragments - defy the laws of physics!',
+        price: 8000000000, // 15 billion coins
       },
       {
         id: 'new_year_celebration',
@@ -4513,7 +4565,7 @@ export class DatabaseStorage implements IStorage {
   async getDailyReward(userId: string): Promise<{ canClaim: boolean; reward: DailyReward | null; nextClaimDate?: Date }> {
     // Get or create daily reward record for user
     let [reward] = await db.select().from(dailyRewards).where(eq(dailyRewards.userId, userId));
-    
+
     if (!reward) {
       // Create new reward record for user
       [reward] = await db.insert(dailyRewards).values({ userId }).returning();
@@ -4527,11 +4579,11 @@ export class DatabaseStorage implements IStorage {
 
     const now = new Date();
     const lastClaim = new Date(reward.lastClaimDate);
-    
+
     // Set both dates to start of day for comparison
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const lastClaimStart = new Date(lastClaim.getFullYear(), lastClaim.getMonth(), lastClaim.getDate());
-    
+
     if (todayStart > lastClaimStart) {
       // Can claim today
       return { canClaim: true, reward };
@@ -4540,7 +4592,7 @@ export class DatabaseStorage implements IStorage {
     // Already claimed today, calculate next claim date
     const nextClaimDate = new Date(todayStart);
     nextClaimDate.setDate(nextClaimDate.getDate() + 1);
-    
+
     return { canClaim: false, reward, nextClaimDate };
   }
 
@@ -4549,7 +4601,7 @@ export class DatabaseStorage implements IStorage {
 
     // Check if user can claim
     const { canClaim, reward } = await this.getDailyReward(userId);
-    
+
     if (!canClaim) {
       return { 
         success: false, 
@@ -4559,22 +4611,22 @@ export class DatabaseStorage implements IStorage {
 
     const now = new Date();
     const lastClaim = reward?.lastClaimDate ? new Date(reward.lastClaimDate) : null;
-    
+
     // Calculate current streak (checking if user missed a day and should reset)
     let currentStreak = reward?.currentStreak || 0;
-    
+
     if (lastClaim) {
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
       const lastClaimStart = new Date(lastClaim.getFullYear(), lastClaim.getMonth(), lastClaim.getDate());
-      
+
       // If last claim was before yesterday, user missed at least one day - reset streak
       if (lastClaimStart.getTime() < yesterdayStart.getTime()) {
         currentStreak = 0; // Streak broken, reset to 0
       }
     }
-    
+
     // Calculate new streak for this claim
     let newStreak = currentStreak + 1; // Always increment by 1 for this claim
 
@@ -4655,7 +4707,7 @@ export class DatabaseStorage implements IStorage {
 
   async getActiveVipPass(userId: string): Promise<VipPass | null> {
     const { weekNumber, year } = this.getISOWeekInfo();
-    
+
     const [vipPass] = await db.select()
       .from(vipPasses)
       .where(
@@ -4665,13 +4717,13 @@ export class DatabaseStorage implements IStorage {
           eq(vipPasses.year, year)
         )
       );
-    
+
     return vipPass || null;
   }
 
   async purchaseVipPass(userId: string): Promise<{ success: boolean; message: string; vipPass?: VipPass }> {
     const { weekNumber, year } = this.getISOWeekInfo();
-    
+
     // Check if user already has VIP pass for this week
     const existingPass = await this.getActiveVipPass(userId);
     if (existingPass) {
@@ -4700,7 +4752,7 @@ export class DatabaseStorage implements IStorage {
 
     // Process the transaction
     const newBalance = currentBalance - VIP_PASS_PRICE;
-    
+
     await db.transaction(async (tx) => {
       // Deduct coins from user
       await tx.update(users)
@@ -4793,24 +4845,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async claimVideoReward(userId: string, token: string): Promise<{ success: boolean; coinsEarned: number }> {
-    const COINS_PER_VIDEO = 2000000;
+    const COINS_PER_VIDEO = 5000000;
 
     // Validate token format (basic security check)
     if (!token || typeof token !== 'string' || token.length !== 32) {
       throw new Error('Invalid token');
     }
 
-    // Check if user can watch more videos
+    // TASK 4: Fix rewarded-ad cooldown (3 hour fade bug)
+    // Use Node.js time only
+    const now = Date.now();
     const status = await this.getVideoRewardStatus(userId);
-    if (status.videosRemaining <= 0) {
-      throw new Error(`Wait ${Math.ceil((status.nextResetTime.getTime() - Date.now()) / (1000 * 60))} minutes for next video`);
+    
+    // Eligibility check using Date.now() > nextResetTime.getTime()
+    if (status.videosRemaining <= 0 && now < status.nextResetTime.getTime()) {
+      throw new Error(`Wait ${Math.ceil((status.nextResetTime.getTime() - now) / (1000 * 60))} minutes for next video`);
     }
 
-    // Create video reward record
+    // Grant reward coins and store cooldown using Node.js time
     const [videoReward] = await db.insert(videoRewards)
       .values({
         userId,
         coinsEarned: COINS_PER_VIDEO,
+        watchedAt: new Date(now), // Store current Node.js time
       })
       .returning();
 

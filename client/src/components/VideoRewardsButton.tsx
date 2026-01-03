@@ -62,14 +62,14 @@ export function VideoRewardsButton() {
         onClick={handleClick}
         className={`bg-gradient-to-r from-purple-800 to-blue-800 hover:from-purple-900 hover:to-blue-900 text-white transition-all duration-500 h-14 ${!canWatch ? 'opacity-30 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}
         size="sm"
-        title={canWatch ? "Watch video to earn 2,000,000 coins!" : "Available in 3 hours"}
+        title={canWatch ? "Watch video to earn 5,000,000 coins!" : "Available in 3 hours"}
       >
         {canWatch ? (
           <>
             <div className="flex flex-col items-center gap-2">
               <Film className="w-5 h-5 text-yellow-300" />
               <div className="flex flex-col items-center leading-none">
-                <span className="text-[12px] font-black text-yellow-300 drop-shadow-md">2M</span>
+                <span className="text-[12px] font-black text-yellow-300 drop-shadow-md">5M</span>
               </div>
             </div>
           </>

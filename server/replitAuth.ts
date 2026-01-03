@@ -109,6 +109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const connections = new Map<string, WSConnection>();
+  // Set connections on app so they can be accessed from other files
+  app.set('connections', connections);
+
   const roomConnections = new Map<string, Set<string>>();
   const matchmakingQueue: Array<{userId: string, betAmount: number}> = []; // Queue of users waiting for matches with their bet amounts
   const onlineUsers = new Map<string, { userId: string; username: string; displayName: string; roomId?: string; lastSeen: Date }>();
@@ -344,6 +347,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Cleanup offline users every 2 minutes (remove users inactive for more than 90 seconds)
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     const now = new Date();
     const offlineThreshold = 90 * 1000; // 90 seconds
     const activePlayerThreshold = 300 * 1000; // 5 minutes for active players
@@ -395,6 +402,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Game expiration system - check every 2 minutes, but only when users are active
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     // Skip database queries if no users are online - saves compute hours
     if (onlineUsers.size === 0 && connections.size === 0) {
       return;
@@ -452,6 +463,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auto-play monitoring system - check every 10 seconds for inactive players
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     // Skip if no users are online to save compute
     if (onlineUsers.size === 0 && connections.size === 0) {
       return;
@@ -882,6 +897,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Backup polling system - runs every 6 hours as failsafe
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     try {
       // Only run if no users are online to save compute
       if (onlineUsers.size === 0 && connections.size === 0) {
@@ -6915,6 +6934,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Clean up expired play again requests periodically
   setInterval(async () => {
+    // Skip if no users are connected to save compute
+    if (connections.size === 0) {
+      return;
+    }
     try {
       await storage.expireOldPlayAgainRequests();
     } catch (error) {

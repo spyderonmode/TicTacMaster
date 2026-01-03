@@ -207,56 +207,56 @@ const AVATAR_FRAMES = [
     id: "thundering",
     name: "Thundering Strike",
     description: "Epic 3D electric blue frame with lightning effects and rotating gradients",
-    price: 1000000000, // 1000 million coins
+    price: 2000000000, // 1000 million coins
     isDefault: false,
   },
   {
     id: "firestorm",
     name: "Fire Storm",
     description: "Blazing 3D fire frame with intense flames erupting outside the border",
-    price: 1000000000, // 1000 million coins
+    price: 2000000000, // 1000 million coins
     isDefault: false,
   },
   {
     id: 'lovers_3d',
     name: 'Lovers Heart 3D',
     description: 'Romantic 3D hearts floating around your avatar - for lovers only!',
-    price: 1000000000, // 1 billion coins
+    price: 2000000000, // 1 billion coins
     isDefault: false,
   },
   {
     id: 'lovers_eternal',
     name: 'Lovers Eternal',
     description: 'Cupid\'s arrows and romantic hearts in purple-gold glory - eternal love personified!',
-    price: 2000000000, // 1.2 billion coins
+    price: 3000000000, // 1.2 billion coins
     isDefault: false,
   },
   {
     id: 'diamond_luxury',
     name: 'Diamond Luxury',
     description: 'Ultra-premium 3D floating diamond crystals with shimmer effects - the ultimate luxury!',
-    price: 2000000000, // 2 billion coins
+    price: 4000000000, // 2 billion coins
     isDefault: false,
   },
   {
     id: 'holographic_matrix',
     name: 'Holographic Matrix',
     description: 'Mind-blowing 3D holographic frame with liquid wave distortion on your avatar - truly mesmerizing!',
-    price: 1500000000, // 2 billion coins
+    price: 2500000000, // 2 billion coins
     isDefault: false,
   },
   {
     id: 'cosmic_vortex',
     name: 'Cosmic Vortex',
     description: 'Explosive neon energy plasma border with dual-rotating waves and pulsing brightness effect!',
-    price: 1500000000, // 2 billion coins
+    price: 2500000000, // 2 billion coins
     isDefault: false,
   },
   {
     id: 'royal_zigzag_crown',
     name: 'Royal Golden',
     description: 'Majestic 3D zigzag golden border with floating crown jewels - feel like royalty!',
-    price: 3000000000, // 3 billion coins
+    price: 5000000000, // 3 billion coins
     isDefault: false,
   },
   {
@@ -278,6 +278,13 @@ const AVATAR_FRAMES = [
     name: 'Phoenix Immortal',
     description: 'The ultimate legendary frame! Mythical phoenix with majestic flaming wings, eternal rebirth fire cycles, floating ember particles, and divine golden feathers - the rarest and most powerful frame ever created!',
     price: 10000000000, // 8 billion coins
+    isDefault: false,
+  },
+  {
+    id: 'void_eclipse',
+    name: 'Void Eclipse',
+    description: 'A deep cosmic black hole frame with gravitational lensing, indigo swirls, and orbiting white dwarf star fragments - defy the laws of physics!',
+    price: 8000000000, // 15 billion coins
     isDefault: false,
   },
   {

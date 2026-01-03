@@ -198,7 +198,7 @@ export default function WatchAd() {
           <div className="bg-slate-700/30 rounded-lg p-4 flex items-center justify-center gap-3">
             <Coins className="w-6 h-6 text-yellow-500" />
             <span className="text-xl font-semibold">
-              {formatNumber(2000000)} Coins Reward
+              {formatNumber(5000000)} Coins Reward
             </span>
           </div>
 

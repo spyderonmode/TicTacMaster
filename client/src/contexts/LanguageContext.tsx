@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Language, getCurrentLanguage, setCurrentLanguage, initializeLanguage, translations, TranslationKey } from '@/lib/i18n';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Language, getCurrentLanguage, setCurrentLanguage, initializeLanguage, translations, TranslationKey } from '../lib/i18n';
 
 interface LanguageContextType {
   language: Language;
@@ -9,33 +9,42 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => getCurrentLanguage());
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(() => {
+    try {
+      return getCurrentLanguage() as Language;
+    } catch (e) {
+      return 'en' as Language;
+    }
+  });
   const [isRTL, setIsRTL] = useState(false);
 
   useEffect(() => {
-    initializeLanguage();
-    const lang = getCurrentLanguage();
-    setLanguageState(lang);
-    setIsRTL(lang === 'ar');
-    
-    // Apply RTL/LTR on initial load
-    if (lang === 'ar') {
-      document.documentElement.setAttribute('dir', 'rtl');
-      document.documentElement.classList.add('rtl');
-    } else {
-      document.documentElement.setAttribute('dir', 'ltr');
-      document.documentElement.classList.remove('rtl');
+    try {
+      initializeLanguage();
+      const lang = getCurrentLanguage() as Language;
+      setLanguageState(lang);
+      setIsRTL(lang === ('ar' as any));
+      
+      if (lang === ('ar' as any)) {
+        document.documentElement.setAttribute('dir', 'rtl');
+        document.documentElement.classList.add('rtl');
+      } else {
+        document.documentElement.setAttribute('dir', 'ltr');
+        document.documentElement.classList.remove('rtl');
+      }
+    } catch (e) {
+      console.error('Language initialization error:', e);
     }
   }, []);
 
   const setLanguage = (lang: Language) => {
     setCurrentLanguage(lang);
     setLanguageState(lang);
-    setIsRTL(lang === 'ar');
+    setIsRTL(lang === ('ar' as any));
     
     // Apply RTL/LTR changes immediately without reload
-    if (lang === 'ar') {
+    if (lang === ('ar' as any)) {
       document.documentElement.setAttribute('dir', 'rtl');
       document.documentElement.classList.add('rtl');
     } else {
@@ -65,7 +74,8 @@ export function useTranslation() {
   
   return {
     t: (key: TranslationKey, variables?: Record<string, string>) => {
-      let translation = translations[key]?.[language] || translations[key]?.en || key;
+      const trans = translations[key] as any;
+      let translation = trans?.[language as any] || trans?.en || key;
       
       // Replace variables in the translation
       if (variables) {

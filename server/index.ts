@@ -33,7 +33,7 @@ app.use((req, res, next) => {
   // Require app version marker (blocks old versions)
   if (!ua.includes(REQUIRED_UA_MARKER)) {
     return res.status(426).json({
-      message: "Update required",
+      message: "Update required, Kindly Visit https://tictac3x5.darklayerstudios.com",
     });
   }
 
@@ -90,7 +90,7 @@ app.use((req, res, next) => {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       if (logLine.length > 120) logLine = logLine.slice(0, 119) + "…";
-      // console.log(logLine);
+      //console.log(logLine);
     }
   });
 
@@ -110,6 +110,11 @@ app.use((req, res, next) => {
 
   const CLEANUP_INTERVAL = 10 * 60 * 1000;
   setInterval(async () => {
+    // Skip if no active connections to save compute
+    // @ts-ignore - access connections from registered routes or app
+    if (app.get('connections')?.size === 0) {
+      return;
+    }
     try {
       await storage.cleanupOldRooms();
     } catch (_) {}

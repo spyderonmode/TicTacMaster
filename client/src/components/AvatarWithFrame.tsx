@@ -21,7 +21,7 @@ function AvatarWithFrameComponent({
 
   useEffect(() => {
     let isMounted = true;
-    
+
     if (!src) {
       setImageSrc(null);
       return;
@@ -35,7 +35,7 @@ function AvatarWithFrameComponent({
           return;
         }
       }
-      
+
       try {
         const optimized = await loadAndCacheImage(src);
         if (isMounted) {
@@ -49,7 +49,7 @@ function AvatarWithFrameComponent({
     };
 
     loadImage();
-    
+
     return () => {
       isMounted = false;
     };
@@ -69,6 +69,74 @@ function AvatarWithFrameComponent({
 
   const getFrameStyle = () => {
     switch (borderType) {
+      case 'void_eclipse':
+        return (
+          <div className={`${sizeClasses[size]} rounded-full relative ${paddingClasses[size]}`}>
+            <div className="w-full h-full rounded-full p-[3px] relative overflow-visible">
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{ 
+                  background: 'conic-gradient(from 0deg, #1e3a8a, #3b82f6, #60a5fa, #1e3a8a)', 
+                  boxShadow: '0 0 25px rgba(59, 130, 246, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.4)' 
+                }}
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+              />
+              {[...Array(4)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute inset-[-6px] rounded-full border border-blue-400/40"
+                  animate={{
+                    scale: [1, 1.15, 1],
+                    opacity: [0.2, 0.5, 0.2],
+                    rotate: i * 90
+                  }}
+                  transition={{
+                    duration: 5 + i,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                />
+              ))}
+              <div className="w-full h-full rounded-full overflow-hidden relative z-10 border-2 border-blue-300/60 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+                {imageSrc ? (
+                  <img 
+                    src={imageSrc} 
+                    alt={alt}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-900 via-indigo-900 to-blue-800 flex items-center justify-center text-white font-bold text-lg">
+                    {fallbackText}
+                  </div>
+                )}
+              </div>
+              {[...Array(16)].map((_, i) => {
+                const angle = (i * 360) / 16;
+                const radius = size === 'sm' ? 24 : size === 'md' ? 34 : 46;
+                return (
+                  <motion.div
+                    key={i}
+                    className="absolute w-1 h-1 rounded-full bg-blue-100 shadow-[0_0_10px_#60a5fa]"
+                    style={{ left: '50%', top: '50%' }}
+                    animate={{
+                      x: [Math.cos((angle * Math.PI) / 180) * radius, Math.cos(((angle + 120) * Math.PI) / 180) * (radius * 1.15), Math.cos(((angle + 360) * Math.PI) / 180) * radius],
+                      y: [Math.sin((angle * Math.PI) / 180) * radius, Math.sin(((angle + 120) * Math.PI) / 180) * (radius * 0.95), Math.sin(((angle + 360) * Math.PI) / 180) * radius],
+                      scale: [0.4, 1.2, 0.4],
+                      opacity: [0, 0.9, 0]
+                    }}
+                    transition={{
+                      duration: 4 + Math.random() * 3,
+                      repeat: Infinity,
+                      delay: Math.random() * 3
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+
       case 'level_100_master':
       case 'level100Master':
         return (
@@ -1112,7 +1180,7 @@ function AvatarWithFrameComponent({
                     <stop offset="100%" style={{ stopColor: '#ffd700', stopOpacity: 1 }} />
                   </linearGradient>
                 </defs>
-                
+
                 {/* Zigzag circle path */}
                 <motion.circle
                   cx="50"
