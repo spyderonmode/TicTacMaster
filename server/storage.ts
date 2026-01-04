@@ -917,7 +917,7 @@ export class DatabaseStorage implements IStorage {
       await db.delete(roomParticipants).where(eq(roomParticipants.roomId, game.roomId));
       // Mark room as completed
       await db.update(rooms)
-        .set({ status: 'completed' })
+        .set({ status: 'finished' })
         .where(eq(rooms.id, game.roomId));
     }
 

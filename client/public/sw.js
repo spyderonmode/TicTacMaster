@@ -1,5 +1,5 @@
 // Persistent cache for native app wrapper
-const CACHE_VERSION = 'v82';
+const CACHE_VERSION = 'v100';
 const CACHE_NAME = `tictactoe-persistent-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `tictactoe-runtime-${CACHE_VERSION}`;
 const PROFILE_IMAGE_CACHE = `tictactoe-profile-images-${CACHE_VERSION}`;

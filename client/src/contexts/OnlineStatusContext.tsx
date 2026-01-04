@@ -67,7 +67,7 @@ function startHeartbeat(ownerId: string, userId: string): void {
   // periodic heartbeat
   heartbeatState.interval = setInterval(() => {
     executeHeartbeat();
-  }, 45000);
+  }, 55000);
 }
 
 function stopHeartbeat(ownerId: string): void {

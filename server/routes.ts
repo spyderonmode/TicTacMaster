@@ -118,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const userRoomStates = new Map<string, { roomId: string; gameId?: string; isInGame: boolean }>();
   const matchmakingTimers = new Map<string, NodeJS.Timeout>(); // Track user timers for bot matches
   const userJoinLocks = new Map<string, Promise<any>>(); // Per-user locks to prevent race conditions when joining rooms
-  
+
   // Track pending disconnects with grace period for reconnection (prevents mobile app-switch kicks)
   const pendingDisconnects = new Map<string, {
     userId: string;
@@ -322,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function ensureUserCanJoinRoom(userId: string, targetRoomId: string): Promise<{ canJoin: boolean; error?: string }> {
     // Proper Promise chain lock without deletion gaps
     const existingChain = userJoinLocks.get(userId) || Promise.resolve();
-    
+
     const task = async () => {
       // Check if user is in an active game
       const activeGame = await storage.getActiveGameForUser(userId);
@@ -335,12 +335,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user's current room from database (source of truth)
       const currentRoomParticipation = await storage.getActiveRoomParticipation(userId);
-      
+
       // If user is already in the target room, skip processing (prevent duplicate adds)
       if (currentRoomParticipation && currentRoomParticipation.roomId === targetRoomId) {
         return { canJoin: true }; // Already in target room, no action needed
       }
-      
+
       if (currentRoomParticipation && currentRoomParticipation.roomId !== targetRoomId) {
         // User is in a different room, auto-leave
         const oldRoomId = currentRoomParticipation.roomId;
@@ -357,7 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const userConns = Array.from(connections.entries())
             .filter(([_, conn]) => conn.userId === userId)
             .map(([connId, _]) => connId);
-          
+
           userConns.forEach(connId => {
             roomConns.delete(connId);
             const conn = connections.get(connId);
@@ -393,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Chain this task onto the existing promise chain
     const newChain = existingChain.then(task, task); // Run task on both resolve and reject
     userJoinLocks.set(userId, newChain);
-    
+
     // Wait for our chained task to complete and return its result
     return await newChain;
   }
@@ -481,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }, 120000); // Every 2 minutes
 
-  // Game expiration system - check every 2 minutes, but only when users are active
+  // Game expiration system - check every 1 minute
   setInterval(async () => {
     // Skip if no users are connected to save compute
     if (connections.size === 0) {
@@ -501,9 +501,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update game status to expired
         await storage.expireGame(expiredGame.id);
 
-        // Update room status back to waiting
+        // Update room status to finished instead of waiting
         if (expiredGame.roomId) {
-          await storage.updateRoomStatus(expiredGame.roomId, 'waiting');
+          await storage.updateRoomStatus(expiredGame.roomId, 'finished');
+          
+          // Clear participants for the finished room
+          await storage.clearRoomParticipants(expiredGame.roomId);
         }
 
         // Notify all players in the room about expiration
@@ -513,13 +516,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'game_expired',
             gameId: expiredGame.id,
             roomId: expiredGame.roomId,
-            message: 'Game expired due to 10 minutes of inactivity. Returning to lobby.'
+            message: 'Game expired due to 10 minutes of inactivity. Room closed.'
           });
 
           roomUsers?.forEach(connectionId => {
             const connection = connections.get(connectionId);
             if (connection && connection.ws.readyState === WebSocket.OPEN) {
               connection.ws.send(expirationMessage);
+              
+              // Clear room association so they return home
+              connection.roomId = undefined;
             }
           });
 
@@ -529,15 +535,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Clear user room states for expired game players
         userRoomStates.forEach((state, userId) => {
-          if (state.gameId === expiredGame.id) {
+          if (state.roomId === expiredGame.roomId) {
             userRoomStates.delete(userId);
+            const onlineUser = onlineUsers.get(userId);
+            if (onlineUser) {
+              onlineUser.roomId = undefined;
+            }
           }
         });
       }
     } catch (error) {
       console.error('⏰ Error checking for expired games:', error);
     }
-  }, 2 * 60 * 1000); // Check every 2 minutes
+  }, 60 * 1000); // Check every 1 minute
 
   // Auto-play throttling map to prevent too frequent moves
   const autoPlayThrottle = new Map<string, number>(); // gameId -> last auto-move timestamp
@@ -1484,12 +1494,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const REGULAR_GIFT_LIMIT = 20000000; // 20M coins
       const VIP_GIFT_LIMIT = 300000000; // 300M coins for VIP Pass holders
       const UNLIMITED_USER_IDS = ['3149a38b-2989-4272-b41e-a70021bccbfb'];
-      
+
       // Check if sender has active VIP Pass
       const senderVipPass = await storage.getActiveVipPass(senderId);
       const hasVipPass = !!senderVipPass;
       const effectiveGiftLimit = hasVipPass ? VIP_GIFT_LIMIT : REGULAR_GIFT_LIMIT;
-      
+
       if (!UNLIMITED_USER_IDS.includes(senderId) && amount > effectiveGiftLimit) {
         const limitMessage = hasVipPass 
           ? `VIP gift limit is 300M coins` 
@@ -1834,7 +1844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== Daily Reward Routes =====
-  
+
   // Get daily reward status for current user
   app.get('/api/daily-reward', requireAuth, async (req: any, res) => {
     try {
@@ -1902,7 +1912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== Sticker Routes =====
-  
+
   // Get all available sticker items
   app.get('/api/stickers', requireAuth, async (req: any, res) => {
     try {
@@ -1986,7 +1996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== Avatar Frame Routes =====
-  
+
   // Get all available avatar frames
   app.get('/api/avatar-frames', requireAuth, async (req: any, res) => {
     try {
@@ -2577,7 +2587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.user.userId;
       const pieceStyles = await storage.getUserPieceStyles(userId);
       const activePieceStyle = await storage.getActivePieceStyle(userId);
-      
+
       res.json({
         pieceStyles,
         activeStyle: activePieceStyle?.styleName || 'default'
@@ -2598,7 +2608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await storage.purchasePieceStyle(userId, styleName, price);
-      
+
       if (result.success) {
         res.json({ 
           message: result.message, 
@@ -2636,7 +2646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.userId;
       const { playerXId, playerOId } = req.query;
-      
+
       // Fetch all data in parallel for maximum efficiency
       const [
         ownedStickers,
@@ -2658,7 +2668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         playerXId ? storage.getActiveAvatarFrame(playerXId as string) : Promise.resolve(null),
         playerOId ? storage.getActiveAvatarFrame(playerOId as string) : Promise.resolve(null)
       ]);
-      
+
       res.json({
         ownedStickers,
         userStats, // Return full stats object matching /api/users/online-stats
@@ -2844,17 +2854,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.userId;
       const friends = await storage.getFriends(userId);
-      
+
       // Get the set of online user IDs for efficient lookup
       const onlineUserIds = new Set(
         Array.from(onlineUsers.values())
           .filter(user => user.userId !== userId)
           .map(user => user.userId)
       );
-      
+
       // Filter to only online friends
       const onlineFriends = friends.filter(friend => onlineUserIds.has(friend.id));
-      
+
       res.json(onlineFriends);
     } catch (error) {
       console.error("Error getting online friends:", error);
@@ -3182,7 +3192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Send notification to inviter that invitation was accepted
         const inviterConnections = Array.from(connections.entries())
           .filter(([_, connection]) => connection.userId === invitation.inviterId);
-        
+
         inviterConnections.forEach(([_, connection]) => {
           if (connection.ws.readyState === WebSocket.OPEN) {
             connection.ws.send(JSON.stringify({
@@ -3203,7 +3213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Send notification to inviter that invitation was rejected
         const inviterConnections = Array.from(connections.entries())
           .filter(([_, connection]) => connection.userId === invitation.inviterId);
-        
+
         inviterConnections.forEach(([_, connection]) => {
           if (connection.ws.readyState === WebSocket.OPEN) {
             connection.ws.send(JSON.stringify({
@@ -3881,7 +3891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             clearTimeout(matchmakingTimers.get(player2Id)!);
             matchmakingTimers.delete(player2Id);
           }
-          
+
           // Remove both players from queue (remove higher index first to avoid index shift)
           if (player1Index > player2Index) {
             matchmakingQueue.splice(player1Index, 1);
@@ -4838,13 +4848,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate move
       const currentBoard = game.board as Record<string, string> || {};
-      
+
       // Check if position 8 is locked on first move
       const isFirstMove = Object.keys(currentBoard).length === 0;
       if (isFirstMove && position === 8) {
         return res.status(400).json({ message: "Position 8 is locked on the first move" });
       }
-      
+
       if (!validateMove(currentBoard, position, playerSymbol)) {
         return res.status(400).json({ message: "Invalid move" });
       }
@@ -5547,7 +5557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                    moveConnection.ws.send(JSON.stringify({ type: 'error', message: 'game not found' }));
                    break;
                 }
-                
+
                 if (game.status !== 'active') {
                    console.warn(`⚠️ Move Warning: Game ${gameId} status is '${game.status}', not 'active'. Attempting to force active if roomId exists.`);
                    if (game.roomId) {
@@ -5976,15 +5986,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (roomConnIds) {
                 // Get user information for the joining user
                 const userInfo = await storage.getUser(connection.userId);
+                const participants = await storage.getRoomParticipants(data.roomId);
 
                 for (const connId of roomConnIds) {
                   const conn = connections.get(connId);
                   if (conn && conn.ws.readyState === WebSocket.OPEN) {
+                    // Send regular join notification
                     conn.ws.send(JSON.stringify({
                       type: 'user_joined',
                       userId: connection.userId,
                       roomId: data.roomId,
                       userInfo: userInfo,
+                    }));
+
+                    // Send updated participants list for instant UI trigger
+                    conn.ws.send(JSON.stringify({
+                      type: 'room_participant_joined',
+                      userId: connection.userId,
+                      roomId: data.roomId,
+                      participants: participants
                     }));
                   }
                 }
@@ -6021,7 +6041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // CRITICAL FIX: Re-fetch the latest game state to check if it's already finished
                 const latestGame = await storage.getGameById(activeGame.id);
-                
+
                 // If game is already finished or has a winner, skip abandonment logic entirely
                 // This prevents winning players from getting abandonment penalties when they leave
                 if (!latestGame || latestGame.status === 'finished' || latestGame.winnerId) {
@@ -6046,7 +6066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       const connection = connections.get(connectionId);
                       if (connection && connection.ws.readyState === WebSocket.OPEN) {
                         connection.ws.send(roomClosedMessage);
-                        
+
                         // Clear their room state
                         connection.roomId = undefined;
                         if (connection.userId) {
@@ -6553,7 +6573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
 
                 // Check room status (must be waiting or playing)
-                if (room.status === 'finished') {
+                if (room.status === 'finished' || room.status === 'completed') {
                   if (joinConnection.ws.readyState === WebSocket.OPEN) {
                     joinConnection.ws.send(JSON.stringify({
                       type: 'join_room_error',
@@ -6967,18 +6987,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             // Instead of immediate cleanup, use grace period for reconnection
             const userState = userRoomStates.get(connection.userId);
-            
+
             // Determine grace period: 60 seconds for waiting rooms, 2 minutes for active games
             const activeGame = await storage.getActiveGameForUser(connection.userId);
             const gracePeriodMs = (activeGame && activeGame.status === 'active') ? 2 * 60 * 1000 : 60 * 1000;
-            
+
             //console.log(`⏱️ User ${connection.userId} disconnected - grace period: ${gracePeriodMs/1000}s`);
-            
+
             // Create a timeout for delayed cleanup
             const timeoutId = setTimeout(async () => {
               // This executes only if user doesn't reconnect within grace period
               //console.log(`⏰ Grace period expired for user ${connection.userId} - proceeding with cleanup`);
-              
+
               // Clean up room participant from database
               const userState = userRoomStates.get(connection.userId);
               if (userState && userState.roomId) {
@@ -7014,7 +7034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               });
             }, gracePeriodMs);
-            
+
             // Store pending disconnect info
             pendingDisconnects.set(connection.userId, {
               userId: connection.userId,
@@ -7134,7 +7154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (room) {
           const betAmount = room.betAmount || 5000;
           const requesterUser = await storage.getUser(userId);
-          
+
           if (requesterUser && requesterUser.coins < betAmount) {
             const displayName = requesterUser.displayName || requesterUser.firstName || requesterUser.username || 'Player';
             return res.status(400).json({ 
@@ -7237,11 +7257,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if the acceptor has enough coins for the bet amount
         const acceptorCoins = await storage.getUserCoins(userId);
         const requiredBet = existingRoom.betAmount;
-        
+
         if (acceptorCoins < requiredBet) {
           const acceptorUser = await storage.getUser(userId);
           const acceptorName = acceptorUser?.displayName || acceptorUser?.username || 'Player';
-          
+
           // Send error to acceptor
           if (responderConnection && responderConnection.ws.readyState === WebSocket.OPEN) {
             responderConnection.ws.send(JSON.stringify({
@@ -7249,7 +7269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               error: `Cannot accept play again. You don't have enough coins. Required: ${requiredBet.toLocaleString()} 🪙, Current: ${acceptorCoins.toLocaleString()} 🪙`
             }));
           }
-          
+
           // Send error to requester
           if (requesterConnection && requesterConnection.ws.readyState === WebSocket.OPEN) {
             requesterConnection.ws.send(JSON.stringify({
@@ -7257,7 +7277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               error: `Cannot start play again. ${acceptorName} doesn't have enough coins. Required: ${requiredBet.toLocaleString()} 🪙, Current: ${acceptorCoins.toLocaleString()} 🪙`
             }));
           }
-          
+
           return res.status(400).json({ 
             error: `Insufficient coins. You need ${requiredBet.toLocaleString()} coins but have ${acceptorCoins.toLocaleString()} coins.` 
           });
@@ -7278,7 +7298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
           }
         });
-        
+
         // Send success response for rejected requests immediately
         return res.json({ success: true });
       }
@@ -7532,11 +7552,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.userId;
       const { token } = req.body;
-      
+
       if (!token) {
         return res.status(400).json({ error: 'Token is required' });
       }
-      
+
       const result = await storage.claimVideoReward(userId, token);
       res.json(result);
     } catch (error: any) {

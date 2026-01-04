@@ -22,10 +22,10 @@ export function PlayerList({ roomId }: PlayerListProps) {
   const { data: initialParticipants = [], isLoading } = useQuery({
     queryKey: ["/api/rooms", roomId, "participants"],
     enabled: !!roomId && isAuthenticated,
-    staleTime: 60000, // Consider data fresh for 1 minute since we use WebSocket for updates
+    staleTime: 300000, // Keep data fresh for 5 minutes since we use WebSockets for updates
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Get initial data on mount
-    refetchInterval: false, // No polling - use WebSocket for updates
+    refetchOnMount: false,
+    refetchInterval: false,
   });
 
   // Update participants from initial API fetch
@@ -41,12 +41,10 @@ export function PlayerList({ roomId }: PlayerListProps) {
 
     const message = lastMessage;
 
-    // Handle join_room_success events (for the user who just joined)
-    if (message.type === 'join_room_success' && message.room?.id === roomId) {
-      // Update participants with the fresh data from server
-      if (message.room.participants) {
-        setParticipants(message.room.participants);
-      }
+    // Handle user_joined events
+    if (message.type === 'user_joined' && message.roomId === roomId) {
+      // We'll wait for the room_participant_joined message for the full list,
+      // but we could also manually add the user if needed.
     }
 
     // Handle room_participant_joined events (for other users in the room)

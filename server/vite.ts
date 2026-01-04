@@ -5,7 +5,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from "url";
 
 // Proper __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -24,6 +24,9 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// ============================
+// DEVELOPMENT (VITE MIDDLEWARE)
+// ============================
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -58,6 +61,7 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
+
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
@@ -67,8 +71,12 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
+// ============================
+// PRODUCTION (STATIC SERVE)
+// ============================
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "..", "dist", "public");
+  const assetsPath = path.join(distPath, "assets");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -76,9 +84,26 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // 🔥 Hashed assets — cache forever, no revalidation
+  app.use(
+    "/assets",
+    express.static(assetsPath, {
+      maxAge: "1y",
+      immutable: true,
+      etag: false,
+      lastModified: false,
+    })
+  );
 
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // HTML & non-hashed files — short cache
+  app.use(
+    express.static(distPath, {
+      maxAge: "1h",
+    })
+  );
+
+  // SPA fallback
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
   });
 }
