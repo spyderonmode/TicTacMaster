@@ -110,50 +110,49 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90%] max-w-[420px] p-0 !gap-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-2 border-amber-500/40 shadow-[0_0_60px_rgba(251,191,36,0.15)] overflow-hidden">
-        {/* Animated Background Effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl animate-pulse"></div>
-          <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      <DialogContent className="w-[90%] max-w-[420px] p-0 !gap-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-2 border-slate-800 shadow-2xl overflow-hidden">
+        {/* Background Effects - Animations Removed */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-50">
+          <div className="absolute top-0 left-1/4 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl"></div>
         </div>
 
         {showCelebration ? (
           /* ======================== CELEBRATION VIEW ======================== */
           <div className="relative flex flex-col items-center justify-center py-8 px-6 space-y-5">
-            {/* Floating Sparkles */}
+            {/* Reduced Static Sparkles */}
             <div className="absolute inset-0 overflow-hidden">
-              {[...Array(8)].map((_, i) => (
+              {[...Array(4)].map((_, i) => (
                 <Sparkles
                   key={i}
-                  className="absolute text-yellow-400/60 animate-pulse"
+                  className="absolute text-yellow-400/40"
                   style={{
                     left: `${Math.random() * 100}%`,
                     top: `${Math.random() * 100}%`,
-                    animationDelay: `${i * 0.2}s`,
-                    width: `${Math.random() * 10 + 6}px`,
-                    height: `${Math.random() * 10 + 6}px`,
+                    width: `${Math.random() * 8 + 4}px`,
+                    height: `${Math.random() * 8 + 4}px`,
                   }}
                 />
               ))}
             </div>
 
-            {/* Main Coin Animation */}
+            {/* Main Coin - Animation Removed */}
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 rounded-full blur-xl opacity-60 animate-pulse scale-125"></div>
-              <div className="relative bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-full p-5 shadow-xl shadow-amber-500/50 animate-bounce">
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 rounded-full blur-xl opacity-40 scale-110"></div>
+              <div className="relative bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-full p-5 shadow-xl shadow-amber-500/30">
                 <Coins className="h-14 w-14 text-slate-900" />
               </div>
-              <Crown className="absolute -top-4 left-1/2 -translate-x-1/2 h-8 w-8 text-amber-300 animate-pulse" />
+              <Crown className="absolute -top-4 left-1/2 -translate-x-1/2 h-8 w-8 text-amber-300" />
             </div>
 
             {/* Success Text */}
             <div className="text-center space-y-4 relative z-10">
               <div className="flex items-center justify-center gap-2">
-                <Star className="h-6 w-6 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
+                <Star className="h-6 w-6 text-amber-400" />
                 <h2 className="text-3xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
                   AMAZING!
                 </h2>
-                <Star className="h-6 w-6 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
+                <Star className="h-6 w-6 text-amber-400" />
               </div>
 
               <div className="bg-gradient-to-br from-amber-500/20 via-yellow-500/10 to-orange-500/20 rounded-xl p-5 border border-amber-400/30 shadow-lg backdrop-blur-sm">
@@ -168,16 +167,16 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
               </div>
 
               <div className="flex items-center justify-center gap-2 text-slate-300">
-                <Flame className="h-5 w-5 text-orange-400 animate-pulse" />
+                <Flame className="h-5 w-5 text-orange-400" />
                 <p className="text-sm italic">Keep your streak alive!</p>
-                <Flame className="h-5 w-5 text-orange-400 animate-pulse" />
+                <Flame className="h-5 w-5 text-orange-400" />
               </div>
             </div>
           </div>
         ) : (
           /* ======================== MAIN VIEW ======================== */
           <div className="relative">
-            {/* Premium Header */}
+            {/* Header */}
             <div className="bg-gradient-to-r from-amber-600/20 via-yellow-500/20 to-amber-600/20 border-b border-amber-500/30 px-5 py-4">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-xl font-bold text-white">
@@ -187,7 +186,7 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                   <span className="bg-gradient-to-r from-amber-200 to-yellow-100 bg-clip-text text-transparent">
                     Daily Reward
                   </span>
-                  <Sparkles className="h-5 w-5 text-amber-400 animate-pulse ml-auto" />
+                  <Sparkles className="h-5 w-5 text-amber-400 ml-auto" />
                 </DialogTitle>
                 <DialogDescription className="text-slate-400 text-sm mt-1">
                   Claim your reward and build your streak!
@@ -202,19 +201,16 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                 </div>
               ) : rewardStatus?.canClaim ? (
                 <>
-                  {/* Premium Treasure Chest */}
-                  <div className="relative bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-orange-500/10 border border-amber-500/30 rounded-xl p-5 text-center overflow-hidden group hover:border-amber-400/50 transition-all duration-500">
-                    {/* Glow Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
+                  {/* Reward Card - Animations Removed */}
+                  <div className="relative bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-orange-500/10 border border-amber-500/30 rounded-xl p-5 text-center overflow-hidden">
                     {/* Chest Icon */}
                     <div className="relative mb-4">
-                      <div className="absolute inset-0 bg-amber-400/20 rounded-full blur-xl scale-125 animate-pulse"></div>
+                      <div className="absolute inset-0 bg-amber-400/10 rounded-full blur-xl scale-110"></div>
                       <div className="relative inline-block">
-                        <div className="bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-xl p-4 shadow-xl shadow-amber-500/40 transform group-hover:scale-105 transition-transform duration-300">
+                        <div className="bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-xl p-4 shadow-xl shadow-amber-500/40">
                           <Gift className="h-12 w-12 text-slate-900" />
                         </div>
-                        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full p-1.5 shadow-lg animate-bounce">
+                        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full p-1.5 shadow-lg">
                           <Zap className="h-4 w-4 text-white" />
                         </div>
                       </div>
@@ -273,7 +269,7 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                   <Button
                     onClick={handleClaim}
                     disabled={claimMutation.isPending}
-                    className="w-full relative overflow-hidden bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-400 text-slate-900 font-bold text-base py-6 rounded-xl shadow-lg shadow-amber-500/30 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 group disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full relative overflow-hidden bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-400 text-slate-900 font-bold text-base py-6 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
                       {claimMutation.isPending ? (
@@ -285,12 +281,10 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                         <>
                           <Gift className="h-5 w-5" />
                           Claim Your Reward
-                          <Sparkles className="h-5 w-5 group-hover:animate-spin" />
+                          <Sparkles className="h-5 w-5" />
                         </>
                       )}
                     </span>
-                    {/* Shimmer Effect */}
-                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                   </Button>
                 </>
               ) : (
@@ -298,7 +292,7 @@ export function DailyRewardModal({ open, onOpenChange }: DailyRewardModalProps) 
                 <div className="text-center space-y-5 py-4">
                   {/* Clock Icon */}
                   <div className="relative inline-block">
-                    <div className="absolute inset-0 bg-slate-500/20 rounded-full blur-xl scale-125"></div>
+                    <div className="absolute inset-0 bg-slate-500/20 rounded-full blur-xl scale-110"></div>
                     <div className="relative bg-gradient-to-br from-slate-600 to-slate-700 rounded-full p-5 shadow-xl">
                       <Clock className="h-12 w-12 text-slate-300" />
                     </div>

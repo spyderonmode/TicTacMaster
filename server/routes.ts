@@ -3666,8 +3666,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add to queue with bet amount
       matchmakingQueue.push({userId, betAmount});
       // User joined matchmaking queue
+      //console.log(`✅ User ${userId} joined matchmaking queue for ${betAmount} coins. Total queue: ${matchmakingQueue.length}`);
 
-      // Set 25-second timer for AI bot matchmaking
+      // Set 15-second timer for AI bot matchmaking (increased from 8.5s for better real-player matching)
       const botTimer = setTimeout(async () => {
         try {
           // Double-check if user is still in queue and hasn't been matched with real player
@@ -3830,7 +3831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 } catch (error) {
                   console.error('🤖 Error starting bot game:', error);
                 }
-              }, 3000);
+              }, 2000);
           }
 
           // Clean up timer
@@ -3839,7 +3840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('🤖 Error in bot matchmaking:', error);
           matchmakingTimers.delete(userId);
         }
-      }, 8500); // 25 seconds
+      }, 12000); // 15 seconds
 
       // Store timer for cleanup
       matchmakingTimers.set(userId, botTimer);
@@ -4199,11 +4200,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.userId;
 
-      // Clear timer if user leaves manually
+      // CRITICAL FIX: Always clear timer if user leaves manually
       if (matchmakingTimers.has(userId)) {
         clearTimeout(matchmakingTimers.get(userId)!);
         matchmakingTimers.delete(userId);
-        //console.log(`🤖 Cleared bot timer for user ${userId}`);
+        //console.log(`🤖 Cleared bot timer for user ${userId} on manual leave`);
       }
 
       const index = matchmakingQueue.findIndex(entry => entry.userId === userId);
@@ -4211,7 +4212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         matchmakingQueue.splice(index, 1);
         //console.log(`🎯 User ${userId} left matchmaking queue. Queue size: ${matchmakingQueue.length}`);
       }
-      res.json({ message: 'Left matchmaking queue' });
+      res.json({ success: true, message: 'Left matchmaking queue' });
     } catch (error) {
       console.error("Error leaving matchmaking:", error);
       res.status(500).json({ message: "Failed to leave matchmaking" });
@@ -4252,6 +4253,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roomId: room.id,
         userId,
         role: 'player',
+      });
+
+      // ✅ WebSocket Notification: Broadcast room creation for global lobby if needed
+      // Although usually players join via code, broadcasting ensures any active listeners get the update
+      const allConnections = Array.from(connections.values());
+      const createNotification = JSON.stringify({
+        type: 'room_created',
+        room: room,
+        creatorId: userId
+      });
+
+      allConnections.forEach(connection => {
+        if (connection.ws.readyState === WebSocket.OPEN) {
+          connection.ws.send(createNotification);
+        }
       });
 
       res.json(room);
@@ -4343,6 +4359,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         role,
       });
+
+      // ✅ WebSocket Notification: Notify other users in the room that someone joined
+      const roomUsers = roomConnections.get(room.id);
+      if (roomUsers) {
+        const userInfo = await storage.getUser(userId);
+        const joinNotification = JSON.stringify({
+          type: 'room_participant_joined',
+          roomId: room.id,
+          userId: userId,
+          role: role,
+          user: userInfo,
+          participants: await storage.getRoomParticipants(room.id)
+        });
+
+        roomUsers.forEach(connectionId => {
+          const connection = connections.get(connectionId);
+          if (connection && connection.ws.readyState === WebSocket.OPEN) {
+            connection.ws.send(joinNotification);
+          }
+        });
+      }
 
       res.json({ message: "Joined room successfully", room });
     } catch (error) {
@@ -5410,6 +5447,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const connectionId = Math.random().toString(36).substring(7);
     // New WebSocket connection
 
+    // Setup native ping/pong handling
+    let isAlive = true;
+    ws.on('pong', () => {
+      isAlive = true;
+    });
+
+    const interval = setInterval(() => {
+      if (ws.readyState === WebSocket.CLOSED) {
+        clearInterval(interval);
+        return;
+      }
+      if (isAlive === false) return ws.terminate();
+
+      isAlive = false;
+      ws.ping();
+    }, 25000);
+
+    ws.on('close', () => {
+      clearInterval(interval);
+    });
+
     ws.on('message', async (message) => {
       try {
         const data = JSON.parse(message.toString());
@@ -5507,38 +5565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
 
           case 'ping':
-            // Enhanced ping/pong with connection quality metrics
-            const pingTimestamp = data.timestamp || Date.now();
-            const pongTimestamp = Date.now();
-            const serverLatency = pongTimestamp - pingTimestamp;
-
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ 
-                type: 'pong', 
-                timestamp: pongTimestamp,
-                originalTimestamp: pingTimestamp,
-                serverLatency: serverLatency
-              }));
-
-              // Update last seen for this connection with performance tracking
-              const connection = connections.get(connectionId);
-              if (connection) {
-                connection.lastSeen = new Date();
-
-                // Update online user tracking with latency awareness
-                if (onlineUsers.has(connection.userId)) {
-                  const user = onlineUsers.get(connection.userId)!;
-                  user.lastSeen = new Date();
-
-                  // Track connection quality for adaptive optimization
-                  if (serverLatency > 500) {
-                    // High latency connection - could implement adaptive features here
-                    //console.log(`⚠️ High latency detected for user ${connection.displayName}: ${serverLatency}ms`);
-                  }
-                }
-              }
-              //console.log(`🏓 Pong sent to user ${connection?.userId || 'unknown'}`);
-            }
+            // JSON ping is disabled to decrease load.
             break;
 
           case 'move':
@@ -6463,6 +6490,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   role: 'player',
                 });
 
+                // Register creator in WebSocket room for real-time updates
+                if (!roomConnections.has(room.id)) {
+                  roomConnections.set(room.id, new Set());
+                }
+                roomConnections.get(room.id)!.add(connectionId);
+                createConnection.roomId = room.id;
+
                 // Send success response
                 if (createConnection.ws.readyState === WebSocket.OPEN) {
                   createConnection.ws.send(JSON.stringify({
@@ -6650,15 +6684,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const updatedParticipants = await storage.getRoomParticipants(room.id);
                 const roomWithParticipants = { ...room, participants: updatedParticipants };
 
-                // Send success response
-                if (joinConnection.ws.readyState === WebSocket.OPEN) {
-                  joinConnection.ws.send(JSON.stringify({
-                    type: 'join_room_success',
-                    requestId,
-                    room: roomWithParticipants
-                  }));
-                }
-
                 // Join WebSocket room for real-time updates
                 if (!roomConnections.has(room.id)) {
                   roomConnections.set(room.id, new Set());
@@ -6672,6 +6697,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   isInGame: false
                 });
 
+                // Send success response to the joiner immediately
+                if (joinConnection.ws.readyState === WebSocket.OPEN) {
+                  joinConnection.ws.send(JSON.stringify({
+                    type: 'join_room_success',
+                    requestId,
+                    room: roomWithParticipants
+                  }));
+                }
+
                 // Notify other room participants about the new joiner
                 const roomUsers = roomConnections.get(room.id)!;
                 const joinNotification = JSON.stringify({
@@ -6681,12 +6715,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   participants: updatedParticipants
                 });
 
-                roomUsers.forEach(connId => {
-                  if (connId !== connectionId) { // Don't send to the joiner themselves
-                    const conn = connections.get(connId);
-                    if (conn && conn.ws.readyState === WebSocket.OPEN) {
-                      conn.ws.send(joinNotification);
-                    }
+                // Broadcast to EVERYONE who is a participant in this room according to the database
+                // This is more robust than just checking roomConnections as it handles reconnections
+                const currentParticipants = await storage.getRoomParticipants(room.id);
+                const participantUserIds = new Set(currentParticipants.map(p => p.userId));
+                
+                connections.forEach((conn, connId) => {
+                  // Send to anyone whose userId is in the participant list OR who is already in the WebSocket room
+                  const isInRoom = participantUserIds.has(conn.userId) || (roomConnections.get(room.id)?.has(connId));
+                  
+                  if (isInRoom && conn.ws.readyState === WebSocket.OPEN) {
+                    conn.ws.send(joinNotification);
                   }
                 });
 

@@ -25,6 +25,8 @@ interface MatchmakingModalProps {
 export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocketConnected = true, currentRoom, leaveRoom }: MatchmakingModalProps) {
   const { t } = useTranslation();
   const [isSearching, setIsSearching] = useState(false);
+  const [isMatchFound, setIsMatchFound] = useState(false);
+  const [isMatchmakingSuccessDetected, setIsMatchmakingSuccessDetected] = useState(false);
   const [searchTime, setSearchTime] = useState(0);
   const [selectedBet, setSelectedBet] = useState(1000000);
   const [errorModal, setErrorModal] = useState<{open: boolean, title: string, message: string, type?: 'error' | 'coins' | 'warning'}>({
@@ -56,7 +58,9 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
     console.log('🔄 MatchmakingModal: Resetting matchmaking state');
     clearAllTimers();
     connectionLostToastShownRef.current = false;
-    setIsSearching(false);
+    // CRITICAL: isSearching and isMatchFound must NOT be reset here
+    // to prevent the flicker back to the selection screen.
+    // They are now exclusively handled by the useEffect that manages modal closure.
     setSearchTime(0);
   }, [clearAllTimers]);
 
@@ -76,15 +80,16 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
     
     if (isMatchmakingSuccess && open && isSearching) {
       console.log('🎮 MatchmakingModal: Match found!', lastMessage.type);
+      setIsMatchmakingSuccessDetected(true);
       
-      // Stop searching immediately to ignore further match messages
-      setIsSearching(false);
-      resetMatchmakingState();
-
+      // Clear timers immediately but keep isSearching TRUE
+      clearAllTimers();
+      
       if (lastMessage.room) {
         onMatchFound(lastMessage.room);
       }
 
+      // Just close. The useEffect(!open) will handle the cleanup.
       onClose();
     }
   }, [lastMessage, open, isSearching, onMatchFound, onClose, resetMatchmakingState]);
@@ -102,11 +107,12 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
       return response.json();
     },
     onSuccess: (data) => {
+      // Establish searching state immediately regardless of status
+      setIsSearching(true);
+      setSearchTime(0);
+
       if (data.status === 'matched') {
-        setIsSearching(false);
-      } else if (data.status === 'waiting') {
-        setIsSearching(true);
-        setSearchTime(0);
+        console.log('🎮 MatchmakingModal: Matched immediately, keeping search state visible');
       }
     },
     onError: (error) => {
@@ -201,27 +207,41 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
 
   const handleCancelSearch = () => {
     console.log('🎮 MatchmakingModal: Cancel search requested');
+    // Immediately reset state to stop UI timer
     resetMatchmakingState();
+    setIsSearching(false);
+    // Notify server to clear backend timer and queue entry
     leaveMatchmakingMutation.mutate();
   };
 
   const handleClose = () => {
     console.log('🎮 MatchmakingModal: Close requested, isSearching:', isSearching);
     if (isSearching) {
-      handleCancelSearch();
+      // Notify server to clear backend timer and queue entry
+      leaveMatchmakingMutation.mutate();
+      resetMatchmakingState();
+      // Only set searching to false when user EXPLICITLY cancels
+      setIsSearching(false);
     } else {
       resetMatchmakingState();
     }
     onClose();
   };
 
-  // Close modal externally while searching
+  // Reset state when modal is fully closed to ensure next time is fresh
   useEffect(() => {
-    if (!open && isSearching) {
-      console.log('🎮 MatchmakingModal: Modal closed externally while searching');
-      resetMatchmakingState();
+    if (!open) {
+      const timer = setTimeout(() => {
+        setIsSearching(false);
+        setIsMatchFound(false);
+        setIsMatchmakingSuccessDetected(false);
+        setSearchTime(0);
+        connectionLostToastShownRef.current = false;
+        clearAllTimers();
+      }, 300); // Small delay to wait for closing animation
+      return () => clearTimeout(timer);
     }
-  }, [open, isSearching, resetMatchmakingState]);
+  }, [open, clearAllTimers]);
 
   // Cancel matchmaking if connection is lost while searching
   useEffect(() => {
@@ -346,7 +366,41 @@ export function MatchmakingModal({ open, onClose, onMatchFound, user, isWebSocke
             <X style={{ width: '18px', height: '18px' }} />
           </button>
 
-          {!isSearching && !joinMatchmakingMutation.isPending ? (
+          {isMatchFound ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
+              <div style={{
+                width: '70px',
+                height: '70px',
+                margin: '0 auto 20px',
+                background: '#10b981',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)',
+                animation: 'pulse 1.5s infinite'
+              }}>
+                <Zap style={{ width: '35px', height: '35px', color: '#ffffff' }} />
+              </div>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '900',
+                color: '#10b981',
+                marginBottom: '10px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}>
+                {t('matchFound') || 'Match Found!'}
+              </h2>
+              <p style={{
+                fontSize: '14px',
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontWeight: '500'
+              }}>
+                {t('preparingYourGame') || 'Preparing your game...'}
+              </p>
+            </div>
+          ) : (!isSearching && !joinMatchmakingMutation.isPending && !isMatchmakingSuccessDetected) ? (
             <div style={{ padding: '24px 20px', boxSizing: 'border-box', width: '100%' }}>
               {/* Header */}
               <div style={{ textAlign: 'center', marginBottom: '18px' }}>

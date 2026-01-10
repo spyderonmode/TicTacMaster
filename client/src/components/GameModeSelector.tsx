@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bot, Users, GamepadIcon, Zap, Brain, Cpu, Sparkles, Crown, Star, Trophy, Swords } from "lucide-react";
@@ -10,7 +11,7 @@ interface GameModeSelectorProps {
   onDifficultyChange: (difficulty: 'easy' | 'medium' | 'hard') => void;
 }
 
-export function GameModeSelector({ selectedMode, onModeChange, aiDifficulty, onDifficultyChange }: GameModeSelectorProps) {
+export const GameModeSelector = memo(function GameModeSelector({ selectedMode, onModeChange, aiDifficulty, onDifficultyChange }: GameModeSelectorProps) {
   const { t } = useTranslation();
 
   const modes = [
@@ -300,56 +301,7 @@ export function GameModeSelector({ selectedMode, onModeChange, aiDifficulty, onD
             );
           })}
         </CardContent>
-
-        {/* Custom animations */}
-        <style>{`
-          @keyframes orb-float {
-            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.1; }
-            50% { transform: translate(20px, -20px) scale(1.1); opacity: 0.15; }
-          }
-          @keyframes orb-float-delayed {
-            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.1; }
-            50% { transform: translate(-20px, 20px) scale(1.15); opacity: 0.12; }
-          }
-          @keyframes particle-float {
-            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.4; }
-            50% { transform: translateY(-15px) rotate(180deg); opacity: 0.8; }
-          }
-          @keyframes particle-rise {
-            0% { transform: translateY(0) scale(1); opacity: 0.8; }
-            100% { transform: translateY(-40px) scale(0); opacity: 0; }
-          }
-          @keyframes border-glow {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-          }
-          @keyframes icon-pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-          }
-          @keyframes bounce-slow {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
-          }
-          @keyframes spin-slow {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          @keyframes slide-down {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-orb-float { animation: orb-float 8s ease-in-out infinite; }
-          .animate-orb-float-delayed { animation: orb-float-delayed 10s ease-in-out infinite; }
-          .animate-particle-float { animation: particle-float 4s ease-in-out infinite; }
-          .animate-particle-rise { animation: particle-rise 1.5s ease-out infinite; }
-          .animate-border-glow { animation: border-glow 2s linear infinite; }
-          .animate-icon-pulse { animation: icon-pulse 2s ease-in-out infinite; }
-          .animate-bounce-slow { animation: bounce-slow 2s ease-in-out infinite; }
-          .animate-spin-slow { animation: spin-slow 4s linear infinite; }
-          .animate-slide-down { animation: slide-down 0.3s ease-out; }
-        `}</style>
       </Card>
     </div>
   );
-}
+});

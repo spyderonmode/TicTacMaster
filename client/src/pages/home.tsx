@@ -4,7 +4,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useToast } from "@/hooks/use-toast";
 // useAudio hook removed as sound effects are removed
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { GameBoard } from "@/components/GameBoard";
 import { GameModeSelector } from "@/components/GameModeSelector";
 import { ProfileManager } from "@/components/ProfileManager";
@@ -2008,6 +2008,21 @@ export default function Home() {
     }
   };
 
+  // Stabilize callbacks for GameModeSelector to prevent re-renders/blinking
+  const handleModeChange = useCallback((mode: 'ai' | 'pass-play' | 'online') => {
+    if (mode === 'online') {
+      setShowOnlineModePopup(true);
+    } else {
+      setSelectedMode(mode);
+      setHasUserStartedGame(true);
+      initializeLocalGame();
+    }
+  }, [initializeLocalGame]);
+
+  const handleDifficultyChange = useCallback((difficulty: 'easy' | 'medium' | 'hard') => {
+    setAiDifficulty(difficulty);
+  }, []);
+
   return (
     <>
     <div className="relative min-h-screen bg-slate-900 text-white">
@@ -2309,17 +2324,9 @@ export default function Home() {
             {/* Game Mode Selection */}
             <GameModeSelector 
               selectedMode={hasUserStartedGame ? selectedMode : undefined}
-              onModeChange={(mode) => {
-                if (mode === 'online') {
-                  setShowOnlineModePopup(true);
-                } else {
-                  setSelectedMode(mode);
-                  setHasUserStartedGame(true);
-                  initializeLocalGame();
-                }
-              }}
+              onModeChange={handleModeChange}
               aiDifficulty={aiDifficulty}
-              onDifficultyChange={setAiDifficulty}
+              onDifficultyChange={handleDifficultyChange}
             />
 
             {/* Audio Controls removed as requested */}

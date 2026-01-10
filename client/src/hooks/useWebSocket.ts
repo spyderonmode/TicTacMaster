@@ -104,6 +104,12 @@ export function useWebSocket() {
     };
 
     ws.current.onmessage = (event) => {
+      // Handle native pong
+      if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
+        // Binary data usually means native ping/pong or other binary protocols
+        return;
+      }
+
       try {
         const message = JSON.parse(event.data);
 
@@ -381,14 +387,9 @@ export function useWebSocket() {
           window.dispatchEvent(matchmakingEvent);
         }
 
-        // Handle pong response for keepalive
+        // Handle pong response for keepalive (if server still sends JSON pong)
         if (message.type === 'pong') {
-          const responseTime = Date.now() - lastPingTime.current;
-          pingResponseTime.current = responseTime;
-
-          window.dispatchEvent(new CustomEvent('websocket_pong_received', {
-            detail: { ...message, responseTime }
-          }));
+          // JSON ping/pong is disabled to reduce load, this remains for compatibility
         }
 
         // Handle room creation success
@@ -468,11 +469,22 @@ export function useWebSocket() {
       setIsConnected(false);
       reconnectAttempts.current++;
 
-      // Smart reconnection with exponential backoff, but cap at 5 seconds max
+      // Smart reconnection with exponential backoff
       if (event.code !== 1000 && user) {
-        const baseDelay = Math.min(1000 * Math.pow(1.5, reconnectAttempts.current - 1), 5000);
-        const jitter = Math.random() * 1000; // Add jitter to prevent thundering herd
-        const delay = Math.min(baseDelay + jitter, 5000);
+        // First try: 2s + jitter
+        // Second try: 6s + jitter
+        // Max cap: 40s
+        let delay: number;
+        const jitter = Math.random() * 1000;
+
+        if (reconnectAttempts.current === 1) {
+          delay = 2000 + jitter;
+        } else if (reconnectAttempts.current === 2) {
+          delay = 6000 + jitter;
+        } else {
+          const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempts.current - 1), 40000);
+          delay = Math.min(baseDelay + jitter, 40000);
+        }
 
         console.log(`⏳ Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempts.current})`);
 
@@ -505,21 +517,10 @@ export function useWebSocket() {
 
     window.addEventListener('send_websocket_ping', handleSendPing as EventListener);
 
-    // Enhanced heartbeat with connection quality monitoring - send ping every 50 seconds
-    const pingInterval = setInterval(() => {
-      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-        lastPingTime.current = Date.now();
-        ws.current.send(JSON.stringify({ 
-          type: 'ping', 
-          timestamp: lastPingTime.current,
-          keepAlive: true 
-        }));
-      }
-    }, 50000); // Optimized ping frequency for stable connections
-
+    // Native ping is handled by browser. Application-level heartbeat removed to decrease load.
     return () => {
       window.removeEventListener('send_websocket_ping', handleSendPing as EventListener);
-      clearInterval(pingInterval); // Clean up heartbeat interval
+      // pingInterval removed
 
       // Clear reconnection timeout on cleanup
       if (reconnectTimeout.current) {

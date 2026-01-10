@@ -37,8 +37,8 @@ export function QuickChat() {
   const { data: onlineFriendsData = [] } = useQuery<BasicFriendInfo[]>({
     queryKey: ['/api/friends/online'],
     enabled: !!user,
-    refetchInterval: false, // Disable polling - reduces mobile data usage
-    staleTime: 120000, // Cache for 2 minutes
+    refetchInterval: 60000, // Disable polling - reduces mobile data usage
+    staleTime: 0, // Cache for 2 minutes
   });
 
   // Sort online friends by unread messages (friends with messages appear first)

@@ -48,9 +48,13 @@ export function PlayerList({ roomId }: PlayerListProps) {
     }
 
     // Handle room_participant_joined events (for other users in the room)
-    if (message.type === 'room_participant_joined' && message.roomId === roomId) {
+    if ((message.type === 'room_participant_joined' || message.type === 'game_started') && message.roomId === roomId) {
       if (message.participants) {
         setParticipants(message.participants);
+      } else if (message.game && message.type === 'game_started') {
+        // If it's a game_started message without a full participants list, 
+        // we can still infer the players to show them immediately
+        // but usually our server sends participants in game_started for online matches
       }
     }
 
