@@ -111,6 +111,7 @@ const TopPlayerCard = ({ entry, position, onClick }: { entry: WeeklyLeaderboardU
       whileHover={{ scale: 1.05, y: -3 }}
       // Increased max-w for card width: max-w-[100px]
       className={`flex flex-col items-center text-center p-1 rounded-lg cursor-pointer transition-all duration-300 relative max-w-[100px] w-full ${getTopPlayerStyle(position)}`}
+      style={{ scale: position === 2 ? 0.9 : position === 3 ? 0.81 : 1 }}
       onClick={onClick}
     >
       {getRankIndicator(position)}

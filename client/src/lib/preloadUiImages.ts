@@ -3,7 +3,10 @@ import level from "./level.png";
 import vip from "./vip.png";
 import quickMatchImg from "./Quick Match.png";
 import roomImg from "./Room.png";
-const URLS = [victory, level, vip, quickMatchImg, roomImg];
+import img from "./logo.png";
+import start from "./start.png";
+import leaderboard from "./leaderboard.png";
+const URLS = [victory, level, vip, quickMatchImg, roomImg, img, start, leaderboard];
 
 export async function preloadUiImages(): Promise<void> {
   await Promise.all(

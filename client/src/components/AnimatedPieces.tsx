@@ -25,7 +25,8 @@ interface AnimatedPieceProps {
     | "aurora"
     | "hypernova"
     | "christmas"
-    | "newyear";
+    | "newyear"
+    | "water";
   className?: string;
   position?: number;
 }
@@ -191,6 +192,14 @@ const AnimatedPieceComponent = ({ symbol, style = "default", className = "", pos
       <NewYearX className={className} uniqueId={uniqueId} />
     ) : (
       <NewYearO className={className} uniqueId={uniqueId} />
+    );
+  }
+
+  if (style === "water") {
+    return symbol === "X" ? (
+      <WaterX className={className} uniqueId={uniqueId} />
+    ) : (
+      <WaterO className={className} uniqueId={uniqueId} />
     );
   }
 
@@ -6149,15 +6158,205 @@ function NewYearO({ className = "", uniqueId }: { className?: string; uniqueId: 
             animate={{ scale: 1, rotate: 0 }}
             transition={{ duration: 0.5, delay: 0.6, type: "spring" }}
           />
-          <motion.path
-            d="M 50 58 L 51 61 L 54 61 L 52 63 L 53 66 L 50 64 L 47 66 L 48 63 L 46 61 L 49 61 Z"
-            fill="#E8D5B7"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.8, type: "spring" }}
-          />
         </motion.g>
       </svg>
     </motion.div>
+  );
+}
+
+function WaterX({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <div className={`animated-piece-container ${className}`}>
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <linearGradient id={`waterGradX-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "#7dd3fc", stopOpacity: 1 }} />
+            <stop offset="50%" style={{ stopColor: "#38bdf8", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#0284c7", stopOpacity: 1 }} />
+          </linearGradient>
+          <radialGradient id={`dropGradX-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "#bae6fd", stopOpacity: 0.8 }} />
+            <stop offset="100%" style={{ stopColor: "#0ea5e9", stopOpacity: 0 }} />
+          </radialGradient>
+          <filter id={`waterBevelX-${uniqueId}`}>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="blur"/>
+            <feSpecularLighting in="blur" surfaceScale="5" specularConstant="0.75" specularExponent="20" lightingColor="white" result="spec">
+              <fePointLight x="-5000" y="-10000" z="20000"/>
+            </feSpecularLighting>
+            <feComposite in="spec" in2="SourceAlpha" operator="in" result="spec"/>
+            <feComposite in="SourceGraphic" in2="spec" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+          </filter>
+        </defs>
+
+        {/* Dynamic Water Ripples */}
+        {[0.4, 0.7, 1.0].map((delay, i) => (
+          <motion.circle
+            key={i}
+            cx="50"
+            cy="50"
+            r="10"
+            fill="none"
+            stroke="rgba(125, 211, 252, 0.3)"
+            strokeWidth="1"
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 4, opacity: 0 }}
+            transition={{
+              duration: 2,
+              delay: delay,
+              repeat: Infinity,
+              ease: "easeOut"
+            }}
+          />
+        ))}
+
+        {/* Ambient Bubbles */}
+        {[...Array(8)].map((_, i) => (
+          <motion.circle
+            key={i}
+            cx={15 + Math.random() * 70}
+            cy={25 + Math.random() * 50}
+            r={2 + Math.random() * 3}
+            fill="rgba(255, 255, 255, 0.7)"
+            stroke="rgba(125, 211, 252, 0.4)"
+            strokeWidth="0.5"
+            initial={{ y: 20, opacity: 0, scale: 0.5 }}
+            animate={{ y: -45, opacity: [0, 0.9, 0], scale: [0.5, 1.2, 0.8] }}
+            transition={{
+              duration: 2.5,
+              repeat: 2,
+              delay: Math.random() * 1.5,
+              ease: "easeOut"
+            }}
+          />
+        ))}
+
+        <motion.path
+          d="M 25 25 L 75 75 M 75 25 L 25 75"
+          stroke={`url(#waterGradX-${uniqueId})`}
+          strokeWidth="14"
+          strokeLinecap="round"
+          fill="none"
+          filter={`url(#waterBevelX-${uniqueId})`}
+          initial={{ pathLength: 0, opacity: 0, scale: 0.5, rotate: -45 }}
+          animate={{ pathLength: 1, opacity: 1, scale: 1, rotate: 0 }}
+          transition={{ 
+            duration: 0.8, 
+            ease: "backOut",
+            pathLength: { duration: 0.6, ease: "easeInOut" }
+          }}
+        />
+        
+        <motion.path
+          d="M 30 20 Q 50 10 70 20"
+          stroke="rgba(255, 255, 255, 0.4)"
+          strokeWidth="2"
+          fill="none"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.8 }}
+        />
+      </svg>
+    </div>
+  );
+}
+
+function WaterO({ className = "", uniqueId }: { className?: string; uniqueId: string }) {
+  return (
+    <div className={`animated-piece-container ${className}`}>
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        style={{ transformStyle: "preserve-3d" }}
+      >
+        <defs>
+          <radialGradient id={`waterGradO-${uniqueId}`}>
+            <stop offset="0%" style={{ stopColor: "#7dd3fc", stopOpacity: 1 }} />
+            <stop offset="60%" style={{ stopColor: "#38bdf8", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#0284c7", stopOpacity: 1 }} />
+          </radialGradient>
+          <filter id={`waterBevelO-${uniqueId}`}>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="blur"/>
+            <feSpecularLighting in="blur" surfaceScale="5" specularConstant="0.75" specularExponent="20" lightingColor="white" result="spec">
+              <fePointLight x="-5000" y="-10000" z="20000"/>
+            </feSpecularLighting>
+            <feComposite in="spec" in2="SourceAlpha" operator="in" result="spec"/>
+            <feComposite in="SourceGraphic" in2="spec" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+          </filter>
+        </defs>
+
+        {/* Dynamic Water Ripples */}
+        {[0.4, 0.7, 1.0].map((delay, i) => (
+          <motion.circle
+            key={i}
+            cx="50"
+            cy="50"
+            r="10"
+            fill="none"
+            stroke="rgba(125, 211, 252, 0.3)"
+            strokeWidth="1"
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 4, opacity: 0 }}
+            transition={{
+              duration: 2,
+              delay: delay,
+              repeat: Infinity,
+              ease: "easeOut"
+            }}
+          />
+        ))}
+
+        {/* Ambient Bubbles */}
+        {[...Array(8)].map((_, i) => (
+          <motion.circle
+            key={i}
+            cx={15 + Math.random() * 70}
+            cy={25 + Math.random() * 50}
+            r={2 + Math.random() * 3}
+            fill="rgba(255, 255, 255, 0.7)"
+            stroke="rgba(125, 211, 252, 0.4)"
+            strokeWidth="0.5"
+            initial={{ y: 20, opacity: 0, scale: 0.5 }}
+            animate={{ y: -45, opacity: [0, 0.9, 0], scale: [0.5, 1.2, 0.8] }}
+            transition={{
+              duration: 2.5,
+              repeat: 2,
+              delay: Math.random() * 1.5,
+              ease: "easeOut"
+            }}
+          />
+        ))}
+
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="30"
+          stroke={`url(#waterGradO-${uniqueId})`}
+          strokeWidth="14"
+          fill="none"
+          filter={`url(#waterBevelO-${uniqueId})`}
+          initial={{ pathLength: 0, opacity: 0, scale: 0.5, rotate: -90 }}
+          animate={{ pathLength: 1, opacity: 1, scale: 1, rotate: 0 }}
+          transition={{ 
+            duration: 0.8, 
+            ease: "backOut",
+            pathLength: { duration: 0.6, ease: "easeInOut" }
+          }}
+        />
+
+        <motion.path
+          d="M 35 35 Q 50 25 65 35"
+          stroke="rgba(255, 255, 255, 0.4)"
+          strokeWidth="2"
+          fill="none"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.8 }}
+        />
+      </svg>
+    </div>
   );
 }

@@ -46,7 +46,7 @@ import { formatNumber } from "@/lib/utils";
 import { CachedProfileImage } from "@/components/CachedProfileImage";
 import quickMatchImg from "@/lib/Quick Match.png";
 import roomImg from "@/lib/Room.png";
-
+import leaderboardPng from "@/lib/leaderboard.png";
 
 export default function Home() {
   const { user } = useAuth();
@@ -319,16 +319,21 @@ export default function Home() {
       if (!user) return;
 
       try {
+        console.log('🏆 Checking for pending rank popup...');
         const response = await fetch('/api/user/pending-rank-popup', {
           credentials: 'include'
         });
 
         if (response.ok) {
           const result = await response.json();
+          console.log('🏆 Rank popup check result:', result);
           if (result.hasPendingPopup && result.rankData) {
+            console.log('🏆 Showing rank popup with data:', result.rankData);
             setMonthlyRankData(result.rankData);
             setShowMonthlyRankPopup(true);
           }
+        } else {
+          console.error('🏆 Rank popup check failed with status:', response.status);
         }
       } catch (error) {
         console.error('Error checking for pending rank popup:', error);
@@ -2119,14 +2124,14 @@ export default function Home() {
             <div className="relative flex items-center space-x-2 sm:space-x-3 md:space-x-4">
               {/* Leaderboard Button - Larger Size */}
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setShowLeaderboard(true)}
-                className="relative bg-gradient-to-r from-yellow-600 to-orange-600 border-yellow-500/50 text-white hover:from-yellow-500 hover:to-orange-500 px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-2.5 rounded-xl shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 backdrop-blur-sm"
+                className="relative bg-transparent border-none text-white hover:bg-transparent shadow-none hover:shadow-none p-0 rounded-xl transition-none"
                 data-testid="button-leaderboard"
               >
-                <Trophy className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                <span className="hidden md:inline ml-2 font-semibold text-sm">{t('leaderboard') || 'Leaderboard'}</span>
+                <img src={leaderboardPng} alt="Leaderboard" className="w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 object-contain" />
+               
               </Button>
 
               {/* Watch Video Button */}
@@ -2709,6 +2714,7 @@ export default function Home() {
         <MonthlyRankPopup
           isOpen={showMonthlyRankPopup}
           onClose={() => {
+            console.log('🏆 Closing rank popup');
             setShowMonthlyRankPopup(false);
             setMonthlyRankData(null);
           }}

@@ -1,3 +1,4 @@
+import startPng from "@/lib/start.png";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -104,41 +105,29 @@ function Router() {
   // Show loading screen during authentication check (but only for a limited time)
   if (isLoading && !hasInitiallyLoaded && isInitialLoad) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden">
-        {/* Background animated particles */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse animation-delay-1000"></div>
-          <div className="absolute top-1/3 left-1/4 w-60 h-60 bg-purple-500/5 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
-        </div>
-
+      <div className="fixed inset-0 flex items-center justify-center z-50 overflow-hidden bg-black">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat brightness-110 contrast-110"
+          style={{ 
+            backgroundImage: `url(${startPng})`,
+            backgroundSize: '100% 100%',
+            backgroundPosition: 'center',
+            height: '100%',
+            width: '100%'
+          }}
+        />
+        
         {/* Main content */}
-        <div className="relative text-center space-y-4">
-          {/* Made By DarkLayer Studios with enhanced styling */}
-          <div className="relative group">
-            <div className="text-2xl md:text-3xl font-bold tracking-wide">
-              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-pulse">
-                Made By
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-pink-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent font-black text-3xl md:text-4xl tracking-wider animate-fade-in animation-delay-500">
-                DarkLayer Studios
-              </span>
-            </div>
-            
-            {/* Glowing border effect */}
-            <div className="absolute inset-0 -z-10 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-lg blur-xl animate-pulse group-hover:blur-2xl transition-all duration-300"></div>
-            
-            {/* Sparkle effects */}
-            <div className="absolute -top-2 -right-2 w-3 h-3 bg-blue-400 rounded-full animate-ping"></div>
-            <div className="absolute -bottom-2 -left-2 w-2 h-2 bg-purple-400 rounded-full animate-ping animation-delay-500"></div>
-            <div className="absolute top-1/2 -left-4 w-1 h-1 bg-pink-400 rounded-full animate-ping animation-delay-1000"></div>
+        <div className="relative flex flex-col items-center justify-end h-full py-20 w-full max-w-md px-8">
+          <div className="text-center space-y-2">
+            <p className="text-[#4ade80] text-xs font-bold tracking-[0.3em] uppercase [text-shadow:1px_1px_2px_black,0_0_1em_black,0_0_0.2em_black] drop-shadow-lg">
+              Crafting Digital Experiences
+            </p>
+            <p className="text-[#4ade80] font-black text-sm tracking-[0.4em] uppercase [text-shadow:1px_1px_2px_black,0_0_1em_black,0_0_0.2em_black] drop-shadow-lg">
+              Made By DarkLayer Studios
+            </p>
           </div>
-
-          {/* Subtitle */}
-          <p className="text-slate-400 text-sm md:text-base font-medium animate-fade-in animation-delay-1000 tracking-wide">
-            Crafting Digital Experiences
-          </p>
         </div>
       </div>
     );

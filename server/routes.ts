@@ -5586,23 +5586,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
 
                 if (game.status !== 'active') {
-                   console.warn(`⚠️ Move Warning: Game ${gameId} status is '${game.status}', not 'active'. Attempting to force active if roomId exists.`);
-                   if (game.roomId) {
-                      await storage.updateRoomStatus(game.roomId, 'active');
-                      await storage.updateGameStatus(gameId, 'active'); // ALSO FORCE GAME STATUS
-                      // Re-fetch game state to ensure we have the updated status for the rest of the logic
-                      const updatedGame = await storage.getGameById(gameId);
-                      // ALLOW TRANSITION FROM EXPIRED TO ACTIVE
-                      if (!updatedGame || (updatedGame.status !== 'active' && updatedGame.status !== 'expired' && updatedGame.status !== 'pending')) {
-                        moveConnection.ws.send(JSON.stringify({ type: 'error', message: 'game not active' }));
-                        break;
-                      }
-                      // Use the updated game state for the rest of the turn validation
-                      Object.assign(game, updatedGame);
-                   } else {
-                      moveConnection.ws.send(JSON.stringify({ type: 'error', message: 'game not active' }));
-                      break;
-                   }
+                   moveConnection.ws.send(JSON.stringify({ type: 'error', message: 'game not active' }));
+                   break;
                 }
 
                 // Validate it's the player's turn

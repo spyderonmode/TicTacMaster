@@ -1,14 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { UserPlus, Users, Send, Check } from 'lucide-react';
-import { useTranslation } from '@/contexts/LanguageContext';
+import { UserPlus, Users, Send, Check, Globe } from 'lucide-react';
+import { useTranslation, useLanguage } from '@/contexts/LanguageContext';
 import { BasicFriendInfo } from '@shared/schema';
 import { CachedProfileImage } from './CachedProfileImage';
+import { Language } from '@/lib/i18n';
+
+export function LanguageSelector() {
+  const { t, language } = useTranslation();
+  const { setLanguage } = useLanguage();
+  const [open, setOpen] = useState(false);
+
+  const languages: { code: Language; name: string }[] = [
+    { code: 'en', name: 'English' },
+    { code: 'es', name: 'Español' },
+    { code: 'hi', name: 'हिन्दी' },
+    { code: 'bn', name: 'বাংলা' },
+    { code: 'ar', name: 'العربية' },
+    { code: 'id', name: 'Bahasa Indonesia' },
+  ];
+
+  return (
+    <>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)} className="flex items-center gap-2">
+        <Globe className="h-4 w-4" />
+        <span className="uppercase">{language}</span>
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('language')}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 py-4">
+            {languages.map((lang) => (
+              <Button
+                key={lang.code}
+                variant={language === lang.code ? "default" : "outline"}
+                onClick={() => {
+                  setLanguage(lang.code);
+                  setOpen(false);
+                }}
+                className="justify-start"
+              >
+                {lang.name}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 interface InviteFriendsModalProps {
   open: boolean;

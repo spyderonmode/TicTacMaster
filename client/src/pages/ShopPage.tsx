@@ -193,6 +193,13 @@ const PIECE_STYLES = [
     price: 550000000,
     isDefault: false,
   },
+  {
+    id: "water",
+    name: "3D Water",
+    description: "Serene 3D water design with a clean, liquid appearance - pure tranquility!",
+    price: 700000000,
+    isDefault: false,
+  },
 ];
 
 const AVATAR_FRAMES = [
