@@ -1433,139 +1433,185 @@ export class DatabaseStorage implements IStorage {
 
   async getPlayerRankings(sortBy: string): Promise<any[]> {
     try {
-      // Get all users with their online game stats
-      const usersWithStats = await db.select({
-        userId: users.id,
-        displayName: users.displayName,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        profileImageUrl: users.profileImageUrl,
-        wins: users.wins,
-        losses: users.losses,
-        draws: users.draws,
-        createdAt: users.createdAt
-      })
-      .from(users)
-      .where(
-        sql`${users.wins} + ${users.losses} + ${users.draws} > 0`
-      );
-
-      // Calculate rankings with additional metrics
-      const rankings = await Promise.all(
-        usersWithStats.map(async (user, index) => {
-          const totalGames = user.wins + user.losses + user.draws;
-          const winRate = totalGames > 0 ? (user.wins / totalGames) * 100 : 0;
-
-          // Get recent games for streak calculation
-          const recentGames = await db.select({
-            winnerId: games.winnerId,
-            status: games.status,
-            createdAt: games.createdAt
+      if (sortBy === 'earnings') {
+        // Special logic for earnings: Fetch top earners from coin_transactions
+        const topEarners = await db
+          .select({
+            userId: coinTransactions.userId,
+            totalEarnings: sql<number>`SUM(${coinTransactions.amount})`.mapWith(Number),
           })
-          .from(games)
-          .where(
-            and(
-              or(
-                eq(games.playerXId, user.userId),
-                eq(games.playerOId, user.userId)
-              ),
-              eq(games.gameMode, 'online'),
-              eq(games.status, 'finished')
-            )
-          )
-          .orderBy(desc(games.createdAt))
+          .from(coinTransactions)
+          .where(and(isNotNull(coinTransactions.userId), gt(coinTransactions.amount, 0)))
+          .groupBy(coinTransactions.userId)
+          .orderBy(desc(sql`SUM(${coinTransactions.amount})`))
           .limit(10);
 
-          // Calculate current streak
-          let streak = 0;
-          let streakType: 'win' | 'loss' | 'draw' = 'win';
+        if (topEarners.length === 0) return [];
 
-          if (recentGames.length > 0) {
-            const latestGame = recentGames[0];
-            if (latestGame.winnerId === user.userId) {
-              streakType = 'win';
-            } else if (latestGame.winnerId === null) {
-              streakType = 'draw';
-            } else {
-              streakType = 'loss';
-            }
+        const userIds = topEarners.map(e => e.userId as string);
+        const userDetails = await db
+          .select()
+          .from(users)
+          .where(inArray(users.id, userIds));
 
-            // Count consecutive games with same result
-            for (const game of recentGames) {
-              let gameResult: 'win' | 'loss' | 'draw';
-              if (game.winnerId === user.userId) {
-                gameResult = 'win';
-              } else if (game.winnerId === null) {
-                gameResult = 'draw';
-              } else {
-                gameResult = 'loss';
-              }
+        const userMap = new Map(userDetails.map(u => [u.id, u]));
 
-              if (gameResult === streakType) {
-                streak++;
-              } else {
-                break;
-              }
-            }
-          }
-
+        return topEarners.map((earner, index) => {
+          const user = userMap.get(earner.userId as string);
           return {
-            userId: user.userId,
-            displayName: user.displayName,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            profileImageUrl: user.profileImageUrl,
-            wins: user.wins,
-            losses: user.losses,
-            draws: user.draws,
-            totalGames,
-            winRate,
-            streak,
-            streakType,
-            rankChange: 0, // Would need previous rankings to calculate
-            createdAt: user.createdAt
+            id: earner.userId,
+            username: user?.username || 'Unknown',
+            displayName: user?.displayName || 'Unknown',
+            profileImageUrl: user?.profileImageUrl,
+            wins: user?.wins || 0,
+            coins: user?.coins || 0,
+            rank: index + 1,
+            level: getLevelFromWins(user?.wins || 0),
+            totalEarnings: earner.totalEarnings
           };
-        })
-      );
-
-      // Sort rankings based on sortBy parameter
-      let sortedRankings;
-      switch (sortBy) {
-        case 'wins':
-          sortedRankings = rankings.sort((a, b) => {
-            if (b.wins !== a.wins) return b.wins - a.wins;
-            return b.winRate - a.winRate; // Secondary sort by win rate
-          });
-          break;
-        case 'totalGames':
-          sortedRankings = rankings.sort((a, b) => {
-            if (b.totalGames !== a.totalGames) return b.totalGames - a.totalGames;
-            return b.winRate - a.winRate; // Secondary sort by win rate
-          });
-          break;
-        case 'winRate':
-        default:
-          sortedRankings = rankings.sort((a, b) => {
-            if (b.winRate !== a.winRate) return b.winRate - a.winRate;
-            if (b.totalGames !== a.totalGames) return b.totalGames - a.totalGames; // Secondary sort by total games
-            return b.wins - a.wins; // Tertiary sort by wins
-          });
-          break;
+        });
       }
 
-      // Add rank numbers
-      return sortedRankings.map((player, index) => ({
-        ...player,
-        rank: index + 1
-      }));
+      let orderByClause;
+      if (sortBy === 'wins') {
+        orderByClause = desc(users.wins);
+      } else if (sortBy === 'level') {
+        orderByClause = desc(users.wins); // Level is derived from wins
+      } else {
+        orderByClause = desc(users.coins);
+      }
 
+      const results = await db.select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        profileImageUrl: users.profileImageUrl,
+        wins: users.wins,
+        coins: users.coins,
+      })
+      .from(users)
+      .where(and(isNotNull(users.username), ne(users.id, 'AI')))
+      .orderBy(orderByClause)
+      .limit(10);
+
+      return Promise.all(results.map(async (user, index) => {
+        const totalEarnings = await this.getTotalEarnings(user.id);
+        return {
+          ...user,
+          rank: index + 1,
+          level: getLevelFromWins(user.wins || 0),
+          totalEarnings: totalEarnings
+        };
+      }));
     } catch (error) {
       console.error('Error fetching player rankings:', error);
+      return [];
+    }
+  }
+
+  private async getTotalEarnings(userId: string): Promise<number> {
+    try {
+      const result = await db
+        .select({
+          total: sql<number>`COALESCE(SUM(amount), 0)`
+        })
+        .from(coinTransactions)
+        .where(
+          and(
+            eq(coinTransactions.userId, userId),
+            gt(coinTransactions.amount, 0)
+          )
+        );
+      return Number(result[0]?.total || 0);
+    } catch (error) {
+      console.error('Error calculating total earnings:', error);
+      return 0;
+    }
+  }
+
+  async getPlayerProfile(playerId: string): Promise<{
+    id: string;
+    username: string;
+    displayName: string;
+    profileImageUrl?: string;
+    wins: number;
+    losses: number;
+    draws: number;
+    totalGames: number;
+    coins: number;
+    totalEarnings: number;
+    level: number;
+    winsToNextLevel: number;
+    currentWinStreak: number;
+    bestWinStreak: number;
+    createdAt: string;
+    selectedAchievementBorder?: string;
+    achievements: Array<{
+      id: string;
+      name: string;
+      description: string;
+      icon: string;
+      unlockedAt: string;
+    }>;
+  } | null> {
+    try {
+      // Get user data
+      const user = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, playerId))
+        .limit(1);
+
+      if (user.length === 0) {
+        return null;
+      }
+
+      const userData = user[0];
+
+      // Get user achievements
+      const userAchievements = await db
+        .select()
+        .from(achievements)
+        .where(eq(achievements.userId, playerId))
+        .orderBy(desc(achievements.unlockedAt));
+
+      const totalGames = (userData.wins || 0) + (userData.losses || 0) + (userData.draws || 0);
+      const wins = userData.wins || 0;
+      const level = getLevelFromWins(wins);
+      const winsToNextLevel = getWinsToNextLevel(wins);
+      const totalEarnings = await this.getTotalEarnings(playerId);
+
+      return {
+        id: userData.id,
+        username: userData.username || 'Unknown',
+        displayName: userData.displayName || userData.username || 'Unknown',
+        profileImageUrl: userData.profileImageUrl || undefined,
+        wins: wins,
+        losses: userData.losses || 0,
+        draws: userData.draws || 0,
+        totalGames,
+        coins: userData.coins ?? 2000,
+        totalEarnings,
+        level: level,
+        winsToNextLevel: winsToNextLevel,
+        currentWinStreak: userData.currentWinStreak || 0,
+        bestWinStreak: userData.bestWinStreak || 0,
+        createdAt: userData.createdAt?.toISOString() || new Date().toISOString(),
+        selectedAchievementBorder: userData.selectedAchievementBorder || undefined,
+        achievements: userAchievements.map(achievement => ({
+          id: achievement.id,
+          name: achievement.achievementName,
+          description: achievement.description,
+          icon: achievement.icon,
+          unlockedAt: achievement.unlockedAt?.toISOString() || new Date().toISOString()
+        }))
+      };
+    } catch (error) {
+      console.error('Error fetching player profile:', error);
       throw error;
     }
   }
 
-  // Achievement operations
   async createAchievement(achievementData: InsertAchievement): Promise<Achievement> {
     const [achievement] = await db
       .insert(achievements)
@@ -2966,24 +3012,6 @@ export class DatabaseStorage implements IStorage {
     }).where(eq(users.id, userId));
   }
 
-  async getTotalEarnings(userId: string): Promise<number> {
-    try {
-      const result = await db
-        .select({ total: sql<number>`COALESCE(SUM(${coinTransactions.amount}), 0)` })
-        .from(coinTransactions)
-        .where(
-          and(
-            eq(coinTransactions.userId, userId),
-            sql`${coinTransactions.amount} > 0`
-          )
-        );
-      return result[0]?.total || 0;
-    } catch (error) {
-      console.error('Error calculating total earnings:', error);
-      return 0;
-    }
-  }
-
   async processCoinTransaction(userId: string, amount: number, type: string, gameId?: string): Promise<void> {
     const currentCoins = await this.getUserCoins(userId);
     const newBalance = currentCoins + amount;
@@ -3162,89 +3190,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-
-  async getPlayerProfile(playerId: string): Promise<{
-    id: string;
-    username: string;
-    displayName: string;
-    profileImageUrl?: string;
-    wins: number;
-    losses: number;
-    draws: number;
-    totalGames: number;
-    coins: number;
-    totalEarnings: number;
-    level: number;
-    winsToNextLevel: number;
-    currentWinStreak: number;
-    bestWinStreak: number;
-    createdAt: string;
-    selectedAchievementBorder?: string;
-    achievements: Array<{
-      id: string;
-      name: string;
-      description: string;
-      icon: string;
-      unlockedAt: string;
-    }>;
-  } | null> {
-    try {
-      // Get user data
-      const user = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, playerId))
-        .limit(1);
-
-      if (user.length === 0) {
-        return null;
-      }
-
-      const userData = user[0];
-
-      // Get user achievements
-      const userAchievements = await db
-        .select()
-        .from(achievements)
-        .where(eq(achievements.userId, playerId))
-        .orderBy(desc(achievements.unlockedAt));
-
-      const totalGames = (userData.wins || 0) + (userData.losses || 0) + (userData.draws || 0);
-      const wins = userData.wins || 0;
-      const level = getLevelFromWins(wins);
-      const winsToNextLevel = getWinsToNextLevel(wins);
-      const totalEarnings = await this.getTotalEarnings(playerId);
-
-      return {
-        id: userData.id,
-        username: userData.username || 'Unknown',
-        displayName: userData.displayName || userData.username || 'Unknown',
-        profileImageUrl: userData.profileImageUrl || undefined,
-        wins: wins,
-        losses: userData.losses || 0,
-        draws: userData.draws || 0,
-        totalGames,
-        coins: userData.coins ?? 2000,
-        totalEarnings,
-        level: level,
-        winsToNextLevel: winsToNextLevel,
-        currentWinStreak: userData.currentWinStreak || 0,
-        bestWinStreak: userData.bestWinStreak || 0,
-        createdAt: userData.createdAt?.toISOString() || new Date().toISOString(),
-        selectedAchievementBorder: userData.selectedAchievementBorder || undefined,
-        achievements: userAchievements.map(achievement => ({
-          id: achievement.id,
-          name: achievement.achievementName,
-          description: achievement.description,
-          icon: achievement.icon,
-          unlockedAt: achievement.unlockedAt?.toISOString() || new Date().toISOString()
-        }))
-      };
-    } catch (error) {
-      console.error('Error fetching player profile:', error);
-      throw error;
-    }
-  }
 
   async getDetailedHeadToHeadStats(currentUserId: string, targetUserId: string): Promise<{
     totalGames: number;

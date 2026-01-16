@@ -6,7 +6,8 @@ import roomImg from "./Room.png";
 import img from "./logo.png";
 import start from "./start.png";
 import leaderboard from "./leaderboard.png";
-const URLS = [victory, level, vip, quickMatchImg, roomImg, img, start, leaderboard];
+import globe from "./globe.png";
+const URLS = [victory, level, vip, quickMatchImg, roomImg, img, start, leaderboard, globe];
 
 export async function preloadUiImages(): Promise<void> {
   await Promise.all(

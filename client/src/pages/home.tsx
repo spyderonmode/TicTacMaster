@@ -30,6 +30,7 @@ import { ErrorModal } from "@/components/ErrorModal";
 import { ConnectingOverlay } from "@/components/ConnectingOverlay";
 import { QuickChat } from "@/components/QuickChat";
 import { DailyRewardModal } from "@/components/DailyRewardModal";
+import { GlobalStatsModal } from "@/components/GlobalStatsModal";
 import { VideoRewardsButton } from "@/components/VideoRewardsButton";
 import ShopPage from "@/pages/ShopPage";
 
@@ -112,7 +113,7 @@ export default function Home() {
   const { data: userStats } = useQuery({
     queryKey: ["/api/users", (user as any)?.userId, "online-stats"],
     enabled: !!user && !!(user as any)?.userId,
-    staleTime: 30000, // Increased stale time to 30 seconds
+    staleTime: 0, 
   });
 
   const refreshUserStats = () => {
@@ -168,6 +169,7 @@ export default function Home() {
   // Prefetch leaderboard data on app load to eliminate wait time
   useEffect(() => {
     if (user) {
+      queryClient.invalidateQueries({ queryKey: ["/api/leaderboard/global"] });
       queryClient.prefetchQuery({
         queryKey: ['/api/leaderboard/weekly', language],
         queryFn: async () => {
@@ -185,6 +187,18 @@ export default function Home() {
           return await response.json();
         },
         staleTime: 30000, // Cache for 30 seconds
+      });
+      // Prefetch global stats
+      ['earnings', 'wins', 'level'].forEach(tab => {
+        queryClient.prefetchQuery({
+          queryKey: ["/api/leaderboard/global", tab],
+          queryFn: async () => {
+            const response = await fetch(`/api/leaderboard/global?tab=${tab}`);
+            if (!response.ok) throw new Error("Failed to fetch rankings");
+            return response.json();
+          },
+          staleTime: 300000,
+        });
       });
     }
   }, [user, language, queryClient]);
@@ -2135,7 +2149,7 @@ export default function Home() {
               </Button>
 
               {/* Watch Video Button */}
-              <VideoRewardsButton />
+              <GlobalStatsModal />
 
               {/* Menu Button - Larger Size */}
               <div className="relative" ref={headerSidebarRef}>
@@ -2338,29 +2352,25 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Game Rules - Small Trigger Card (Moved to Bottom) */}
-        <Card 
-          className="mt-4 sm:mt-6 bg-gradient-to-r from-blue-600 to-purple-600 border-blue-500/50 cursor-pointer hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg hover:shadow-blue-500/25" 
-          onClick={() => setShowGameRules(true)}
-          data-testid="card-game-rules-trigger"
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-white/20 p-2 rounded-lg">
-                <BookOpen className="w-5 h-5 text-white" />
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mt-3 sm:mt-4 max-w-md mx-auto">
+          <Card 
+            className="bg-gradient-to-br from-blue-600/90 to-indigo-700/90 border-blue-400/30 cursor-pointer hover:from-blue-500 hover:to-indigo-600 transition-all duration-300 shadow-xl hover:shadow-blue-500/20 group overflow-hidden relative h-24" 
+            onClick={() => setShowGameRules(true)}
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-500" />
+            <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1.5 h-full">
+              <div className="bg-white/20 p-2 rounded-xl shadow-inner group-hover:rotate-12 transition-transform">
+                <BookOpen className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="text-white font-bold text-sm">{t('gameRules')}</h3>
-                <p className="text-white/80 text-xs">{t('clickToView') || 'Click to view rules'}</p>
+                <h3 className="text-white font-black text-[11px] tracking-tighter italic leading-none">{t('gameRules')}</h3>
+                <p className="text-blue-100 text-[7px] font-bold uppercase tracking-widest opacity-80 mt-1">{t('clickToView') || 'HOW TO PLAY'}</p>
               </div>
-            </div>
-            <div className="text-white/60">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <VideoRewardsButton />
+        </div>
 
         {/* Daily Reward Card */}
         <Card 
@@ -2415,8 +2425,8 @@ export default function Home() {
 
       {/* Game Rules Modal */}
       <Dialog open={showGameRules} onOpenChange={setShowGameRules}>
-        <DialogContent className="max-w-[60%] md:max-w-[44%] max-h-[56vh] md:max-h-[52vh] overflow-y-auto bg-slate-900 border-slate-700" data-testid="dialog-game-rules">
-          <DialogHeader className="pb-1">
+        <DialogContent className="max-w-[50%] md:max-w-[38%] max-h-[48vh] md:max-h-[44vh] overflow-y-auto bg-slate-900 border-slate-700" data-testid="dialog-game-rules">
+          <DialogHeader className="pb-0.5">
             <DialogTitle className="text-sm font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-1">
               <BookOpen className="w-3.5 h-3.5 text-blue-400" />
               {t('gameRules')}

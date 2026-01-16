@@ -87,41 +87,41 @@ export const GameModeSelector = memo(function GameModeSelector({ selectedMode, o
         </div>
 
         {/* Header with premium styling */}
-        <CardHeader className="relative z-10 pb-3 pt-5">
-          <div className="flex items-center justify-center gap-3">
+        <CardHeader className="relative z-10 pb-2 pt-4">
+          <div className="flex items-center justify-center gap-2">
             {/* Left decorative line */}
-            <div className="flex-1 h-[2px] bg-gradient-to-r from-transparent via-amber-500/50 to-amber-500" />
+            <div className="flex-1 h-[1.5px] bg-gradient-to-r from-transparent via-amber-500/50 to-amber-500" />
 
-            <CardTitle className="flex items-center gap-3 px-4">
+            <CardTitle className="flex items-center gap-2 px-3">
               <div className="relative">
-                <Trophy className="w-7 h-7 text-amber-400 animate-bounce-slow" />
+                <Trophy className="w-5 h-5 text-amber-400 animate-bounce-slow" />
               </div>
-              <span className="text-2xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-200">
+              <span className="text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-200">
                 {t('gameMode')}
               </span>
               <div className="relative">
-                <Swords className="w-6 h-6 text-amber-400 animate-pulse" />
+                <Swords className="w-4 h-4 text-amber-400 animate-pulse" />
               </div>
             </CardTitle>
 
             {/* Right decorative line */}
-            <div className="flex-1 h-[2px] bg-gradient-to-l from-transparent via-amber-500/50 to-amber-500" />
+            <div className="flex-1 h-[1.5px] bg-gradient-to-l from-transparent via-amber-500/50 to-amber-500" />
           </div>
         </CardHeader>
 
-        <CardContent className="relative z-10 space-y-4 px-5 pb-5">
+        <CardContent className="relative z-10 space-y-3 px-4 pb-4">
           {modes.map((mode) => {
             const Icon = mode.icon;
             const isSelected = selectedMode === mode.id;
 
             return (
-              <div key={mode.id} className="space-y-3">
+              <div key={mode.id} className="space-y-2">
                 {/* Mode button with premium effects */}
                 <div className="relative group">
                   {/* Selection glow ring */}
                   {isSelected && (
                     <div 
-                      className="absolute -inset-[3px] rounded-2xl animate-border-glow"
+                      className="absolute -inset-[2px] rounded-xl animate-border-glow"
                       style={{
                         background: `linear-gradient(90deg, ${mode.colors.primary}, ${mode.colors.secondary}, ${mode.colors.primary})`,
                         backgroundSize: '200% 100%'
@@ -135,9 +135,9 @@ export const GameModeSelector = memo(function GameModeSelector({ selectedMode, o
                     aria-pressed={isSelected}
                     aria-label={`${mode.name} - ${mode.description}`}
                     className={`
-                      relative w-full p-5 rounded-xl transition-all duration-500 ease-out overflow-hidden
+                      relative w-full p-4 rounded-lg transition-all duration-500 ease-out overflow-hidden
                       ${isSelected 
-                        ? 'bg-slate-900/95 scale-[1.02]' 
+                        ? 'bg-slate-900/95 scale-[1.01]' 
                         : 'bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 hover:border-slate-600/80'
                       }
                     `}
@@ -145,9 +145,9 @@ export const GameModeSelector = memo(function GameModeSelector({ selectedMode, o
                     {/* Inner glow for selected */}
                     {isSelected && (
                       <div 
-                        className="absolute inset-0 opacity-20"
+                        className="absolute inset-0 opacity-15"
                         style={{
-                          background: `radial-gradient(ellipse at center, ${mode.colors.primary}40 0%, transparent 70%)`
+                          background: `radial-gradient(ellipse at center, ${mode.colors.primary}30 0%, transparent 70%)`
                         }}
                       />
                     )}
@@ -158,29 +158,12 @@ export const GameModeSelector = memo(function GameModeSelector({ selectedMode, o
                       -translate-x-full group-hover:translate-x-full transition-transform duration-1000
                     `} />
 
-                    {/* Floating particles on selected */}
-                    {isSelected && [...Array(6)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute rounded-full animate-particle-rise"
-                        style={{
-                          width: '3px',
-                          height: '3px',
-                          background: mode.colors.primary,
-                          left: `${15 + i * 14}%`,
-                          bottom: '10%',
-                          animationDelay: `${i * 0.2}s`,
-                          opacity: 0.8
-                        }}
-                      />
-                    ))}
-
-                    <div className="relative z-10 flex items-center gap-5">
+                    <div className="relative z-10 flex items-center gap-4">
                       {/* Icon container */}
                       <div className="relative">
                         <div 
                           className={`
-                            p-4 rounded-xl transition-all duration-500 border
+                            p-3 rounded-lg transition-all duration-500 border
                             ${isSelected 
                               ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-white/20' 
                               : 'bg-slate-700/30 border-slate-600/30 group-hover:border-slate-500/50'
@@ -188,7 +171,7 @@ export const GameModeSelector = memo(function GameModeSelector({ selectedMode, o
                           `}
                         >
                           <Icon 
-                            className={`w-8 h-8 transition-all duration-500 ${isSelected ? 'animate-icon-pulse' : ''}`}
+                            className={`w-6 h-6 transition-all duration-500 ${isSelected ? 'animate-icon-pulse' : ''}`}
                             style={{ 
                               color: isSelected ? mode.colors.primary : '#94a3b8'
                             }}
@@ -200,18 +183,12 @@ export const GameModeSelector = memo(function GameModeSelector({ selectedMode, o
                       <div className="flex-1 text-left">
                         <h3 
                           className={`
-                            font-bold text-xl transition-all duration-500 mb-1
+                            font-bold text-lg transition-all duration-500 leading-tight
                             ${isSelected ? 'text-white' : 'text-slate-200 group-hover:text-white'}
                           `}
                         >
                           {mode.name}
                         </h3>
-                        <p className={`
-                          text-sm transition-all duration-300
-                          ${isSelected ? 'text-slate-300' : 'text-slate-400 group-hover:text-slate-300'}
-                        `}>
-                          {mode.description}
-                        </p>
                       </div>
 
                       {/* Selection indicator with crown */}
@@ -220,11 +197,11 @@ export const GameModeSelector = memo(function GameModeSelector({ selectedMode, o
                         ${isSelected ? 'scale-100 opacity-100 rotate-0' : 'scale-0 opacity-0 rotate-180'}
                       `}>
                         <div className="relative">
-                          <div className="p-2 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500">
-                            <Crown className="w-5 h-5 text-slate-900" />
+                          <div className="p-1.5 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500">
+                            <Crown className="w-4 h-4 text-slate-900" />
                           </div>
                           {/* Sparkle effects */}
-                          <Sparkles className="absolute -top-1 -right-1 w-4 h-4 text-amber-300 animate-spin-slow" />
+                          <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-amber-300 animate-spin-slow" />
                         </div>
                       </div>
                     </div>
@@ -233,62 +210,59 @@ export const GameModeSelector = memo(function GameModeSelector({ selectedMode, o
 
                 {/* AI Difficulty Selector - Premium version */}
                 {mode.id === 'ai' && selectedMode === 'ai' && (
-                  <div className="relative ml-6 animate-slide-down">
+                  <div className="relative ml-4 animate-slide-down">
                     {/* Connector line */}
-                    <div className="absolute -left-3 top-0 bottom-0 w-[2px] bg-gradient-to-b from-cyan-500/50 via-cyan-500/30 to-transparent" />
+                    <div className="absolute -left-2 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-cyan-500/50 via-cyan-500/30 to-transparent" />
 
-                    <div className="p-4 rounded-xl bg-slate-900/80 border border-cyan-500/30 backdrop-blur-sm">
-                      <div className="flex items-center gap-2 mb-3">
+                    <div className="p-3 rounded-lg bg-slate-900/80 border border-cyan-500/30 backdrop-blur-sm">
+                      <div className="flex items-center gap-2 mb-2">
                         <div className="relative">
-                          <Brain className="w-5 h-5 text-cyan-400" />
+                          <Brain className="w-4 h-4 text-cyan-400" />
                         </div>
-                        <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-400">
+                        <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-400">
                           {t('difficulty')}
                         </span>
                         <div className="flex-1 h-[1px] bg-gradient-to-r from-cyan-500/30 to-transparent" />
                       </div>
 
                       <Select value={aiDifficulty} onValueChange={(value: 'easy' | 'medium' | 'hard') => onDifficultyChange(value)}>
-                        <SelectTrigger className="w-full bg-slate-950/80 border-cyan-500/30 text-white hover:border-cyan-400/60 transition-all duration-300 h-12 rounded-lg">
+                        <SelectTrigger className="w-full bg-slate-950/80 border-cyan-500/30 text-white hover:border-cyan-400/60 transition-all duration-300 h-10 rounded-lg text-sm">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-950 border-cyan-500/40 rounded-xl overflow-hidden">
-                          <SelectItem value="easy" className="text-white hover:bg-cyan-500/20 focus:bg-cyan-500/20 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-1.5 rounded-lg bg-green-500/20">
-                                <Zap className="w-4 h-4 text-green-400" />
+                        <SelectContent className="bg-slate-950 border-cyan-500/40 rounded-lg overflow-hidden">
+                          <SelectItem value="easy" className="text-white hover:bg-cyan-500/20 focus:bg-cyan-500/20 py-2">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1 rounded-lg bg-green-500/20">
+                                <Zap className="w-3.5 h-3.5 text-green-400" />
                               </div>
-                              <span className="font-semibold">{t('easy')}</span>
+                              <span className="font-semibold text-sm">{t('easy')}</span>
                               <div className="flex ml-auto gap-0.5">
-                                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                                <Star className="w-4 h-4 text-slate-600" />
-                                <Star className="w-4 h-4 text-slate-600" />
+                                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                               </div>
                             </div>
                           </SelectItem>
-                          <SelectItem value="medium" className="text-white hover:bg-cyan-500/20 focus:bg-cyan-500/20 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-1.5 rounded-lg bg-yellow-500/20">
-                                <Brain className="w-4 h-4 text-yellow-400" />
+                          <SelectItem value="medium" className="text-white hover:bg-cyan-500/20 focus:bg-cyan-500/20 py-2">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1 rounded-lg bg-yellow-500/20">
+                                <Brain className="w-3.5 h-3.5 text-yellow-400" />
                               </div>
-                              <span className="font-semibold">{t('medium')}</span>
+                              <span className="font-semibold text-sm">{t('medium')}</span>
                               <div className="flex ml-auto gap-0.5">
-                                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                                <Star className="w-4 h-4 text-slate-600" />
+                                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                               </div>
                             </div>
                           </SelectItem>
-                          <SelectItem value="hard" className="text-white hover:bg-cyan-500/20 focus:bg-cyan-500/20 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-1.5 rounded-lg bg-red-500/20">
-                                <Cpu className="w-4 h-4 text-red-400" />
+                          <SelectItem value="hard" className="text-white hover:bg-cyan-500/20 focus:bg-cyan-500/20 py-2">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1 rounded-lg bg-red-500/20">
+                                <Cpu className="w-3.5 h-3.5 text-red-400" />
                               </div>
-                              <span className="font-semibold">{t('hard')}</span>
+                              <span className="font-semibold text-sm">{t('hard')}</span>
                               <div className="flex ml-auto gap-0.5">
-                                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                               </div>
                             </div>
                           </SelectItem>

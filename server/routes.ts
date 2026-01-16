@@ -1670,6 +1670,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Monthly Leaderboard endpoints
+  // ===== Leaderboard Routes =====
+
+  // Get global rankings
+  app.get('/api/leaderboard/global', async (req: any, res) => {
+    try {
+      const { sortBy = 'earnings', limit = 10 } = req.query;
+      const rankings = await storage.getPlayerRankings(sortBy as string);
+      // Slice result to respect the limit
+      const result = rankings.slice(0, parseInt(limit as string));
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching global rankings:", error);
+      res.status(500).json({ message: "Failed to fetch rankings" });
+    }
+  });
+
   app.get('/api/leaderboard/weekly', async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 50;

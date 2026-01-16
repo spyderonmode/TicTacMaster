@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Trophy, Medal, Award, TrendingUp, TrendingDown, Minus, User, BarChart3, PieChart, Activity, Zap, Crown, Star, Target } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatNumber } from "@/lib/utils";
 import { CachedProfileImage } from "./CachedProfileImage";
 
 interface PlayerRanking {
@@ -286,7 +287,7 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
                           {player.displayName || 'Unknown'}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {player.streak} {player.streakType}{player.streak > 1 ? 's' : ''}
+                          {formatNumber(player.streak)} {player.streakType}{player.streak > 1 ? 's' : ''}
                         </p>
                       </div>
                       <div className={`text-lg font-bold ${
@@ -296,7 +297,7 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
                           ? 'text-red-600'
                           : 'text-gray-600'
                       }`}>
-                        {player.streak}
+                        {formatNumber(player.streak)}
                       </div>
                     </div>
                   </motion.div>
@@ -325,7 +326,7 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Total Players</p>
-                  <p className="text-2xl font-bold">{stats.totalPlayers}</p>
+                  <p className="text-2xl font-bold">{formatNumber(stats.totalPlayers)}</p>
                 </div>
                 <User className="h-8 w-8 text-blue-500" />
               </div>
@@ -379,7 +380,7 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Top Streak</p>
-                  <p className="text-2xl font-bold">{stats.topStreak}</p>
+                  <p className="text-2xl font-bold">{formatNumber(stats.topStreak)}</p>
                 </div>
                 <Zap className="h-8 w-8 text-orange-500" />
               </div>
@@ -398,7 +399,7 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Total Games Played</p>
-                  <p className="text-3xl font-bold">{stats.totalGamesPlayed}</p>
+                  <p className="text-3xl font-bold">{formatNumber(stats.totalGamesPlayed)}</p>
                 </div>
                 <Activity className="h-8 w-8 text-indigo-500" />
               </div>
@@ -582,7 +583,7 @@ export function PlayerRankings({ currentUserId }: PlayerRankingsProps) {
                         <span className={`font-medium ${getWinRateColor(player.winRate)}`}>
                           {player.winRate.toFixed(1)}%
                         </span>
-                        <span>({player.wins}W-{player.losses}L-{player.draws}D)</span>
+                        <span>({formatNumber(player.wins)}W - {formatNumber(player.losses)}L - {formatNumber(player.draws)}D)</span>
                       </div>
                     </div>
                   </div>
