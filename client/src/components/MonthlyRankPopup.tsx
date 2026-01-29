@@ -189,9 +189,9 @@ const WeeklyRankPopup = ({
       {isOpen && (
         <Dialog open={isOpen} onOpenChange={onClose}>
           <DialogContent
-            // Adjusted max-width and padding for better fit
-            className="w-full max-w-sm mx-auto p-4 sm:p-6 bg-gradient-to-br from-slate-900 via-gray-900 to-black dark:from-slate-950 dark:via-gray-950 dark:to-black border-2 border-yellow-500/30 dark:border-yellow-400/20 shadow-2xl shadow-yellow-500/20 max-h-[90vh] overflow-y-auto"
-            style={{ maxHeight: '90vh' }}
+            // Adjusted size to 95% width and 90% height with minimal padding
+            className="w-[95vw] max-w-[95vw] h-[90vh] max-h-[90vh] mx-auto p-2 sm:p-3 bg-gradient-to-br from-slate-900 via-gray-900 to-black dark:from-slate-950 dark:via-gray-950 dark:to-black border-2 border-yellow-500/30 dark:border-yellow-400/20 shadow-2xl shadow-yellow-500/20 overflow-y-auto"
+            style={{ width: '95vw', height: '90vh', maxHeight: '90vh' }}
             data-testid="weekly-rank-popup"
           >
             {/* Animated Background Pattern */}
@@ -204,8 +204,8 @@ const WeeklyRankPopup = ({
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: isClosing ? 0.8 : 1, opacity: isClosing ? 0 : 1 }}
               transition={{ duration: 0.3 }}
-              // Reduced overall spacing with space-y-3
-              className="text-center space-y-3 relative z-10" 
+              // Reduced overall spacing with space-y-2.5 for tighter fit
+              className="text-center space-y-2.5 relative z-10" 
             >
               <DialogTitle className="sr-only">Weekly League Results</DialogTitle>
               
@@ -227,8 +227,8 @@ const WeeklyRankPopup = ({
               {/* Premium User Profile Card - Clean emoji separated */}
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-purple-500/10 to-blue-500/10 rounded-xl blur-xl"></div>
-                <div className="relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-xl p-3 shadow-lg">
-                  <div className="flex flex-col items-center space-y-2">
+                <div className="relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-xl p-2 shadow-lg">
+                  <div className="flex flex-col items-center space-y-1.5">
                     {/* Clean emoji/avatar - separated from name */}
                     <div className="relative">
                       <div className={`absolute inset-0 bg-gradient-to-r ${getRankGradient()} rounded-full blur-md opacity-50 animate-pulse`}></div>
@@ -270,9 +270,9 @@ const WeeklyRankPopup = ({
                 <div className="relative">
                   {/* Rank Badge with Glow - Reduced padding to p-5 */}
                   <div className="relative inline-flex items-center justify-center">
-                    <div className={`absolute inset-0 bg-gradient-to-r ${getRankGradient()} rounded-full blur-xl opacity-60 animate-pulse`}></div>
-                    <div className={`relative bg-gradient-to-br ${getRankGradient()} rounded-full p-5 shadow-2xl ring-4 ring-gray-800 border-2 border-white/20`}>
-                      <div className="flex items-center gap-2">
+                    <div className={`absolute inset-0 bg-gradient-to-r ${getRankGradient()} rounded-full blur-xl opacity-60 animate-pulse rotate-45`}></div>
+                    <div className={`relative bg-gradient-to-br ${getRankGradient()} rounded-full p-3 shadow-2xl ring-4 ring-gray-800 border-2 border-white/20`}>
+                      <div className="flex items-center gap-1.5">
                         {getRankIcon(rankData.finalRank)}
                         {/* Reduced font size to 4xl */}
                         <span className="text-4xl font-black text-white drop-shadow-2xl" data-testid="final-rank">
@@ -306,8 +306,8 @@ const WeeklyRankPopup = ({
                   className="relative"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 rounded-xl blur-xl opacity-30 animate-pulse"></div>
-                  {/* Reduced padding to p-4, reduced rounded to xl */}
-                  <div className="relative bg-gradient-to-br from-yellow-600/20 to-orange-600/20 backdrop-blur-sm p-4 rounded-xl border-2 border-yellow-400/40 shadow-2xl">
+                  {/* Reduced padding to p-3, reduced rounded to xl */}
+                  <div className="relative bg-gradient-to-br from-yellow-600/20 to-orange-600/20 backdrop-blur-sm p-3 rounded-xl border-2 border-yellow-400/40 shadow-2xl">
                     <div className="flex items-center justify-center space-x-2 mb-2">
                       <Coins className="w-6 h-6 text-yellow-400 animate-bounce" />
                       <span className="text-lg font-black bg-gradient-to-r from-yellow-200 to-yellow-400 bg-clip-text text-transparent">
@@ -328,8 +328,8 @@ const WeeklyRankPopup = ({
               {/* Premium Stats Summary - Reduced padding and font sizes */}
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-xl blur-xl"></div>
-                {/* Reduced padding to p-3 */}
-                <div className="relative bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-700/50 rounded-xl p-3 shadow-lg">
+                {/* Reduced padding to p-2 */}
+                <div className="relative bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-700/50 rounded-xl p-2 shadow-lg">
                   <h4 className="text-[10px] font-bold text-gray-400 mb-2 tracking-wider uppercase text-center">
                     Weekly Performance
                   </h4>
@@ -375,8 +375,8 @@ const WeeklyRankPopup = ({
               {!isTop50 && (
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl blur-lg"></div>
-                  {/* Reduced padding to p-3 */}
-                  <div className="relative bg-gradient-to-br from-blue-900/40 to-purple-900/40 backdrop-blur-sm p-3 rounded-xl border border-blue-500/30 shadow-lg">
+                  {/* Reduced padding to p-2 */}
+                  <div className="relative bg-gradient-to-br from-blue-900/40 to-purple-900/40 backdrop-blur-sm p-2 rounded-xl border border-blue-500/30 shadow-lg">
                     <div className="flex items-center justify-center space-x-2 mb-1">
                       <Target className="w-4 h-4 text-blue-400" />
                       <span className="text-xs font-bold text-blue-300 tracking-wide">
@@ -397,8 +397,8 @@ const WeeklyRankPopup = ({
                 <Button
                   onClick={handleClose}
                   disabled={markSeenMutation.isPending}
-                  // Reduced py-2
-                  className="relative w-full bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 hover:from-yellow-600 hover:via-amber-600 hover:to-orange-600 text-black font-black py-2 px-4 rounded-xl shadow-2xl transition-all duration-300 transform hover:scale-105 border-2 border-yellow-400/50"
+                  // Reduced py-1
+                  className="relative w-full bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 hover:from-yellow-600 hover:via-amber-600 hover:to-orange-600 text-black font-black py-1 px-4 rounded-xl shadow-2xl transition-all duration-300 transform hover:scale-105 border-2 border-yellow-400/50"
                   data-testid="close-popup-button"
                 >
                   {markSeenMutation.isPending ? '⏳ Closing...' : '✨ Awesome! Let\'s Go! ✨'}

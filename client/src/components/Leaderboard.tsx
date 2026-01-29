@@ -3,48 +3,51 @@ import { PlayerProfileModal } from "./PlayerProfileModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trophy, Medal, Award, Crown, Loader2, Clock, Coins, Users, Rocket, Zap, ChevronDown, List, X } from "lucide-react";
+import { Trophy, Medal, Award, Crown, Loader2, Clock, Coins, Users, Rocket, Zap, ChevronDown, List, X, Star, Flame, Sparkles } from "lucide-react";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatNumber } from "@/lib/utils";
 import { CachedProfileImage } from "./CachedProfileImage";
-// Interface definitions remain the same (omitted for brevity)
+
 interface WeeklyLeaderboardUser {
-  id: string;
-  userId: string;
-  weeklyWins: number;
-  coinsEarned: number;
-  user: {
-    id: string;
-    username: string;
-    displayName: string;
-    profileImageUrl: string;
-    selectedAchievementBorder: string;
-  };
+  id: string;
+  userId: string;
+  weeklyWins: number;
+  coinsEarned: number;
+  user: {
+    id: string;
+    username: string;
+    displayName: string;
+    profileImageUrl: string;
+    selectedAchievementBorder: string;
+  };
 }
+
 interface TimeLeft {
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
 }
+
 interface LeaderboardProps {
-  trigger?: React.ReactNode;
-  open?: boolean;
-  onClose?: () => void;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onClose?: () => void;
 }
-// SkeletonCard, useAnimatedNumber, TopPlayerCard components remain the same (omitted for brevity)
+
 const SkeletonCard = () => (
-  <div className="p-2 bg-gray-800 rounded-lg animate-pulse flex items-center gap-2 border border-gray-700">
-    <div className="w-6 h-6 rounded-full bg-gray-700"></div>
-    <div className="w-8 h-8 rounded-full bg-gray-700"></div>
-    <div className="flex-1 space-y-1">
-      <div className="h-3 bg-gray-700 rounded w-3/4"></div>
-      <div className="h-2 bg-gray-700 rounded w-1/2"></div>
-    </div>
-    <div className="w-12 h-5 bg-gray-700 rounded-full"></div>
-  </div>
+  <div className="p-2 bg-white/5 rounded-xl animate-pulse flex items-center gap-2 border border-white/10">
+    <div className="w-7 h-7 rounded-lg bg-white/10"></div>
+    <div className="w-8 h-8 rounded-xl bg-white/10"></div>
+    <div className="flex-1 space-y-1">
+      <div className="h-2 bg-white/10 rounded-full w-3/4"></div>
+      <div className="h-1 bg-white/10 rounded-full w-1/2"></div>
+    </div>
+    <div className="w-12 h-4 bg-white/10 rounded-xl"></div>
+  </div>
 );
+
 const useAnimatedNumber = (value: number) => {
   const [animatedValue, setAnimatedValue] = useState(value);
   const isFirstRender = useRef(true);
@@ -57,13 +60,11 @@ const useAnimatedNumber = (value: number) => {
       return;
     }
     
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
     
     const startValue = animatedValue;
     const endValue = value;
-    const duration = 800;
+    const duration = 1000;
     let start: number | null = null;
     
     const animate = (timestamp: number) => {
@@ -72,475 +73,496 @@ const useAnimatedNumber = (value: number) => {
       const percentage = Math.min(progress / duration, 1);
       const currentValue = startValue + (endValue - startValue) * percentage;
       setAnimatedValue(Math.floor(currentValue));
-      if (percentage < 1) {
-        animationRef.current = requestAnimationFrame(animate);
-      }
+      if (percentage < 1) animationRef.current = requestAnimationFrame(animate);
     };
     animationRef.current = requestAnimationFrame(animate);
     
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [value]);
   
   return animatedValue;
 };
+
+const Sparkle = ({ color }: { color: string }) => (
+  <motion.div
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ 
+      scale: [0, 1, 0],
+      opacity: [0, 1, 0],
+      rotate: [0, 90, 180]
+    }}
+    transition={{ 
+      duration: 2 + Math.random() * 2,
+      repeat: Infinity,
+      delay: Math.random() * 5
+    }}
+    className={`absolute w-1 h-1 rounded-full bg-${color}`}
+    style={{ 
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      boxShadow: `0 0 10px 2px var(--tw-shadow-color)`
+    }}
+  />
+);
+
 const TopPlayerCard = ({ entry, position, onClick }: { entry: WeeklyLeaderboardUser, position: number, onClick: () => void }) => {
-  const user = entry.user;
-  const animatedCoins = useAnimatedNumber(entry.coinsEarned);
-  const getTopPlayerStyle = (pos: number) => {
-    if (pos === 1) return "border-b-2 border-yellow-500/80 shadow-lg shadow-yellow-500/20";
-    if (pos === 2) return "border-b-2 border-gray-400/80 shadow-lg shadow-gray-400/20";
-    if (pos === 3) return "border-b-2 border-amber-500/80 shadow-lg shadow-amber-500/20";
-    return "";
-  };
-  const getRankIndicator = (pos: number) => {
-    // Reduced icon size
-    if (pos === 1) return <Crown className="w-6 h-6 text-yellow-500 absolute -top-3 left-1/2 -translate-x-1/2 z-10" />;
-    if (pos === 2) return <Medal className="w-5 h-5 text-gray-400 absolute -top-2 left-1/2 -translate-x-1/2 z-10" />;
-    if (pos === 3) return <Award className="w-5 h-5 text-amber-500 absolute -top-2 left-1/2 -translate-x-1/2 z-10" />;
-    return null;
-  };
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: position * 0.1 }}
-      whileHover={{ scale: 1.05, y: -3 }}
-      // Increased max-w for card width: max-w-[100px]
-      className={`flex flex-col items-center text-center p-1 rounded-lg cursor-pointer transition-all duration-300 relative max-w-[100px] w-full ${getTopPlayerStyle(position)}`}
-      style={{ scale: position === 2 ? 0.9 : position === 3 ? 0.81 : 1 }}
-      onClick={onClick}
-    >
-      {getRankIndicator(position)}
-      {/* Profile image size kept the same: w-14 h-14 sm:w-16 sm:h-16 */}
-      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-transparent bg-gradient-to-br from-gray-700 to-gray-800 p-0.5 overflow-hidden" style={{ borderColor: position === 1 ? 'gold' : position === 2 ? 'silver' : 'bronze' }}>
-        <CachedProfileImage
-          src={entry.user.profileImageUrl || `https://ui-avatars.com/api/?name=${entry.user.displayName}&background=random&color=fff`}
-          alt={entry.user.displayName}
-          className="w-full h-full object-cover rounded-full"
-        />
-        
-      </div>
-      {/* Increased max width for player name: max-w-[90px] */}
-      <h3 className="text-white text-sm sm:text-base font-bold truncate max-w-[90px] mt-1.5">{user.displayName}</h3>
-      <div className="flex items-center gap-0.5 text-yellow-400 mt-0.5">
-        {/* Reduced icon size */}
-        <Coins className="w-3 h-3" />
-        {/* Reduced font size for coins */}
-        <span className="font-bold text-sm">{formatNumber(animatedCoins)}</span>
-      </div>
-    </motion.div>
-  );
+  const user = entry.user;
+  const animatedCoins = useAnimatedNumber(entry.coinsEarned);
+  
+  const getRankConfig = (pos: number) => {
+    if (pos === 1) return {
+      borderColor: "border-red-500",
+      glowColor: "",
+      gradient: "from-red-600/30 via-red-500/10 to-transparent",
+      icon: <Crown className="w-8 h-8 text-red-500" />,
+      scale: 1.0,
+      yOffset: -6,
+      badge: "CHAMPION",
+      accent: "red-500",
+      bgClass: "bg-red-500/5"
+    };
+    if (pos === 2) return {
+      borderColor: "border-cyan-400",
+      glowColor: "",
+      gradient: "from-cyan-500/20 via-cyan-400/5 to-transparent",
+      icon: <Medal className="w-6 h-6 text-cyan-300" />,
+      scale: 0.88,
+      yOffset: 0,
+      badge: "LEGEND",
+      accent: "cyan-400",
+      bgClass: "bg-cyan-400/5"
+    };
+    return {
+      borderColor: "border-green-500",
+      glowColor: "",
+      gradient: "from-green-600/20 via-green-500/5 to-transparent",
+      icon: <Award className="w-6 h-6 text-green-400" />,
+      scale: 0.88,
+      yOffset: 0,
+      badge: "MASTER",
+      accent: "green-500",
+      bgClass: "bg-green-500/5"
+    };
+  };
+
+  const config = getRankConfig(position);
+
+  return (
+    <div
+      onClick={onClick}
+      className={`relative flex flex-col items-center p-2 sm:p-3 rounded-[1.5rem] cursor-pointer transition-all duration-300 border-[2.5px] ${config.borderColor} group overflow-hidden w-full ${config.bgClass}`}
+      style={{
+        backdropFilter: 'blur(16px)',
+        transform: `scale(${config.scale}) translateY(${config.yOffset}px)`,
+      }}
+    >
+      <div className={`absolute inset-0 bg-gradient-to-b ${config.gradient} opacity-60 group-hover:opacity-100 transition-opacity duration-700`} />
+      
+      {/* Animated Shine Effect */}
+      <div className="absolute top-0 bottom-0 w-1/2 bg-white/10 -skew-x-12 z-0 animate-sweep" />
+
+      <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+        <div className={position === 1 ? "animate-bounce-slow" : ""}>
+          {config.icon}
+        </div>
+      </div>
+
+      <div className="relative mb-2 z-10 mt-1.5">
+        <div className={`absolute inset-0 rounded-full blur-xl bg-${config.accent} opacity-30 group-hover:opacity-50 transition-opacity duration-700`} />
+        <div className={`relative w-14 h-14 sm:w-20 sm:h-20 rounded-full border-[3px] ${config.borderColor} overflow-hidden shadow-2xl transition-transform duration-700 group-hover:scale-110 group-hover:rotate-3`}>
+          <CachedProfileImage
+            src={entry.user.profileImageUrl || `https://ui-avatars.com/api/?name=${entry.user.displayName}&background=random&color=fff`}
+            alt={user.displayName}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      </div>
+
+      <div className="text-center z-10 w-full px-1">
+        <div className={`text-[10px] font-black text-${config.accent} tracking-[0.2em] uppercase mb-1`}>
+          RANK 0{position}
+        </div>
+        <div className="flex items-center justify-center gap-1 mb-2 transition-all duration-500 transform group-hover:scale-110">
+          <Coins className="w-3 h-3 text-yellow-400 fill-current" />
+          <span className="font-black text-[13px] sm:text-[15px] tabular-nums text-yellow-400 tracking-widest leading-none">
+            {formatNumber(animatedCoins)}
+          </span>
+        </div>
+        <h3 className={`text-${config.accent} text-[12px] sm:text-[14px] font-black truncate tracking-tight uppercase leading-tight mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400`}>
+          {user.displayName}
+        </h3>
+        <div className="text-[7px] font-black text-white/60 tracking-[0.25em] uppercase">
+          {config.badge}
+        </div>
+      </div>
+      
+      {/* Decorative dots */}
+      <div className="absolute top-2 right-2 w-1 h-1 rounded-full bg-white/20" />
+      <div className="absolute bottom-2 left-2 w-1 h-1 rounded-full bg-white/20" />
+    </div>
+  );
 };
-// REWARDS LIST COMPONENT MODIFIED
+
 const RewardsList = ({ rewardData, timeUntilEnd }: { rewardData: any[], timeUntilEnd: TimeLeft | undefined }) => {
-  const top3Rewards = rewardData.slice(0, 3);
-  const remainingRewards = rewardData.slice(3);
-  const combinedReward4to10 = remainingRewards.length > 0 ? {
-    position: "4-10",
-    coins: remainingRewards[0].coins,
-    displayRange: true
-  } : null;
-  const combinedReward11to50 = {
-    position: "11-50",
-    coins: 100000000,
-    displayRange: true
-  };
-  return (
-    <div className="py-4">
-      <h3 className="text-lg font-bold text-white mb-4 text-center">Top 50 Rewards</h3>
-      {/* TIME LEFT REMOVED FROM HERE as requested */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-        {top3Rewards.map(reward => (
-          <motion.div
-            key={reward.position}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: reward.position * 0.05 }}
-            className="flex items-center justify-between p-2 rounded-lg bg-gray-800/50 border border-gray-700"
-          >
-            <div className="flex items-center gap-2">
-              {reward.position === 1 ? <Crown className="w-5 h-5 text-yellow-500" /> : reward.position === 2 ? <Medal className="w-5 h-5 text-gray-400" /> : reward.position === 3 ? <Award className="w-5 h-5 text-amber-500" /> : <div className="w-5 h-5 text-center text-sm font-bold text-gray-400">#{reward.position}</div>}
-              <span className="text-gray-300 text-sm font-medium">Rank #{reward.position}</span>
-            </div>
-            <div className="flex items-center text-yellow-400 font-bold text-sm">
-              <Coins className="w-3 h-3 mr-1" />
-              <span>{formatNumber(reward.coins)}</span>
-            </div>
-          </motion.div>
-        ))}
-        {combinedReward4to10 && (
-          <motion.div
-            key={combinedReward4to10.position}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 3 * 0.05 }}
-            className="flex items-center justify-between p-2 rounded-lg bg-gray-800/50 border border-gray-700"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-sm font-medium">Rank #{combinedReward4to10.position}</span>
-            </div>
-            <div className="flex items-center text-yellow-400 font-bold text-sm">
-              <Coins className="w-3 h-3 mr-1" />
-              <span>{formatNumber(combinedReward4to10.coins)}</span>
-            </div>
-          </motion.div>
-        )}
-        <motion.div
-          key={combinedReward11to50.position}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 4 * 0.05 }}
-          className="flex items-center justify-between p-2 rounded-lg bg-gray-800/50 border border-gray-700"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-gray-300 text-sm font-medium">Rank #{combinedReward11to50.position}</span>
-            </div>
-          <div className="flex items-center text-yellow-400 font-bold text-sm">
-            <Coins className="w-3 h-3 mr-1" />
-              <span>{formatNumber(combinedReward11to50.coins)}</span>
-            </div>
-        </motion.div>
-      </div>
-    </div>
-  );
+  const top3Rewards = rewardData.filter(r => r.position <= 3);
+  const masterReward = rewardData.find(r => r.position === 4);
+  const eliteReward = rewardData.find(r => r.position === 11);
+  
+  return (
+    <div className="py-2.5 space-y-4 px-1">
+      <div className="relative text-center">
+        <h3 className="text-xl font-black text-white tracking-tighter uppercase italic">
+          <span className="text-yellow-400">ULTRA</span> REWARDS
+        </h3>
+        <p className="text-white/60 text-[8px] font-black tracking-[0.2em] uppercase mt-0.5">Seasonal Exclusive</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {top3Rewards.map((reward, idx) => (
+          <motion.div
+            key={reward.position}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1 }}
+            className="relative p-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl group overflow-hidden"
+          >
+            <div className="flex items-center justify-between w-full relative z-10 px-0.5">
+              <span className="text-white font-black text-[13px] tracking-tight uppercase">Rank {reward.position}</span>
+              <div className="flex items-center gap-1.5 text-[13px] font-black text-white">
+                <Coins className="w-4 h-4 text-yellow-400" />
+                <span className="tabular-nums">{formatNumber(reward.coins)}</span>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="space-y-6">
+        {masterReward && (
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2 px-1">
+              <div className="h-[1px] flex-1 bg-white/10" />
+              <span className="text-[15px] font-black text-purple-500 uppercase tracking-[0.2em]">Master Tier (4-10)</span>
+              <div className="h-[1px] flex-1 bg-white/10" />
+            </div>
+            <div className="grid grid-cols-1 gap-1">
+              <div className="flex items-center justify-between p-1.5 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-all duration-300 group">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-white/80 font-black text-[14px] uppercase italic group-hover:text-purple-400 transition-colors tracking-tight">REWARD</span>
+                </div>
+                <div className="flex items-center gap-2 font-black text-purple-400 text-lg">
+                  <Coins className="w-6 h-6" />
+                  <span className="tabular-nums tracking-tighter">{formatNumber(masterReward.coins)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {eliteReward && (
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2 px-1">
+              <div className="h-[1px] flex-1 bg-white/10" />
+              <span className="text-[15px] font-black text-blue-500 uppercase tracking-[0.2em]">Elite Tier (11-50)</span>
+              <div className="h-[1px] flex-1 bg-white/10" />
+            </div>
+            <div className="grid grid-cols-1 gap-1">
+              <div className="flex items-center justify-between p-1.5 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-all duration-300 group">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-white/70 font-black text-[14px] uppercase italic group-hover:text-blue-400 transition-colors tracking-tight">REWARD</span>
+                </div>
+                <div className="flex items-center gap-2 font-black text-blue-400 text-lg">
+                  <Coins className="w-6 h-6" />
+                  <span className="tabular-nums tracking-tighter">{formatNumber(eliteReward.coins)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
+
 export function Leaderboard({ trigger, open, onClose }: LeaderboardProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const modalOpen = open !== undefined ? open : isOpen;
-  const handleClose = onClose || (() => setIsOpen(false));
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [showPlayerProfile, setShowPlayerProfile] = useState(false);
-  const [showRewards, setShowRewards] = useState(false);
-  const { t, language } = useTranslation();
-  const queryClient = useQueryClient();
-  const isArabic = language === 'ar';
-  // API and Time Left logic remains the same (omitted for brevity)
-  const { data: weeklyLeaderboard, isLoading, error, refetch } = useQuery<WeeklyLeaderboardUser[]>({
-    queryKey: ['/api/leaderboard/weekly', language],
-    queryFn: async () => {
-      const response = await fetch('/api/leaderboard/weekly?limit=50', { credentials: 'include' });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
-    },
-    enabled: modalOpen,
+  const [isOpen, setIsOpen] = useState(false);
+  const modalOpen = open !== undefined ? open : isOpen;
+  const handleClose = onClose || (() => setIsOpen(false));
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [showPlayerProfile, setShowPlayerProfile] = useState(false);
+  const [showRewards, setShowRewards] = useState(false);
+  const { t, language } = useTranslation();
+  const queryClient = useQueryClient();
+  const isArabic = (language as string) === 'ar';
+
+  const { data: weeklyLeaderboard, isLoading, error, refetch } = useQuery<WeeklyLeaderboardUser[]>({
+    queryKey: ['/api/leaderboard/weekly', language],
+    queryFn: async () => {
+      const response = await fetch('/api/leaderboard/weekly?limit=50', { credentials: 'include' });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    },
+    enabled: modalOpen,
     retry: 3,
-    staleTime: 120000, // Cache for 2 minutes
-  });
-  const { data: serverTimeUntilEnd } = useQuery<TimeLeft>({
-    queryKey: ['/api/leaderboard/time-left'],
-    queryFn: async () => {
-      const response = await fetch('/api/leaderboard/time-left');
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
-    },
-    enabled: modalOpen,
-    refetchInterval: false, // Disable polling
-    staleTime: 60000, // Cache for 60 seconds
-  });
-  const [timeUntilEnd, setTimeUntilEnd] = useState<TimeLeft | undefined>(serverTimeUntilEnd);
-  useEffect(() => {
-    if (serverTimeUntilEnd) {
-      setTimeUntilEnd(serverTimeUntilEnd);
-    }
-  }, [serverTimeUntilEnd]);
-  useEffect(() => {
-    if (!modalOpen || !timeUntilEnd) return;
-    const interval = setInterval(() => {
-      setTimeUntilEnd(prev => {
-        if (!prev) return prev;
-        let { days, hours, minutes, seconds } = prev;
-        seconds--;
-        
-        if (seconds < 0) {
-          seconds = 59;
-          minutes--;
-        }
-        
-        if (minutes < 0) {
-          minutes = 59;
-          hours--;
-        }
-        
-        if (hours < 0) {
-          hours = 23;
-          days--;
-        }
-        
-        if (days < 0) {
-          return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-        }
-        
-        return { days, hours, minutes, seconds };
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [modalOpen, timeUntilEnd]);
-  const top3 = weeklyLeaderboard?.slice(0, 3) || [];
-  const remainingPlayers = weeklyLeaderboard?.slice(3) || [];
-  const rewardData = [
-    { position: 1, coins: 1000000000 },
-    { position: 2, coins: 700000000 },
-    { position: 3, coins: 500000000 },
-    { position: 4, coins: 300000000 },
-    { position: 5, coins: 300000000 },
-    { position: 6, coins: 300000000 },
-    { position: 7, coins: 300000000 },
-    { position: 8, coins: 300000000 },
-    { position: 9, coins: 300000000 },
-    { position: 10, coins: 300000000 },
-    { position: 11, coins: 100000000 },
-    { position: 12, coins: 100000000 },
-    { position: 13, coins: 100000000 },
-    { position: 14, coins: 100000000 },
-    { position: 15, coins: 100000000 },
-    { position: 16, coins: 100000000 },
-    { position: 17, coins: 100000000 },
-    { position: 18, coins: 100000000 },
-    { position: 19, coins: 100000000 },
-    { position: 20, coins: 100000000 },
-    { position: 21, coins: 100000000 },
-    { position: 22, coins: 100000000 },
-    { position: 23, coins: 100000000 },
-    { position: 24, coins: 100000000 },
-    { position: 25, coins: 100000000 },
-    { position: 26, coins: 100000000 },
-    { position: 27, coins: 100000000 },
-    { position: 28, coins: 100000000 },
-    { position: 29, coins: 100000000 },
-    { position: 30, coins: 100000000 },
-    { position: 31, coins: 100000000 },
-    { position: 32, coins: 100000000 },
-    { position: 33, coins: 100000000 },
-    { position: 34, coins: 100000000 },
-    { position: 35, coins: 100000000 },
-    { position: 36, coins: 100000000 },
-    { position: 37, coins: 100000000 },
-    { position: 38, coins: 100000000 },
-    { position: 39, coins: 100000000 },
-    { position: 40, coins: 100000000 },
-    { position: 41, coins: 100000000 },
-    { position: 42, coins: 100000000 },
-    { position: 43, coins: 100000000 },
-    { position: 44, coins: 100000000 },
-    { position: 45, coins: 100000000 },
-    { position: 46, coins: 100000000 },
-    { position: 47, coins: 100000000 },
-    { position: 48, coins: 100000000 },
-    { position: 49, coins: 100000000 },
-    { position: 50, coins: 100000000 },
-  ];
-  useEffect(() => {
-    if (modalOpen) {
-      queryClient.invalidateQueries({ queryKey: ['/api/leaderboard/weekly'] });
-      refetch();
-    }
-  }, [modalOpen, language, refetch, queryClient]);
-  const handlePlayerClick = (userId: string) => {
-    setSelectedPlayerId(userId);
-    setShowPlayerProfile(true);
-  };
-  const defaultTrigger = (
-    <Button variant="ghost" size="sm" className="flex items-center gap-1 text-gray-400 hover:text-white px-2 py-1 h-8" data-testid="button-leaderboard">
-      <Trophy className="w-3 h-3 text-yellow-500" />
-      {t('Leaderboard') || 'Leaderboard'}
-    </Button>
-  );
-  return (
-    <>
-      <style jsx global>{`
-        /* Scrollbar styles kept the same for good UX */
-        .scrollbar-custom::-webkit-scrollbar {
-          width: 8px;
-        }
-        .scrollbar-custom::-webkit-scrollbar-track {
-          background: #1f2937;
-          border-radius: 10px;
-        }
-        .scrollbar-custom::-webkit-scrollbar-thumb {
-          background: #374151;
-          border-radius: 10px;
-          border: 2px solid #111827;
-        }
-        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-          background: #4b5563;
-        }
-        .scrollbar-custom {
-          scrollbar-width: thin;
-          scrollbar-color: #374151 #1f2937;
-        }
-      `}</style>
-      <Dialog open={modalOpen} onOpenChange={handleClose}>
-        <DialogTrigger asChild>
-          <div onClick={(e) => {
-            e.stopPropagation();
-            if (open !== undefined) {
-              onClose?.();
-            } else {
-              setIsOpen(true);
-            }
-          }} data-testid="trigger-leaderboard">
-            {trigger || defaultTrigger}
-          </div>
-        </DialogTrigger>
-        <DialogContent
-          // KEY CHANGE: Removed all default padding (p-0) and used custom mx/my
-          className={`max-w-[98vw] sm:max-w-3xl lg:max-w-4xl max-h-[90vh] w-full mx-auto flex flex-col overflow-hidden bg-gray-950 text-gray-100 border-2 border-gray-800 shadow-2xl shadow-gray-950/50 p-0 ${isArabic ? 'font-arabic' : ''}`}
-          style={isArabic ? { fontFamily: "'Noto Sans Arabic', 'Cairo', 'Tajawal', system-ui, sans-serif", direction: 'rtl' } : {}}
-          data-testid="dialog-leaderboard"
-        >
-          
-          {/* Custom Header Wrapper - Controls all top padding */}
-          <div className="px-6 relative flex flex-col">
-            {/* HEADER 1: MAIN TITLE - Explicitly setting top padding */}
-            <div className="pt-4 pb-2">
-              <div className={`flex items-center justify-center gap-2 text-xl sm:text-2xl font-bold text-white relative z-20`}>
-                <Trophy className="w-6 h-6 text-yellow-500" />
-                {t('Weekly Leaderboard') || 'Weekly Leaderboard'}
-              </div>
-            </div>
-            {/* Horizontal Divider */}
-            <hr className="border-gray-800 my-0"/>
-            {/* HEADER 2: TIMER/REWARD - Explicitly controlling vertical space below the divider */}
-            <div className="flex justify-between items-center pt-2 pb-3">
-              {/* TIME LEFT: Aligned left */}
-              <div className="flex items-center gap-1.5 text-gray-400 text-sm">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <div className="font-mono text-white text-sm font-semibold">
-                  {timeUntilEnd?.days}d {timeUntilEnd?.hours}h {timeUntilEnd?.minutes}m
-                </div>
-              </div>
-              {/* REWARD BUTTON: Aligned right */}
-              <Button
-                variant="ghost"
-                onClick={() => setShowRewards(true)}
-                className="group flex items-center gap-1 text-yellow-400 hover:bg-transparent transition-colors px-2 py-1 h-6"
-              >
-                <span className="text-xs font-medium">{t('Rewards') || 'Rewards'}: {formatNumber(rewardData[0].coins)} <Coins className="w-3 h-3 inline-block" /></span>
-                <ChevronDown className="w-3 h-3 transition-transform group-hover:rotate-180" />
-              </Button>
-            </div>
-          </div>
-          {/* END Custom Header Wrapper */}
-          {isLoading ? (
-            <div className="flex flex-col gap-2 py-3 px-6" data-testid="loading-state">
-              {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center py-8 flex-1 text-red-400 px-6" data-testid="error-state">
-              <span>{t('errorLoadingWeeklyLeaderboard') || 'Error loading weekly leaderboard. Please try again.'}</span>
-            </div>
-          ) : (
-            <div className="flex-1 min-h-0 flex flex-col">
-              {/* TOP 3 CARDS START HERE */}
-              {top3.length > 0 && (
-                <div className="grid grid-cols-3 items-end gap-1 px-7 pb-4 pt-2 border-b border-gray-800">
-                  <div className="col-span-1 flex justify-center">
-                    {top3[1] && <TopPlayerCard entry={top3[1]} position={2} onClick={() => handlePlayerClick(top3[1].user.id)} />}
-                  </div>
-                  <div className="col-span-1 flex justify-center">
-                    {top3[0] && <TopPlayerCard entry={top3[0]} position={1} onClick={() => handlePlayerClick(top3[0].user.id)} />}
-                  </div>
-                  <div className="col-span-1 flex justify-center">
-                    {top3[2] && <TopPlayerCard entry={top3[2]} position={3} onClick={() => handlePlayerClick(top3[2].user.id)} />}
-                  </div>
-                </div>
-              )}
-              {/* REST OF PLAYERS LIST */}
-              {/* px-6 is applied to all padding sections of the content for consistency */}
-              <div className="flex-1 min-h-0 overflow-y-auto mt-3 px-6 space-y-2 scrollbar-custom" style={{ WebkitOverflowScrolling: 'touch' }} data-testid="leaderboard-container">
-                {remainingPlayers.length > 0 ? (
-                  remainingPlayers.map((entry, index) => {
-                    const position = index + 4;
-                    const user = entry.user;
-                    return (
-                      <motion.div
-                        key={entry.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.03 }}
-                        whileHover={{ scale: 1.01, backgroundColor: "rgba(31, 41, 55, 0.4)" }}
-                        className="flex items-center gap-2 p-2 rounded-lg border border-gray-800 bg-gray-900/50 cursor-pointer"
-                        onClick={() => handlePlayerClick(user.id)}
-                        data-testid={`player-card-${user.id}`}
-                      >
-                        <span className="w-6 flex-shrink-0 text-center font-bold text-gray-500 text-sm">#{position}</span>
-                        <CachedProfileImage
-                          src={user.profileImageUrl || `https://ui-avatars.com/api/?name=${user.displayName}&background=random&color=fff`}
-                          alt={user.displayName}
-                          className="w-8 h-8 rounded-full object-cover"
-                          fallbackClassName="w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center"
-                          fallbackIconClassName="w-4 h-4 text-gray-400"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className="font-semibold text-white truncate text-sm">{user.displayName}</span>
-                        </div>
-                        <div className="flex items-center gap-0.5 text-yellow-400 font-semibold text-sm">
-                          <Coins className="w-3 h-3" />
-                          <span>{formatNumber(entry.coinsEarned)}</span>
-                        </div>
-                      </motion.div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8 text-gray-500 px-6" data-testid="no-data-state">
-                    <Rocket className="w-16 h-16 mx-auto mb-4 opacity-50 text-gray-700" />
-                    <p className="text-sm font-medium">{t('noWeeklyDataYet') || 'No weekly data yet. Start playing to compete!'}</p>
-                  </div>
-                )}
-                </div>
-              </div>
-          )}
-          {/* Footer kept small */}
-          <div className="py-2 px-6 border-t border-gray-800 flex justify-between items-center bg-gray-900/50">
-            <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-              <Users className="w-3 h-3" />
-              <span>{weeklyLeaderboard?.length || 0} {t('players on leaderboard') || 'players on leaderboard'}</span>
-            </div>
-            <Button
-              onClick={handleClose}
-              variant="ghost"
-              size="sm"
-              className={`text-white hover:bg-gray-800 px-2 py-0.5 h-6 text-xs ${isArabic ? 'font-arabic' : ''}`}
-              data-testid="button-close"
-            >
-              {t('close') || 'Close'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      <PlayerProfileModal
-        playerId={selectedPlayerId}
-        open={showPlayerProfile}
-        onClose={() => {
-          setShowPlayerProfile(false);
-          setSelectedPlayerId(null);
-        }}
-        currentUserId={undefined}
-      />
-      <Dialog open={showRewards} onOpenChange={setShowRewards}>
-        <DialogContent
-          className={`max-w-[95vw] sm:max-w-md bg-gray-950 border border-gray-800 text-gray-100 ${isArabic ? 'font-arabic' : ''}`}
-          style={isArabic ? { fontFamily: "'Noto Sans Arabic', 'Cairo', 'Tajawal', system-ui, sans-serif", direction: 'rtl' } : {}}
-        >
-          <DialogHeader className="flex flex-row items-center justify-between pb-2">
-            <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-              <Coins className="w-5 h-5 text-yellow-400" />
-              {t('Weekly Rewards') || 'Weekly Rewards'}
-            </DialogTitle>
-            <Button variant="ghost" size="sm" onClick={() => setShowRewards(false)} className="text-gray-400 hover:text-white p-1 h-6 w-6">
-              <X className="w-3 h-3" />
-            </Button>
-          </DialogHeader>
-          <DialogDescription className="text-gray-400">
-            {t('Check out the rewards for the top 50 winners this week.') || 'Check out the rewards for the top 10 winners this week.'}
-          </DialogDescription>
-          <RewardsList rewardData={rewardData} timeUntilEnd={timeUntilEnd} />
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+    staleTime: 120000,
+  });
+
+  const { data: serverTimeUntilEnd } = useQuery<TimeLeft>({
+    queryKey: ['/api/leaderboard/time-left'],
+    queryFn: async () => {
+      const response = await fetch('/api/leaderboard/time-left');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    },
+    enabled: modalOpen,
+    staleTime: 60000,
+  });
+
+  const [timeUntilEnd, setTimeUntilEnd] = useState<TimeLeft | undefined>(serverTimeUntilEnd);
+  
+  useEffect(() => {
+    if (serverTimeUntilEnd) setTimeUntilEnd(serverTimeUntilEnd);
+  }, [serverTimeUntilEnd]);
+
+  useEffect(() => {
+    if (!modalOpen || !timeUntilEnd) return;
+    const interval = setInterval(() => {
+      setTimeUntilEnd(prev => {
+        if (!prev) return prev;
+        let { days, hours, minutes, seconds } = prev;
+        seconds--;
+        if (seconds < 0) { seconds = 59; minutes--; }
+        if (minutes < 0) { minutes = 59; hours--; }
+        if (hours < 0) { hours = 23; days--; }
+        if (days < 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+        return { days, hours, minutes, seconds };
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [modalOpen, timeUntilEnd]);
+
+  const top3 = weeklyLeaderboard?.slice(0, 3) || [];
+  const remainingPlayers = weeklyLeaderboard?.slice(3) || [];
+  const rewardData = [
+    { position: 1, coins: 1000000000 },
+    { position: 2, coins: 700000000 },
+    { position: 3, coins: 500000000 },
+    { position: 4, coins: 300000000 },
+    { position: 11, coins: 100000000 }
+  ];
+
+  useEffect(() => {
+    if (modalOpen) {
+      queryClient.invalidateQueries({ queryKey: ['/api/leaderboard/weekly'] });
+      refetch();
+    }
+  }, [modalOpen, language, refetch, queryClient]);
+
+  const handlePlayerClick = (userId: string) => {
+    setSelectedPlayerId(userId);
+    setShowPlayerProfile(true);
+  };
+
+  const defaultTrigger = (
+    <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-400 hover:text-white px-3 py-1.5 h-9 rounded-xl bg-white/5 border border-white/5 transition-all group" data-testid="button-leaderboard">
+      <Trophy className="w-3.5 h-3.5 text-yellow-500 group-hover:scale-110" />
+      <span className="font-black text-xs tracking-tight">{(t as any)('Leaderboard') || 'Leaderboard'}</span>
+    </Button>
+  );
+
+  return (
+    <>
+      <style>{`
+        .scrollbar-custom::-webkit-scrollbar { width: 5px; }
+        .scrollbar-custom::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-custom::-webkit-scrollbar-thumb { 
+          background: rgba(255,255,255,0.08); 
+          border-radius: 10px; 
+        }
+        @keyframes sweep {
+          0% { left: -100%; }
+          100% { left: 200%; }
+        }
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+        }
+        .animate-sweep { animation: sweep 3s linear infinite; }
+        .animate-bounce-slow { animation: bounce-slow 3s ease-in-out infinite; }
+      `}</style>
+      <Dialog open={modalOpen} onOpenChange={handleClose}>
+        <DialogTrigger asChild>
+          <div onClick={(e) => {
+            e.stopPropagation();
+            if (open !== undefined) onClose?.();
+            else setIsOpen(true);
+          }} data-testid="trigger-leaderboard">
+            {trigger || defaultTrigger}
+          </div>
+        </DialogTrigger>
+        <DialogContent
+          className={`max-w-[96vw] sm:max-w-2xl max-h-[95vh] w-full mx-auto flex flex-col overflow-hidden bg-[#050505] text-gray-100 border border-white/10 p-0 rounded-3xl ${isArabic ? 'font-arabic' : ''} outline-none shadow-none`}
+          style={isArabic ? { fontFamily: "'Noto Sans Arabic', 'Cairo', 'Tajawal', system-ui, sans-serif", direction: 'rtl' } : {}}
+          data-testid="dialog-leaderboard"
+        >
+          <div className="px-5 sm:px-8 relative flex flex-col pt-3 pb-0 bg-[#050505]">
+            <div className="flex justify-between items-center mb-1 pr-8">
+              <motion.div initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="flex items-center gap-2">
+                <div className="p-1 rounded-lg bg-yellow-500/20 border border-yellow-500/30 relative">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-400 relative z-10" />
+                  <motion.div
+                    animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="absolute inset-0 bg-yellow-400/20 blur-md rounded-full"
+                  />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-white italic tracking-tighter uppercase leading-none">
+                    WEEKLY <span className="text-yellow-400">LEAGUE</span>
+                  </h2>
+                </div>
+              </motion.div>
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-lg shadow-[0_0_10px_rgba(59,130,246,0.1)]">
+                  <Clock className="w-2.5 h-2.5 text-blue-400" />
+                  <span className="font-mono text-white text-[9px] font-black tracking-tight">
+                    {timeUntilEnd?.days}D {timeUntilEnd?.hours}H {timeUntilEnd?.minutes}M
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowRewards(true)}
+                  className="p-1 h-6 w-6 rounded-lg border border-yellow-400/20 text-yellow-400 group relative overflow-hidden"
+                >
+                  <Star className="w-3 h-3 fill-yellow-400 relative z-10 transition-transform group-hover:scale-125 group-hover:rotate-12" />
+                  <div className="absolute inset-0 bg-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex flex-col gap-1 py-2 px-4 sm:px-8" data-testid="loading-state">
+              {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-8 flex-1 text-red-400" data-testid="error-state">
+              <X className="w-8 h-8 mb-3 opacity-20" />
+              <span className="font-black text-xs uppercase tracking-widest italic">System Error</span>
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto scrollbar-custom pb-3" style={{ WebkitOverflowScrolling: 'touch' }} data-testid="leaderboard-container">
+                {top3.length > 0 && (
+                  <div className="sticky top-0 z-30 flex justify-center items-end gap-1.5 sm:gap-3 pt-5 pb-6 px-4 sm:px-8 bg-[#050505] border-b border-white/5 relative shadow-2xl">
+                    <div className="absolute inset-x-0 top-0 bottom-0 bg-gradient-to-b from-yellow-500/5 to-transparent blur-[40px] -z-10" />
+                    
+                    {/* Background Sparkles for Top 3 */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                      <Sparkle color="yellow-400" />
+                      <Sparkle color="cyan-400" />
+                      <Sparkle color="purple-400" />
+                    </div>
+
+                    <div className="w-[32%] max-w-[105px] relative z-10">
+                      {top3[1] && <TopPlayerCard entry={top3[1]} position={2} onClick={() => handlePlayerClick(top3[1].user.id)} />}
+                    </div>
+                    <div className="w-[36%] max-w-[125px] relative z-20">
+                      {top3[0] && <TopPlayerCard entry={top3[0]} position={1} onClick={() => handlePlayerClick(top3[0].user.id)} />}
+                    </div>
+                    <div className="w-[32%] max-w-[105px] relative z-10">
+                      {top3[2] && <TopPlayerCard entry={top3[2]} position={3} onClick={() => handlePlayerClick(top3[2].user.id)} />}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="px-4 sm:px-8 space-y-1">
+                  <div className="flex items-center justify-between px-3 py-1 text-white/20 text-[7px] font-black tracking-[0.2em] uppercase border-b border-white/5 mb-1">
+                    <span>Rank & Player</span>
+                    <span>Earnings</span>
+                  </div>
+                  
+                  {remainingPlayers.map((entry, index) => {
+                    const position = index + 4;
+                    const user = entry.user;
+                    return (
+                      <motion.div
+                        key={entry.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.02 }}
+                        className="flex items-center gap-2 p-2 rounded-xl border border-white/10 bg-white/[0.03] cursor-pointer group transition-all duration-300 relative overflow-hidden"
+                        onClick={() => handlePlayerClick(user.id)}
+                        data-testid={`player-card-${user.id}`}
+                      >
+                        <div className="w-6 flex-shrink-0 text-center font-black text-white text-[10px] group-hover:text-yellow-400">
+                          #{position}
+                        </div>
+                        <div className="relative flex-shrink-0">
+                          <CachedProfileImage
+                            src={user.profileImageUrl || `https://ui-avatars.com/api/?name=${user.displayName}&background=random&color=fff`}
+                            alt={user.displayName}
+                            className="w-[32px] h-[32px] rounded-lg object-cover border border-white/20"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col">
+                            <span className="font-black text-white truncate text-[11px] tracking-tight uppercase group-hover:text-yellow-400">
+                              {user.displayName}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-yellow-400 font-black text-[11px] transition-all">
+                          <Coins className="w-2.5 h-2.5 text-yellow-400" />
+                          <span className="tabular-nums">{formatNumber(entry.coinsEarned)}</span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="py-2 px-5 border-t border-white/5 flex justify-between items-center bg-white/5">
+            <span className="text-white/30 text-[8px] font-black uppercase tracking-widest">
+              {weeklyLeaderboard?.length || 0} Contestants
+            </span>
+            <Button
+              onClick={handleClose}
+              variant="ghost"
+              size="sm"
+              className={`text-white/70 hover:bg-white/10 px-3 py-0.5 h-7 rounded-lg text-[9px] font-black uppercase tracking-widest border border-white/5 ${isArabic ? 'font-arabic' : ''}`}
+            >
+              {t('close') || 'Close'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <PlayerProfileModal
+        playerId={selectedPlayerId}
+        open={showPlayerProfile}
+        onClose={() => {
+          setShowPlayerProfile(false);
+          setSelectedPlayerId(null);
+        }}
+        currentUserId={undefined}
+      />
+      <Dialog open={showRewards} onOpenChange={setShowRewards}>
+        <DialogContent
+          className={`max-w-[92vw] sm:max-w-lg bg-[#0a0a0a] border border-white/10 text-gray-100 p-0 rounded-3xl overflow-hidden outline-none ${isArabic ? 'font-arabic' : ''}`}
+        >
+          <div className="px-5 pt-5 pb-3 border-b border-white/5 flex justify-between items-center">
+            <h2 className="text-base font-black uppercase italic tracking-tighter">Season Prizes</h2>
+          </div>
+          <div className="overflow-y-auto max-h-[60vh] px-3 py-1.5 scrollbar-custom">
+            <RewardsList rewardData={rewardData} timeUntilEnd={timeUntilEnd} />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
